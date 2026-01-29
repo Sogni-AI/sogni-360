@@ -22,6 +22,8 @@ export interface Waypoint {
   error?: string;
   projectId?: string; // SDK project ID for tracking
   isOriginal?: boolean; // If true, use source image directly (no generation needed)
+  imageHistory?: string[]; // History of all generated versions (for redo navigation)
+  currentImageIndex?: number; // Index of currently displayed version in imageHistory
 }
 
 // Single version of a generated transition video
@@ -119,6 +121,8 @@ export type Sogni360Action =
   | { type: 'SET_WAYPOINTS'; payload: Waypoint[] }
   | { type: 'REMOVE_WAYPOINT'; payload: string }
   | { type: 'UPDATE_WAYPOINT'; payload: { id: string; updates: Partial<Waypoint> } }
+  | { type: 'ADD_WAYPOINT_VERSION'; payload: { waypointId: string; imageUrl: string } }
+  | { type: 'SELECT_WAYPOINT_VERSION'; payload: { waypointId: string; index: number } }
   | { type: 'REORDER_WAYPOINTS'; payload: string[] }
   | { type: 'SET_SEGMENTS'; payload: Segment[] }
   | { type: 'ADD_SEGMENT'; payload: Segment }

@@ -821,7 +821,7 @@ html, body {
 .tile-image-area {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  /* aspect-ratio controlled by inline style to match source image */
   background: rgba(0, 0, 0, 0.5);
 }
 
@@ -979,6 +979,50 @@ html, body {
 .tile-redo-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Version navigation */
+.tile-version-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.version-nav-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 300;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.version-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.version-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.version-indicator {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 40px;
+  text-align: center;
 }
 
 /* Review footer */
@@ -1417,7 +1461,7 @@ html, body {
 .transition-thumbnail {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  /* aspect-ratio controlled by inline style to match source image */
   background: #f3f4f6;
 }
 

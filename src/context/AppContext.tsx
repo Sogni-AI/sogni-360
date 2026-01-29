@@ -119,6 +119,51 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         }
       };
 
+    case 'ADD_WAYPOINT_VERSION':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: state.currentProject.waypoints.map(w => {
+            if (w.id !== action.payload.waypointId) return w;
+            const history = w.imageHistory || [];
+            // Add current imageUrl to history if it exists and isn't already there
+            if (w.imageUrl && !history.includes(w.imageUrl)) {
+              history.push(w.imageUrl);
+            }
+            // Add new image to history
+            const newHistory = [...history, action.payload.imageUrl];
+            return {
+              ...w,
+              imageUrl: action.payload.imageUrl,
+              imageHistory: newHistory,
+              currentImageIndex: newHistory.length - 1
+            };
+          }),
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SELECT_WAYPOINT_VERSION':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: state.currentProject.waypoints.map(w => {
+            if (w.id !== action.payload.waypointId || !w.imageHistory) return w;
+            const index = Math.max(0, Math.min(action.payload.index, w.imageHistory.length - 1));
+            return {
+              ...w,
+              imageUrl: w.imageHistory[index],
+              currentImageIndex: index
+            };
+          }),
+          updatedAt: Date.now()
+        }
+      };
+
     case 'REORDER_WAYPOINTS':
       if (!state.currentProject) return state;
       const waypointMap = new Map(state.currentProject.waypoints.map(w => [w.id, w]));

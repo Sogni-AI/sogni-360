@@ -65,9 +65,14 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             });
           },
           onWaypointComplete: (waypointId, imageUrl) => {
+            // Add to version history instead of overwriting
+            dispatch({
+              type: 'ADD_WAYPOINT_VERSION',
+              payload: { waypointId, imageUrl }
+            });
             dispatch({
               type: 'UPDATE_WAYPOINT',
-              payload: { id: waypointId, updates: { status: 'ready', imageUrl, progress: 100, error: undefined } }
+              payload: { id: waypointId, updates: { status: 'ready', progress: 100, error: undefined } }
             });
             showToast({ message: 'Angle regenerated', type: 'success' });
           },
@@ -88,6 +93,42 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       showToast({ message: 'Regeneration failed', type: 'error' });
     }
   }, [currentProject, dispatch, showToast]);
+
+  // Navigate to previous version
+  const handlePrevVersion = useCallback((waypoint: Waypoint) => {
+    if (!waypoint.imageHistory || waypoint.imageHistory.length <= 1) return;
+    const currentIdx = waypoint.currentImageIndex ?? waypoint.imageHistory.length - 1;
+    if (currentIdx > 0) {
+      dispatch({
+        type: 'SELECT_WAYPOINT_VERSION',
+        payload: { waypointId: waypoint.id, index: currentIdx - 1 }
+      });
+    }
+  }, [dispatch]);
+
+  // Navigate to next version
+  const handleNextVersion = useCallback((waypoint: Waypoint) => {
+    if (!waypoint.imageHistory || waypoint.imageHistory.length <= 1) return;
+    const currentIdx = waypoint.currentImageIndex ?? waypoint.imageHistory.length - 1;
+    if (currentIdx < waypoint.imageHistory.length - 1) {
+      dispatch({
+        type: 'SELECT_WAYPOINT_VERSION',
+        payload: { waypointId: waypoint.id, index: currentIdx + 1 }
+      });
+    }
+  }, [dispatch]);
+
+  // Get version info for a waypoint
+  const getVersionInfo = (waypoint: Waypoint) => {
+    if (!waypoint.imageHistory || waypoint.imageHistory.length <= 1) return null;
+    const currentIdx = waypoint.currentImageIndex ?? waypoint.imageHistory.length - 1;
+    return {
+      current: currentIdx + 1,
+      total: waypoint.imageHistory.length,
+      canPrev: currentIdx > 0,
+      canNext: currentIdx < waypoint.imageHistory.length - 1
+    };
+  };
 
   const canApply = readyCount >= 2 && generatingCount === 0 && failedCount === 0;
   const totalComplete = readyCount;
@@ -133,8 +174,15 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             {/* Index badge */}
             <div className="tile-index-badge">{index}</div>
 
-            {/* Image area */}
-            <div className="tile-image-area">
+            {/* Image area - respect source aspect ratio */}
+            <div
+              className="tile-image-area"
+              style={{
+                aspectRatio: currentProject?.sourceImageDimensions
+                  ? `${currentProject.sourceImageDimensions.width} / ${currentProject.sourceImageDimensions.height}`
+                  : '3 / 4'
+              }}
+            >
               {waypoint.imageUrl ? (
                 <img src={waypoint.imageUrl} alt={`Angle ${index}`} />
               ) : currentProject?.sourceImageUrl ? (
@@ -168,7 +216,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                   </div>
                   <div className="generating-stats">
                     <div className="generating-percent">{Math.round(waypoint.progress || 0)}%</div>
-                    <div className="generating-time">~{Math.ceil((100 - (waypoint.progress || 0)) / 10)}s left</div>
                   </div>
                 </div>
               )}
@@ -186,6 +233,35 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             <div className="tile-info">
               <div className="tile-angle-label">{getAngleLabel(waypoint)}</div>
             </div>
+
+            {/* Version navigation - only show if multiple versions exist */}
+            {(() => {
+              const versionInfo = getVersionInfo(waypoint);
+              if (!versionInfo) return null;
+              return (
+                <div className="tile-version-nav">
+                  <button
+                    className="version-nav-btn"
+                    onClick={() => handlePrevVersion(waypoint)}
+                    disabled={!versionInfo.canPrev || waypoint.status === 'generating'}
+                    title="Previous version"
+                  >
+                    ‹
+                  </button>
+                  <span className="version-indicator">
+                    {versionInfo.current} / {versionInfo.total}
+                  </span>
+                  <button
+                    className="version-nav-btn"
+                    onClick={() => handleNextVersion(waypoint)}
+                    disabled={!versionInfo.canNext || waypoint.status === 'generating'}
+                    title="Next version"
+                  >
+                    ›
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Redo button */}
             {!waypoint.isOriginal && waypoint.status !== 'pending' && (

@@ -101,7 +101,14 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               </div>
 
               {/* Thumbnail area showing from->to images or video preview */}
-              <div className="transition-thumbnail">
+              <div
+                className="transition-thumbnail"
+                style={{
+                  aspectRatio: currentProject?.sourceImageDimensions
+                    ? `${currentProject.sourceImageDimensions.width} / ${currentProject.sourceImageDimensions.height}`
+                    : '3 / 4'
+                }}
+              >
                 {segment.status === 'ready' && segment.videoUrl ? (
                   <video
                     src={segment.videoUrl}
