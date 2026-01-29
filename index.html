@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <title>Sogni 360 | Immersive AI Portrait Experience</title>
+    <meta name="description" content="Create immersive 360-degree orbital portraits with AI. Navigate through angles, generate transition videos, and export seamless loops." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!-- Theme colors -->
+    <meta name="theme-color" content="#000000" />
+    <meta name="msapplication-TileColor" content="#000000" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Sogni 360" />
+    <meta name="application-name" content="Sogni 360" />
+
+    <!-- Additional meta tags -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+
+    <style>
+      /* Critical CSS for fullscreen immersive experience */
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+
+    <script>
+      // Prevent pinch zoom gesture
+      document.addEventListener('touchmove', function(event) {
+        if (event.touches.length > 1) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      // Prevent double-tap to zoom
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function(event) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, { passive: false });
+
+      // Prevent pull-to-refresh behavior
+      let touchStartY = 0;
+      document.addEventListener('touchstart', function(event) {
+        touchStartY = event.touches[0].clientY;
+      }, { passive: true });
+
+      document.addEventListener('touchmove', function(event) {
+        const touchY = event.touches[0].clientY;
+        const touchDeltaY = touchY - touchStartY;
+        const isAtTop = window.scrollY === 0;
+        const isPullingDown = touchDeltaY > 0;
+
+        if (isAtTop && isPullingDown) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+    </script>
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:title" content="Sogni 360 | Immersive AI Portrait Experience" />
+    <meta property="og:description" content="Create immersive 360-degree orbital portraits with AI. Navigate through angles, generate transition videos, and export seamless loops." />
+    <meta property="og:url" content="https://360.sogni.ai/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sogni 360" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@sogni_ai" />
+    <meta property="twitter:domain" content="360.sogni.ai" />
+    <meta property="twitter:url" content="https://360.sogni.ai/" />
+    <meta name="twitter:title" content="Sogni 360 | Immersive AI Portrait Experience" />
+    <meta name="twitter:description" content="Create immersive 360-degree orbital portraits with AI. Navigate through angles, generate transition videos, and export seamless loops." />
+
+    <!-- Additional SEO -->
+    <meta name="author" content="Sogni AI" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://360.sogni.ai/" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

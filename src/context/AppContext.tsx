@@ -1,0 +1,492 @@
+import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef, useState } from 'react';
+import type {
+  Sogni360State,
+  Sogni360Action,
+  Sogni360Project,
+  Sogni360Settings,
+  Waypoint,
+  Segment,
+  ProjectStatus
+} from '../types';
+import { v4 as uuidv4 } from 'uuid';
+import { saveCurrentProject, getMostRecentProject, setCurrentProjectId } from '../utils/localProjectsDB';
+
+// Initial state
+const initialState: Sogni360State = {
+  currentProject: null,
+  currentWaypointIndex: 0,
+  isPlaying: false,
+  playbackDirection: 'forward',
+  playbackSpeed: 1,
+  uiVisible: true,
+  showWaypointEditor: false,
+  showExportPanel: false,
+  showProgressOverlay: false,
+  showTransitionConfig: false,
+  showTransitionReview: false,
+  showFinalVideoPreview: false,
+  isAuthenticated: false,
+  authMode: null,
+  walletBalance: null
+};
+
+// Default project settings
+const defaultSettings: Sogni360Settings = {
+  videoQuality: 'fast',
+  videoResolution: '480p',
+  videoDuration: 3,
+  tokenType: 'spark'
+};
+
+// Reducer
+function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State {
+  switch (action.type) {
+    case 'SET_PROJECT':
+      return {
+        ...state,
+        currentProject: action.payload,
+        currentWaypointIndex: 0,
+        isPlaying: false
+      };
+
+    case 'SET_SOURCE_IMAGE': {
+      const newProject: Sogni360Project = state.currentProject
+        ? {
+            ...state.currentProject,
+            sourceImageUrl: action.payload.url,
+            sourceImageDimensions: action.payload.dimensions,
+            updatedAt: Date.now()
+          }
+        : {
+            id: uuidv4(),
+            name: 'Untitled Project',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            sourceImageUrl: action.payload.url,
+            sourceImageDimensions: action.payload.dimensions,
+            waypoints: [],
+            segments: [],
+            status: 'draft',
+            settings: defaultSettings
+          };
+      return { ...state, currentProject: newProject };
+    }
+
+    case 'ADD_WAYPOINT':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: [...state.currentProject.waypoints, action.payload],
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SET_WAYPOINTS':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: action.payload,
+          updatedAt: Date.now()
+        },
+        currentWaypointIndex: 0
+      };
+
+    case 'REMOVE_WAYPOINT':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: state.currentProject.waypoints.filter(w => w.id !== action.payload),
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'UPDATE_WAYPOINT':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: state.currentProject.waypoints.map(w =>
+            w.id === action.payload.id ? { ...w, ...action.payload.updates } : w
+          ),
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'REORDER_WAYPOINTS':
+      if (!state.currentProject) return state;
+      const waypointMap = new Map(state.currentProject.waypoints.map(w => [w.id, w]));
+      const reorderedWaypoints = action.payload
+        .map(id => waypointMap.get(id))
+        .filter((w): w is Waypoint => w !== undefined);
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: reorderedWaypoints,
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SET_SEGMENTS':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          segments: action.payload,
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'ADD_SEGMENT':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          segments: [...state.currentProject.segments, action.payload],
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'UPDATE_SEGMENT':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          segments: state.currentProject.segments.map(s =>
+            s.id === action.payload.id ? { ...s, ...action.payload.updates } : s
+          ),
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'ADD_SEGMENT_VERSION':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          segments: state.currentProject.segments.map(s => {
+            if (s.id !== action.payload.segmentId) return s;
+            const versions = s.versions || [];
+            // Deselect all existing versions
+            const updatedVersions = versions.map(v => ({ ...v, isSelected: false }));
+            // Add new version as selected
+            updatedVersions.push(action.payload.version);
+            return {
+              ...s,
+              versions: updatedVersions,
+              currentVersionIndex: updatedVersions.length - 1,
+              videoUrl: action.payload.version.videoUrl
+            };
+          }),
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SELECT_SEGMENT_VERSION':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          segments: state.currentProject.segments.map(s => {
+            if (s.id !== action.payload.segmentId || !s.versions) return s;
+            const updatedVersions = s.versions.map((v, i) => ({
+              ...v,
+              isSelected: i === action.payload.versionIndex
+            }));
+            const selectedVersion = updatedVersions[action.payload.versionIndex];
+            return {
+              ...s,
+              versions: updatedVersions,
+              currentVersionIndex: action.payload.versionIndex,
+              videoUrl: selectedVersion?.videoUrl || s.videoUrl
+            };
+          }),
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SET_PROJECT_STATUS':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          status: action.payload,
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SET_CURRENT_WAYPOINT_INDEX':
+      return { ...state, currentWaypointIndex: action.payload };
+
+    case 'SET_PLAYING':
+      return { ...state, isPlaying: action.payload };
+
+    case 'SET_PLAYBACK_DIRECTION':
+      return { ...state, playbackDirection: action.payload };
+
+    case 'SET_PLAYBACK_SPEED':
+      return { ...state, playbackSpeed: action.payload };
+
+    case 'SET_UI_VISIBLE':
+      return { ...state, uiVisible: action.payload };
+
+    case 'SET_SHOW_WAYPOINT_EDITOR':
+      return { ...state, showWaypointEditor: action.payload };
+
+    case 'SET_SHOW_EXPORT_PANEL':
+      return { ...state, showExportPanel: action.payload };
+
+    case 'SET_SHOW_PROGRESS_OVERLAY':
+      return { ...state, showProgressOverlay: action.payload };
+
+    case 'SET_SHOW_TRANSITION_CONFIG':
+      return { ...state, showTransitionConfig: action.payload };
+
+    case 'SET_SHOW_TRANSITION_REVIEW':
+      return { ...state, showTransitionReview: action.payload };
+
+    case 'SET_SHOW_FINAL_VIDEO_PREVIEW':
+      return { ...state, showFinalVideoPreview: action.payload };
+
+    case 'SET_FINAL_LOOP_URL':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          finalLoopUrl: action.payload,
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SET_AUTHENTICATED':
+      return { ...state, isAuthenticated: action.payload };
+
+    case 'SET_AUTH_MODE':
+      return { ...state, authMode: action.payload };
+
+    case 'SET_WALLET_BALANCE':
+      return { ...state, walletBalance: action.payload };
+
+    case 'UPDATE_SETTINGS':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          settings: { ...state.currentProject.settings, ...action.payload },
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'RESET_STATE':
+      return initialState;
+
+    default:
+      return state;
+  }
+}
+
+// Context type
+interface AppContextType {
+  state: Sogni360State;
+  dispatch: React.Dispatch<Sogni360Action>;
+  isRestoring: boolean;
+  // Helper functions
+  setSourceImage: (url: string, dimensions: { width: number; height: number }) => void;
+  addWaypoint: (waypoint: Waypoint) => void;
+  removeWaypoint: (id: string) => void;
+  updateWaypoint: (id: string, updates: Partial<Waypoint>) => void;
+  reorderWaypoints: (ids: string[]) => void;
+  updateSegment: (id: string, updates: Partial<Segment>) => void;
+  setProjectStatus: (status: ProjectStatus) => void;
+  navigateToWaypoint: (index: number) => void;
+  nextWaypoint: () => void;
+  previousWaypoint: () => void;
+  togglePlayback: () => void;
+  setUIVisible: (visible: boolean) => void;
+  clearProject: () => void;
+}
+
+const AppContext = createContext<AppContextType | null>(null);
+
+// Debounce helper
+function debounce<T extends (...args: unknown[]) => unknown>(fn: T, delay: number): T {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return ((...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  }) as T;
+}
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [isRestoring, setIsRestoring] = useState(true);
+  const hasRestoredRef = useRef(false);
+  const lastSavedProjectRef = useRef<string | null>(null);
+
+  // ===== Auto-Restore on Mount =====
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+
+    const restoreProject = async () => {
+      try {
+        console.log('[AppContext] Attempting to restore project...');
+        const project = await getMostRecentProject();
+        if (project) {
+          console.log('[AppContext] Restored project:', project.id, project.name);
+          dispatch({ type: 'SET_PROJECT', payload: project });
+          lastSavedProjectRef.current = JSON.stringify(project);
+        } else {
+          console.log('[AppContext] No project to restore');
+        }
+      } catch (error) {
+        console.error('[AppContext] Failed to restore project:', error);
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+
+    restoreProject();
+  }, []);
+
+  // ===== Auto-Save on Project Changes =====
+  useEffect(() => {
+    // Don't save during restore
+    if (isRestoring) return;
+
+    // Don't save if no project
+    if (!state.currentProject) {
+      lastSavedProjectRef.current = null;
+      return;
+    }
+
+    // Check if project actually changed
+    const projectJson = JSON.stringify(state.currentProject);
+    if (projectJson === lastSavedProjectRef.current) return;
+
+    // Debounced save
+    const saveDebounced = debounce(async () => {
+      try {
+        console.log('[AppContext] Auto-saving project:', state.currentProject?.id);
+        await saveCurrentProject(state.currentProject!);
+        lastSavedProjectRef.current = projectJson;
+        console.log('[AppContext] Project saved successfully');
+      } catch (error) {
+        console.error('[AppContext] Failed to save project:', error);
+      }
+    }, 500);
+
+    saveDebounced();
+  }, [state.currentProject, isRestoring]);
+
+  const setSourceImage = useCallback((url: string, dimensions: { width: number; height: number }) => {
+    dispatch({ type: 'SET_SOURCE_IMAGE', payload: { url, dimensions } });
+  }, []);
+
+  const addWaypoint = useCallback((waypoint: Waypoint) => {
+    dispatch({ type: 'ADD_WAYPOINT', payload: waypoint });
+  }, []);
+
+  const removeWaypoint = useCallback((id: string) => {
+    dispatch({ type: 'REMOVE_WAYPOINT', payload: id });
+  }, []);
+
+  const updateWaypoint = useCallback((id: string, updates: Partial<Waypoint>) => {
+    dispatch({ type: 'UPDATE_WAYPOINT', payload: { id, updates } });
+  }, []);
+
+  const reorderWaypoints = useCallback((ids: string[]) => {
+    dispatch({ type: 'REORDER_WAYPOINTS', payload: ids });
+  }, []);
+
+  const updateSegment = useCallback((id: string, updates: Partial<Segment>) => {
+    dispatch({ type: 'UPDATE_SEGMENT', payload: { id, updates } });
+  }, []);
+
+  const setProjectStatus = useCallback((status: ProjectStatus) => {
+    dispatch({ type: 'SET_PROJECT_STATUS', payload: status });
+  }, []);
+
+  const navigateToWaypoint = useCallback((index: number) => {
+    if (!state.currentProject) return;
+    const maxIndex = state.currentProject.waypoints.length - 1;
+    const clampedIndex = Math.max(0, Math.min(index, maxIndex));
+    dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: clampedIndex });
+  }, [state.currentProject]);
+
+  const nextWaypoint = useCallback(() => {
+    if (!state.currentProject) return;
+    const maxIndex = state.currentProject.waypoints.length - 1;
+    const newIndex = state.currentWaypointIndex >= maxIndex ? 0 : state.currentWaypointIndex + 1;
+    dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: newIndex });
+    dispatch({ type: 'SET_PLAYBACK_DIRECTION', payload: 'forward' });
+  }, [state.currentProject, state.currentWaypointIndex]);
+
+  const previousWaypoint = useCallback(() => {
+    if (!state.currentProject) return;
+    const maxIndex = state.currentProject.waypoints.length - 1;
+    const newIndex = state.currentWaypointIndex <= 0 ? maxIndex : state.currentWaypointIndex - 1;
+    dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: newIndex });
+    dispatch({ type: 'SET_PLAYBACK_DIRECTION', payload: 'backward' });
+  }, [state.currentProject, state.currentWaypointIndex]);
+
+  const togglePlayback = useCallback(() => {
+    dispatch({ type: 'SET_PLAYING', payload: !state.isPlaying });
+  }, [state.isPlaying]);
+
+  const setUIVisible = useCallback((visible: boolean) => {
+    dispatch({ type: 'SET_UI_VISIBLE', payload: visible });
+  }, []);
+
+  const clearProject = useCallback(() => {
+    dispatch({ type: 'SET_PROJECT', payload: null });
+    setCurrentProjectId(null);
+    lastSavedProjectRef.current = null;
+  }, []);
+
+  const value: AppContextType = {
+    state,
+    dispatch,
+    isRestoring,
+    setSourceImage,
+    addWaypoint,
+    removeWaypoint,
+    updateWaypoint,
+    reorderWaypoints,
+    updateSegment,
+    setProjectStatus,
+    navigateToWaypoint,
+    nextWaypoint,
+    previousWaypoint,
+    togglePlayback,
+    setUIVisible,
+    clearProject
+  };
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+};
+
+export const useApp = (): AppContextType => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
+
+export default AppContext;
