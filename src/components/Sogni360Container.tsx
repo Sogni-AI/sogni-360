@@ -12,10 +12,19 @@ import TransitionReviewPanel from './TransitionReviewPanel';
 import FinalVideoPanel from './FinalVideoPanel';
 import ProjectManagerModal from './ProjectManagerModal';
 import WorkflowNavigationModal from './WorkflowNavigationModal';
+import NewProjectConfirmModal from './NewProjectConfirmModal';
+import ProjectNameModal, { generateProjectName } from './ProjectNameModal';
 import useAutoHideUI from '../hooks/useAutoHideUI';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
-import { duplicateProject } from '../utils/localProjectsDB';
+import { duplicateProject, getProjectCount } from '../utils/localProjectsDB';
+
+// Type for pending destructive action that needs confirmation
+interface PendingDestructiveAction {
+  fromStep: WorkflowStep;
+  toStep: WorkflowStep;
+  callback: () => void;
+}
 
 const Sogni360Container: React.FC = () => {
   const { state, dispatch, setUIVisible, isRestoring, updateSegment, clearProject, loadProjectById } = useApp();
@@ -23,7 +32,10 @@ const Sogni360Container: React.FC = () => {
   const { currentProject, showWaypointEditor, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager } = state;
   const hasAutoOpenedEditor = useRef(false);
   const [isTransitionGenerating, setIsTransitionGenerating] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<{ from: WorkflowStep; to: WorkflowStep } | null>(null);
+  const [pendingDestructiveAction, setPendingDestructiveAction] = useState<PendingDestructiveAction | null>(null);
+  const [showNewProjectConfirm, setShowNewProjectConfirm] = useState(false);
+  const [showProjectNameModal, setShowProjectNameModal] = useState(false);
+  const [projectCount, setProjectCount] = useState(0);
 
   // Auth state
   const { isAuthenticated, isLoading: authLoading } = useSogniAuth();
@@ -48,13 +60,26 @@ const Sogni360Container: React.FC = () => {
   // Get video duration for camera animation sync
   const videoDuration = currentProject?.settings?.transitionDuration || 1.5;
 
-  // Auto-open editor when image is uploaded but no waypoints exist
+  // Fetch project count on mount (for clever name generation)
   useEffect(() => {
-    if (currentProject?.sourceImageUrl && waypoints.length === 0 && !showWaypointEditor && !hasAutoOpenedEditor.current && !isRestoring) {
+    getProjectCount().then(setProjectCount).catch(() => setProjectCount(0));
+  }, []);
+
+  // Show project name modal when image is uploaded but no waypoints exist (and name is default)
+  useEffect(() => {
+    if (
+      currentProject?.sourceImageUrl &&
+      waypoints.length === 0 &&
+      !showWaypointEditor &&
+      !hasAutoOpenedEditor.current &&
+      !isRestoring &&
+      !showProjectNameModal &&
+      currentProject.name === 'Untitled Project'
+    ) {
       hasAutoOpenedEditor.current = true;
-      dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
+      setShowProjectNameModal(true);
     }
-  }, [currentProject?.sourceImageUrl, waypoints.length, showWaypointEditor, isRestoring, dispatch]);
+  }, [currentProject?.sourceImageUrl, currentProject?.name, waypoints.length, showWaypointEditor, isRestoring, showProjectNameModal]);
 
   // Reset auto-open flag when project changes
   useEffect(() => {
@@ -265,12 +290,56 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: false });
   }, [dispatch]);
 
-  // Handle new project - clear current and show uploader
-  const handleNewProject = useCallback(() => {
+  // Check if current project has work that would be lost
+  const hasUnsavedWork = useCallback(() => {
+    if (!currentProject) return false;
+    // Has waypoints defined
+    if (currentProject.waypoints.length > 0) return true;
+    // Has generated images
+    if (currentProject.waypoints.some(wp => wp.status === 'ready' && wp.imageUrl)) return true;
+    // Has segments
+    if (currentProject.segments.length > 0) return true;
+    // Has final video
+    if (currentProject.finalLoopUrl) return true;
+    return false;
+  }, [currentProject]);
+
+  // Execute actual project clear
+  const executeNewProject = useCallback(() => {
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
+    setShowNewProjectConfirm(false);
     clearProject();
     hasAutoOpenedEditor.current = false;
   }, [clearProject, dispatch]);
+
+  // Handle new project - show confirmation if work would be lost
+  const handleNewProject = useCallback(() => {
+    if (hasUnsavedWork()) {
+      setShowNewProjectConfirm(true);
+    } else {
+      executeNewProject();
+    }
+  }, [hasUnsavedWork, executeNewProject]);
+
+  // Cancel new project confirmation
+  const handleCancelNewProject = useCallback(() => {
+    setShowNewProjectConfirm(false);
+  }, []);
+
+  // Handle project name confirmation
+  const handleProjectNameConfirm = useCallback((name: string) => {
+    dispatch({ type: 'SET_PROJECT_NAME', payload: name });
+    setShowProjectNameModal(false);
+    dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
+    // Update project count for next time
+    setProjectCount(prev => prev + 1);
+  }, [dispatch]);
+
+  // Handle project name cancel (use default name and continue)
+  const handleProjectNameCancel = useCallback(() => {
+    setShowProjectNameModal(false);
+    dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
+  }, [dispatch]);
 
   // Handle loading a project
   const handleLoadProject = useCallback(async (projectId: string) => {
@@ -401,40 +470,72 @@ const Sogni360Container: React.FC = () => {
     }
   }, [dispatch, hasGeneratedImages, currentProject, handleNewProject]);
 
-  // Handle workflow step navigation
+  // Handle workflow step navigation - now always navigates freely (view-only)
+  // Confirmation is shown when user attempts a destructive action, not on navigation
   const handleWorkflowStepClick = useCallback((step: WorkflowStep) => {
-    // Check if this navigation would lose work
-    if (wouldLoseWork(step)) {
-      // Show confirmation modal
-      setPendingNavigation({ from: currentStep, to: step });
+    // Always navigate directly - user can view/download without losing work
+    executeNavigation(step, false);
+  }, [executeNavigation]);
+
+  // Confirm a destructive action that would lose work
+  // Child components call this before regenerating angles, transitions, etc.
+  const confirmDestructiveAction = useCallback((actionStep: WorkflowStep, onConfirm: () => void) => {
+    // Check if this action would lose work
+    if (wouldLoseWork(actionStep)) {
+      // Show confirmation modal with the action callback
+      setPendingDestructiveAction({
+        fromStep: currentStep,
+        toStep: actionStep,
+        callback: onConfirm
+      });
       return;
     }
+    // No work to lose, execute action directly
+    onConfirm();
+  }, [currentStep, wouldLoseWork]);
 
-    // No work to lose, navigate directly
-    executeNavigation(step, false);
-  }, [currentStep, wouldLoseWork, executeNavigation]);
+  // Clear data for a destructive action (without navigation)
+  const clearDataForAction = useCallback((actionStep: WorkflowStep) => {
+    if (!currentProject) return;
 
-  // Handle navigation modal actions
-  const handleNavigationCancel = useCallback(() => {
-    setPendingNavigation(null);
+    if (actionStep === 'define-angles' || actionStep === 'render-angles') {
+      // Clear segments and final video
+      dispatch({ type: 'SET_SEGMENTS', payload: [] });
+      dispatch({ type: 'SET_FINAL_LOOP_URL', payload: undefined });
+    }
+
+    if (actionStep === 'render-videos') {
+      // Clear final video only
+      dispatch({ type: 'SET_FINAL_LOOP_URL', payload: undefined });
+    }
+  }, [currentProject, dispatch]);
+
+  // Handle destructive action modal actions
+  const handleActionCancel = useCallback(() => {
+    setPendingDestructiveAction(null);
   }, []);
 
-  const handleNavigationDiscard = useCallback(() => {
-    if (!pendingNavigation) return;
-    setPendingNavigation(null);
-    executeNavigation(pendingNavigation.to, true);
-  }, [pendingNavigation, executeNavigation]);
+  const handleActionDiscard = useCallback(() => {
+    if (!pendingDestructiveAction) return;
+    const { toStep, callback } = pendingDestructiveAction;
+    setPendingDestructiveAction(null);
+    // Clear data then execute the action
+    clearDataForAction(toStep);
+    callback();
+  }, [pendingDestructiveAction, clearDataForAction]);
 
-  const handleNavigationSaveCopy = useCallback(async (newName: string) => {
-    if (!pendingNavigation || !currentProject) return;
+  const handleActionSaveCopy = useCallback(async (newName: string) => {
+    if (!pendingDestructiveAction || !currentProject) return;
+    const { toStep, callback } = pendingDestructiveAction;
 
     // Duplicate the project with the new name
     await duplicateProject(currentProject, newName);
 
-    // Now navigate with data clearing
-    setPendingNavigation(null);
-    executeNavigation(pendingNavigation.to, true);
-  }, [pendingNavigation, currentProject, executeNavigation]);
+    // Clear data and execute action
+    setPendingDestructiveAction(null);
+    clearDataForAction(toStep);
+    callback();
+  }, [pendingDestructiveAction, currentProject, clearDataForAction]);
 
   // If loading auth or restoring project, show loading state
   if (authLoading || isRestoring) {
@@ -593,7 +694,7 @@ const Sogni360Container: React.FC = () => {
             </button>
           </div>
           <div className="waypoint-editor-panel-content">
-            <WaypointEditor />
+            <WaypointEditor onConfirmDestructiveAction={confirmDestructiveAction} />
           </div>
         </div>
       )}
@@ -605,6 +706,7 @@ const Sogni360Container: React.FC = () => {
           <TransitionConfigPanel
             onClose={() => dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: false })}
             onStartGeneration={handleStartTransitionGeneration}
+            onConfirmDestructiveAction={confirmDestructiveAction}
           />
         </div>
       )}
@@ -620,6 +722,7 @@ const Sogni360Container: React.FC = () => {
           }}
           onStitch={handleStitchVideos}
           onRedoSegment={handleRedoSegment}
+          onConfirmDestructiveAction={confirmDestructiveAction}
           isGenerating={isTransitionGenerating}
         />
       )}
@@ -647,15 +750,33 @@ const Sogni360Container: React.FC = () => {
         />
       )}
 
-      {/* Workflow Navigation Confirmation Modal */}
-      {pendingNavigation && currentProject && (
+      {/* Destructive Action Confirmation Modal */}
+      {pendingDestructiveAction && currentProject && (
         <WorkflowNavigationModal
-          fromStep={pendingNavigation.from}
-          toStep={pendingNavigation.to}
+          fromStep={pendingDestructiveAction.fromStep}
+          toStep={pendingDestructiveAction.toStep}
           currentProjectName={currentProject.name}
-          onCancel={handleNavigationCancel}
-          onDiscard={handleNavigationDiscard}
-          onSaveCopy={handleNavigationSaveCopy}
+          onCancel={handleActionCancel}
+          onDiscard={handleActionDiscard}
+          onSaveCopy={handleActionSaveCopy}
+        />
+      )}
+
+      {/* New Project Confirmation Modal */}
+      {showNewProjectConfirm && (
+        <NewProjectConfirmModal
+          projectName={currentProject?.name}
+          onConfirm={executeNewProject}
+          onCancel={handleCancelNewProject}
+        />
+      )}
+
+      {/* Project Name Modal (shown after image upload) */}
+      {showProjectNameModal && (
+        <ProjectNameModal
+          suggestedName={generateProjectName(projectCount)}
+          onConfirm={handleProjectNameConfirm}
+          onCancel={handleProjectNameCancel}
         />
       )}
     </div>

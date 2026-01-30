@@ -12,12 +12,17 @@ import {
   getDistanceConfig
 } from '../constants/cameraAngleSettings';
 import type { MultiAnglePreset } from '../types/cameraAngle';
+import type { WorkflowStep } from './shared/WorkflowWizard';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import AngleReviewPanel from './AngleReviewPanel';
 
 const SPARK_PER_ANGLE = 2.59;
 const USD_PER_SPARK = 0.005;
+
+interface WaypointEditorProps {
+  onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
+}
 
 /**
  * Get a human-readable label for a waypoint's angle
@@ -30,7 +35,7 @@ function getAngleLabel(waypoint: Waypoint): string {
   return `${az.label} · ${el.label} · ${dist.label}`;
 }
 
-const WaypointEditor: React.FC = () => {
+const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAction }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject, showAngleReview } = state;
@@ -135,13 +140,10 @@ const WaypointEditor: React.FC = () => {
     setSelectedPresetKey('custom');
   }, [dispatch]);
 
-  const handleGenerateAngles = useCallback(async () => {
+  // Actual generation logic (called after confirmation if needed)
+  const executeGenerateAngles = useCallback(async () => {
     if (!currentProject?.sourceImageUrl) {
       showToast({ message: 'No source image', type: 'error' });
-      return;
-    }
-    if (waypoints.length < MIN_WAYPOINTS) {
-      showToast({ message: `Add at least ${MIN_WAYPOINTS} angles`, type: 'warning' });
       return;
     }
 
@@ -196,6 +198,25 @@ const WaypointEditor: React.FC = () => {
     }
   }, [currentProject, waypoints, dispatch, showToast]);
 
+  // Handle generate button click - confirms if work would be lost
+  const handleGenerateAngles = useCallback(() => {
+    if (!currentProject?.sourceImageUrl) {
+      showToast({ message: 'No source image', type: 'error' });
+      return;
+    }
+    if (waypoints.length < MIN_WAYPOINTS) {
+      showToast({ message: `Add at least ${MIN_WAYPOINTS} angles`, type: 'warning' });
+      return;
+    }
+
+    // Use confirmation callback if provided, otherwise execute directly
+    if (onConfirmDestructiveAction) {
+      onConfirmDestructiveAction('render-angles', executeGenerateAngles);
+    } else {
+      executeGenerateAngles();
+    }
+  }, [currentProject?.sourceImageUrl, waypoints.length, onConfirmDestructiveAction, executeGenerateAngles, showToast]);
+
   const handleReviewClose = useCallback(() => {
     dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
     if (isGenerating) {
@@ -219,7 +240,14 @@ const WaypointEditor: React.FC = () => {
   const canGenerate = waypoints.length >= MIN_WAYPOINTS && !isGenerating;
 
   if (showAngleReview) {
-    return <AngleReviewPanel onClose={handleReviewClose} onApply={handleReviewApply} isGenerating={isGenerating} />;
+    return (
+      <AngleReviewPanel
+        onClose={handleReviewClose}
+        onApply={handleReviewApply}
+        isGenerating={isGenerating}
+        onConfirmDestructiveAction={onConfirmDestructiveAction}
+      />
+    );
   }
 
   return (

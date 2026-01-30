@@ -10,6 +10,7 @@ import {
   VideoQualityPreset,
   VideoResolution
 } from '../constants/videoSettings';
+import type { WorkflowStep } from './shared/WorkflowWizard';
 
 // Cost estimation constants
 const SPARK_PER_SECOND = 3.92; // Approximate spark cost per second of video
@@ -21,11 +22,13 @@ const DEFAULT_TRANSITION_PROMPT = `Smooth camera orbit around the subject. Prese
 interface TransitionConfigPanelProps {
   onClose: () => void;
   onStartGeneration: (segments: Segment[]) => void;
+  onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
 }
 
 const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   onClose,
-  onStartGeneration
+  onStartGeneration,
+  onConfirmDestructiveAction
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
@@ -65,13 +68,8 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     return options;
   }, []);
 
-  // Handle start generation
-  const handleStartGeneration = useCallback(() => {
-    if (readyWaypoints.length < 2) {
-      showToast({ message: 'Need at least 2 ready angles to create transitions', type: 'warning' });
-      return;
-    }
-
+  // Execute the actual generation (called after confirmation)
+  const executeStartGeneration = useCallback(() => {
     // Save settings to project
     dispatch({
       type: 'UPDATE_SETTINGS',
@@ -103,7 +101,22 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
 
     // Trigger generation with the segments directly (avoids async state timing issue)
     onStartGeneration(newSegments);
-  }, [readyWaypoints, transitionPrompt, resolution, duration, quality, dispatch, showToast, onStartGeneration]);
+  }, [readyWaypoints, transitionPrompt, resolution, duration, quality, dispatch, onStartGeneration]);
+
+  // Handle start generation button click - confirms if work would be lost
+  const handleStartGeneration = useCallback(() => {
+    if (readyWaypoints.length < 2) {
+      showToast({ message: 'Need at least 2 ready angles to create transitions', type: 'warning' });
+      return;
+    }
+
+    // Use confirmation callback if provided, otherwise execute directly
+    if (onConfirmDestructiveAction) {
+      onConfirmDestructiveAction('render-videos', executeStartGeneration);
+    } else {
+      executeStartGeneration();
+    }
+  }, [readyWaypoints.length, onConfirmDestructiveAction, executeStartGeneration, showToast]);
 
   return (
     <div className="transition-config-panel">

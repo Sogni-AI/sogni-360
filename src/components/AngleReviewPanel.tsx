@@ -8,19 +8,21 @@ import {
   getDistanceConfig
 } from '../constants/cameraAngleSettings';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
-import WorkflowWizard from './shared/WorkflowWizard';
+import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
   onApply: () => void;
   isGenerating: boolean;
+  onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
 }
 
 const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   onClose,
   onApply,
-  isGenerating
+  isGenerating,
+  onConfirmDestructiveAction
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
@@ -49,8 +51,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     return `${az.label} · ${el.label} · ${dist.label}`;
   };
 
-  // Redo a single waypoint
-  const handleRedo = useCallback(async (waypoint: Waypoint) => {
+  // Execute redo for a single waypoint (called after confirmation)
+  const executeRedo = useCallback(async (waypoint: Waypoint) => {
     if (!currentProject?.sourceImageUrl || waypoint.isOriginal) return;
 
     dispatch({
@@ -100,6 +102,18 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       showToast({ message: 'Regeneration failed', type: 'error' });
     }
   }, [currentProject, dispatch, showToast]);
+
+  // Handle redo button click - confirms if work would be lost
+  const handleRedo = useCallback((waypoint: Waypoint) => {
+    if (waypoint.isOriginal) return;
+
+    // Use confirmation callback if provided, otherwise execute directly
+    if (onConfirmDestructiveAction) {
+      onConfirmDestructiveAction('render-angles', () => executeRedo(waypoint));
+    } else {
+      executeRedo(waypoint);
+    }
+  }, [onConfirmDestructiveAction, executeRedo]);
 
   // Navigate versions
   const handlePrevVersion = useCallback((waypoint: Waypoint) => {

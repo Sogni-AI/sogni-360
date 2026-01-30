@@ -55,7 +55,8 @@ export function useTransitionNavigation() {
   }, [currentProject?.segments]);
 
   // Find segment video URL between two waypoint indices
-  const findSegmentVideoUrl = useCallback((fromIndex: number, toIndex: number): string | null => {
+  // Returns { url, playReverse } where playReverse indicates if video should be played backwards
+  const findSegmentVideo = useCallback((fromIndex: number, toIndex: number): { url: string; playReverse: boolean } | null => {
     if (!currentProject || currentProject.segments.length === 0) return null;
 
     const waypoints = currentProject.waypoints;
@@ -65,20 +66,20 @@ export function useTransitionNavigation() {
     const fromWaypoint = waypoints[fromIndex];
     const toWaypoint = waypoints[toIndex];
 
-    // Look for a segment from -> to (forward direction)
+    // Look for a segment from -> to (matches our navigation direction - play normally)
     const forwardSegment = currentProject.segments.find(
       s => s.fromWaypointId === fromWaypoint.id && s.toWaypointId === toWaypoint.id
     );
     if (forwardSegment && forwardSegment.status === 'ready' && forwardSegment.videoUrl) {
-      return forwardSegment.videoUrl;
+      return { url: forwardSegment.videoUrl, playReverse: false };
     }
 
-    // Look for a segment to -> from (reverse direction)
+    // Look for a segment to -> from (opposite direction - play in reverse)
     const reverseSegment = currentProject.segments.find(
       s => s.fromWaypointId === toWaypoint.id && s.toWaypointId === fromWaypoint.id
     );
     if (reverseSegment && reverseSegment.status === 'ready' && reverseSegment.videoUrl) {
-      return reverseSegment.videoUrl;
+      return { url: reverseSegment.videoUrl, playReverse: true };
     }
 
     return null;
@@ -91,19 +92,20 @@ export function useTransitionNavigation() {
     const maxIndex = currentProject.waypoints.length - 1;
     const clampedTarget = Math.max(0, Math.min(targetIndex, maxIndex));
 
-    // Find video URL for this transition
-    const videoUrl = findSegmentVideoUrl(currentWaypointIndex, clampedTarget);
+    // Find video for this transition (includes reverse playback info)
+    const segmentVideo = findSegmentVideo(currentWaypointIndex, clampedTarget);
 
-    if (videoUrl) {
+    if (segmentVideo) {
       // Check if video is already preloaded
-      const isVideoReady = videoCache.has(videoUrl);
+      const isVideoReady = videoCache.has(segmentVideo.url);
 
       // Set transition state in global context
       const transition: VideoTransitionState = {
         isPlaying: true,
-        videoUrl,
+        videoUrl: segmentVideo.url,
         targetWaypointIndex: clampedTarget,
-        isVideoReady
+        isVideoReady,
+        playReverse: segmentVideo.playReverse
       };
       dispatch({ type: 'SET_VIDEO_TRANSITION', payload: transition });
     } else {
@@ -111,7 +113,7 @@ export function useTransitionNavigation() {
       dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: clampedTarget });
       dispatch({ type: 'SET_PLAYBACK_DIRECTION', payload: direction });
     }
-  }, [currentProject, currentWaypointIndex, findSegmentVideoUrl, dispatch]);
+  }, [currentProject, currentWaypointIndex, findSegmentVideo, dispatch]);
 
   // Next waypoint handler
   const nextWaypoint = useCallback(() => {
@@ -188,16 +190,19 @@ export function useTransitionNavigation() {
 
     // If a transition video is playing
     if (videoTransition?.isPlaying && videoTransition.videoUrl) {
-      // Use DESTINATION waypoint image as background - this way when video ends,
-      // the correct image is already visible (no flash)
+      // Use SOURCE waypoint image as background until video is ready
+      // This prevents black flash while video loads
+      const sourceImageUrl = getWaypointImageUrl(currentWaypointIndex);
       const destinationImageUrl = getWaypointImageUrl(videoTransition.targetWaypointIndex);
 
       return {
         type: 'video' as const,
         url: videoTransition.videoUrl,
         isVideoReady: videoTransition.isVideoReady,
-        // Always show destination image behind video
-        backgroundImageUrl: destinationImageUrl
+        playReverse: videoTransition.playReverse || false,
+        // Show source image until video is ready, then destination shows through at end
+        sourceImageUrl,
+        destinationImageUrl
       };
     }
 
@@ -234,6 +239,7 @@ export function useTransitionNavigation() {
     isTransitionPlaying: videoTransition?.isPlaying || false,
     transitionVideoUrl: videoTransition?.videoUrl || null,
     isVideoReady: videoTransition?.isVideoReady || false,
+    playReverse: videoTransition?.playReverse || false,
     targetWaypointIndex: videoTransition?.targetWaypointIndex ?? null,
     handleTransitionEnd,
     handleVideoCanPlay,

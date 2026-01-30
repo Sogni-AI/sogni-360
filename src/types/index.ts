@@ -93,6 +93,7 @@ export interface VideoTransitionState {
   videoUrl: string;
   targetWaypointIndex: number;
   isVideoReady: boolean;
+  playReverse?: boolean; // If true, play video backwards
 }
 
 // App state
@@ -163,6 +164,7 @@ export type Sogni360Action =
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Sogni360Settings> }
   | { type: 'SET_VIDEO_TRANSITION'; payload: VideoTransitionState | null }
   | { type: 'SET_VIDEO_TRANSITION_READY'; payload: boolean }
+  | { type: 'SET_PROJECT_NAME'; payload: string }
   | { type: 'RESET_STATE' };
 
 // Generation event types
@@ -198,4 +200,23 @@ export interface CostEstimate {
     angles: number;
     transitions: number;
   };
+}
+
+// Music selection for final video
+export interface MusicSelection {
+  type: 'preset' | 'upload';
+  file?: File;
+  presetUrl?: string;
+  presetId?: string;
+  title?: string;
+  startOffset: number;    // Trim start (seconds)
+  duration: number;       // Selected duration (seconds)
+  totalDuration: number;  // Full audio duration
+  waveform?: number[];    // For visualization
+}
+
+// Audio options for video concatenation
+export interface AudioOptions {
+  buffer: ArrayBuffer;
+  startOffset?: number;
 }

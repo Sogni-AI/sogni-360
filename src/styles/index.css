@@ -188,6 +188,60 @@ html, body {
   background: linear-gradient(to left, rgba(255,255,255,0.08), transparent);
 }
 
+/* Viewer playback and download controls */
+.viewer-controls {
+  position: absolute;
+  bottom: 8rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 25;
+}
+
+.viewer-control-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viewer-control-btn:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.viewer-control-btn.active {
+  background: rgba(59, 130, 246, 0.6);
+  border-color: rgba(59, 130, 246, 0.8);
+}
+
+.viewer-control-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .viewer-controls {
+    bottom: 7rem;
+    right: 0.75rem;
+  }
+
+  .viewer-control-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 /* UI overlay that auto-hides */
 .ui-overlay {
   position: absolute;

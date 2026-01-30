@@ -360,6 +360,17 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         videoTransition: { ...state.videoTransition, isVideoReady: action.payload }
       };
 
+    case 'SET_PROJECT_NAME':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          name: action.payload,
+          updatedAt: Date.now()
+        }
+      };
+
     case 'RESET_STATE':
       return initialState;
 

@@ -1,10 +1,13 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
+import { useToast } from '../context/ToastContext';
 
 const Sogni360Viewer: React.FC = () => {
-  const { state } = useApp();
-  const { currentProject, currentWaypointIndex } = state;
+  const { state, dispatch } = useApp();
+  const { currentProject, currentWaypointIndex, isPlaying } = state;
+  const { showToast } = useToast();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Track the displayed image dimensions for scaling video to match
   const [imageDisplaySize, setImageDisplaySize] = useState<{ width: number; height: number } | null>(null);
@@ -16,6 +19,7 @@ const Sogni360Viewer: React.FC = () => {
     navigateToWaypoint,
     togglePlayback,
     isTransitionPlaying,
+    playReverse,
     handleTransitionEnd,
     handleVideoCanPlay,
     getCurrentContent
@@ -24,6 +28,59 @@ const Sogni360Viewer: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const backgroundImageRef = useRef<HTMLImageElement>(null);
   const content = getCurrentContent();
+
+  // Local state to track when DOM video element is actually ready to play
+  // This is separate from the preload cache - the actual video element needs to load too
+  const [isVideoElementReady, setIsVideoElementReady] = useState(false);
+
+  // Reset video ready state when content URL changes
+  useEffect(() => {
+    setIsVideoElementReady(false);
+  }, [content?.url]);
+
+  // Check if sequence is complete (has transitions to play)
+  const waypoints = currentProject?.waypoints || [];
+  const segments = currentProject?.segments || [];
+  const readyWaypointCount = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl).length;
+  const readySegmentCount = segments.filter(s => s.status === 'ready' && s.videoUrl).length;
+  const hasPlayableSequence = readyWaypointCount >= 2 && readySegmentCount > 0;
+  const hasFinalVideo = !!currentProject?.finalLoopUrl;
+
+  // Download handler for stitched video
+  const handleDownloadLoop = useCallback(async () => {
+    if (!currentProject?.finalLoopUrl || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      showToast({ message: 'Preparing download...', type: 'info' });
+
+      const response = await fetch(currentProject.finalLoopUrl);
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const filename = `sogni-360-loop-${Date.now()}.mp4`;
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+
+      showToast({ message: 'Download complete!', type: 'success' });
+    } catch (error) {
+      console.error('Download error:', error);
+      showToast({ message: 'Download failed', type: 'error' });
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [currentProject?.finalLoopUrl, isDownloading, showToast]);
+
+  // Reverse playback state
+  const reverseAnimationRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(0);
 
   // Track background image size for scaling video to match
   useEffect(() => {
@@ -39,6 +96,85 @@ const Sogni360Viewer: React.FC = () => {
     window.addEventListener('resize', updateImageSize);
     return () => window.removeEventListener('resize', updateImageSize);
   }, [content]);
+
+  // Handle reverse video playback using requestAnimationFrame
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !playReverse || content?.type !== 'video') {
+      // Clean up animation frame if conditions change
+      if (reverseAnimationRef.current) {
+        cancelAnimationFrame(reverseAnimationRef.current);
+        reverseAnimationRef.current = null;
+      }
+      return;
+    }
+
+    // Start reverse playback animation loop
+    const animateReverse = (timestamp: number) => {
+      if (!video || video.paused === false) {
+        // Pause the video - we're manually controlling playback
+        video.pause();
+      }
+
+      // Initialize timing on first frame
+      if (lastTimeRef.current === 0) {
+        lastTimeRef.current = timestamp;
+        reverseAnimationRef.current = requestAnimationFrame(animateReverse);
+        return;
+      }
+
+      // Calculate time delta and step backwards
+      const deltaTime = (timestamp - lastTimeRef.current) / 1000; // Convert to seconds
+      lastTimeRef.current = timestamp;
+
+      // Step backwards (1x playback rate in reverse)
+      const newTime = video.currentTime - deltaTime;
+
+      if (newTime <= 0) {
+        // Reached the start - end transition
+        video.currentTime = 0;
+        reverseAnimationRef.current = null;
+        lastTimeRef.current = 0;
+        handleTransitionEnd();
+        return;
+      }
+
+      video.currentTime = newTime;
+      reverseAnimationRef.current = requestAnimationFrame(animateReverse);
+    };
+
+    // Start animation when video is ready
+    const startReverse = () => {
+      if (video.duration && video.duration > 0) {
+        setIsVideoElementReady(true);
+        video.currentTime = video.duration;
+        lastTimeRef.current = 0;
+        reverseAnimationRef.current = requestAnimationFrame(animateReverse);
+      }
+    };
+
+    // Wait for canplaythrough to ensure video is fully buffered
+    const handleCanPlayThrough = () => {
+      startReverse();
+    };
+
+    // If video is already fully loaded, start immediately
+    if (video.readyState >= 4 && video.duration > 0) {
+      startReverse();
+    } else {
+      // Wait for video to be fully buffered before starting reverse playback
+      video.addEventListener('canplaythrough', handleCanPlayThrough, { once: true });
+    }
+
+    return () => {
+      if (reverseAnimationRef.current) {
+        cancelAnimationFrame(reverseAnimationRef.current);
+        reverseAnimationRef.current = null;
+      }
+      lastTimeRef.current = 0;
+      video.removeEventListener('canplaythrough', handleCanPlayThrough);
+    };
+  }, [playReverse, content?.type, content?.url, handleTransitionEnd]);
 
   // Handle click zones
   const handleLeftClick = useCallback(() => {
@@ -120,13 +256,15 @@ const Sogni360Viewer: React.FC = () => {
         />
       ) : (
         <div className="relative max-w-full max-h-full flex items-center justify-center">
-          {/* Destination image ALWAYS shown behind video - prevents flash when video ends */}
-          {content.backgroundImageUrl && (
+          {/* Source image shown while video loads - prevents black flash */}
+          {(content.sourceImageUrl || content.destinationImageUrl) && (
             <img
               ref={backgroundImageRef}
-              src={content.backgroundImageUrl}
-              alt="Destination"
-              className="max-w-full max-h-full object-contain select-none absolute inset-0 m-auto"
+              src={isVideoElementReady
+                ? (content.destinationImageUrl || content.sourceImageUrl!)
+                : (content.sourceImageUrl || content.destinationImageUrl!)}
+              alt={isVideoElementReady ? "Destination" : "Source"}
+              className="max-w-full max-h-full object-contain select-none"
               draggable={false}
               onLoad={(e) => {
                 const img = e.currentTarget;
@@ -134,13 +272,13 @@ const Sogni360Viewer: React.FC = () => {
               }}
             />
           )}
-          {/* Video element layered on top - scaled to match image size */}
+          {/* Video element layered on top - only visible when fully loaded */}
           <video
             ref={videoRef}
-            key={content.url}
+            key={content.url + (playReverse ? '-reverse' : '')}
             src={content.url}
-            className={`absolute inset-0 m-auto transition-opacity duration-150 ${
-              content.isVideoReady ? 'opacity-100' : 'opacity-0'
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-150 ${
+              isVideoElementReady ? 'opacity-100' : 'opacity-0'
             }`}
             style={imageDisplaySize ? {
               width: `${imageDisplaySize.width}px`,
@@ -151,11 +289,18 @@ const Sogni360Viewer: React.FC = () => {
               maxHeight: '100%',
               objectFit: 'contain'
             }}
-            autoPlay
             muted
             playsInline
-            onCanPlayThrough={handleVideoCanPlay}
-            onEnded={handleTransitionEnd}
+            onCanPlayThrough={() => {
+              // Only handle forward playback here - reverse is handled in useEffect
+              if (!playReverse) {
+                setIsVideoElementReady(true);
+                handleVideoCanPlay();
+                // Start playing now that video is fully buffered
+                videoRef.current?.play();
+              }
+            }}
+            onEnded={playReverse ? undefined : handleTransitionEnd}
           />
         </div>
       )}
@@ -195,6 +340,63 @@ const Sogni360Viewer: React.FC = () => {
               }}
             />
           ))}
+        </div>
+      )}
+
+      {/* Playback and download controls - shown when sequence is complete */}
+      {hasPlayableSequence && (
+        <div className="viewer-controls">
+          {/* Auto-play toggle button */}
+          <button
+            className={`viewer-control-btn ${isPlaying ? 'active' : ''}`}
+            onClick={togglePlayback}
+            disabled={isTransitionPlaying}
+            title={isPlaying ? 'Pause auto-play (Space)' : 'Start auto-play (Space)'}
+          >
+            {isPlaying ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              </svg>
+            )}
+          </button>
+
+          {/* Open final video panel button */}
+          {hasFinalVideo && (
+            <>
+              <button
+                className="viewer-control-btn"
+                onClick={() => dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: true })}
+                title="View stitched loop"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+
+              {/* Download stitched video button */}
+              <button
+                className={`viewer-control-btn ${isDownloading ? 'disabled' : ''}`}
+                onClick={handleDownloadLoop}
+                disabled={isDownloading}
+                title="Download stitched video"
+              >
+                {isDownloading ? (
+                  <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                )}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

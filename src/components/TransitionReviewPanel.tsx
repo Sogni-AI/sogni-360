@@ -6,7 +6,7 @@ import {
   getAzimuthConfig,
   getElevationConfig
 } from '../constants/cameraAngleSettings';
-import WorkflowWizard from './shared/WorkflowWizard';
+import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import TransitionVideoCard from './TransitionVideoCard';
 import { downloadSingleVideo, downloadVideosAsZip, type VideoDownloadItem } from '../utils/bulkDownload';
 
@@ -14,6 +14,7 @@ interface TransitionReviewPanelProps {
   onClose: () => void;
   onStitch: () => void;
   onRedoSegment: (segmentId: string) => void;
+  onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   isGenerating: boolean;
 }
 
@@ -21,6 +22,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   onClose,
   onStitch,
   onRedoSegment,
+  onConfirmDestructiveAction,
   isGenerating
 }) => {
   const { state, dispatch } = useApp();
@@ -161,6 +163,15 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
     }
   }, [segments, waypoints, showToast]);
 
+  // Handle redo with confirmation for destructive actions
+  const handleRedoWithConfirmation = useCallback((segmentId: string) => {
+    if (onConfirmDestructiveAction) {
+      onConfirmDestructiveAction('render-videos', () => onRedoSegment(segmentId));
+    } else {
+      onRedoSegment(segmentId);
+    }
+  }, [onConfirmDestructiveAction, onRedoSegment]);
+
   const canStitch = readyCount === totalSegments && totalSegments > 0 && !isGenerating;
 
   // Calculate thumbnail aspect ratio
@@ -220,7 +231,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               versionInfo={versionInfo}
               onPrevVersion={() => handlePrevVersion(segment)}
               onNextVersion={() => handleNextVersion(segment)}
-              onRegenerate={() => onRedoSegment(segment.id)}
+              onRegenerate={() => handleRedoWithConfirmation(segment.id)}
               onDownload={() => handleDownloadSingle(segment, index)}
               isDownloading={downloadingId === segment.id}
             />
