@@ -176,18 +176,24 @@ const Sogni360Viewer: React.FC = () => {
     };
   }, [playReverse, content?.type, content?.url, handleTransitionEnd]);
 
-  // Handle click zones
+  // Handle click zones - stop auto-play when user manually navigates
   const handleLeftClick = useCallback(() => {
+    if (isPlaying) {
+      dispatch({ type: 'SET_PLAYING', payload: false });
+    }
     previousWaypoint();
-  }, [previousWaypoint]);
+  }, [previousWaypoint, isPlaying, dispatch]);
 
   const handleCenterClick = useCallback(() => {
     togglePlayback();
   }, [togglePlayback]);
 
   const handleRightClick = useCallback(() => {
+    if (isPlaying) {
+      dispatch({ type: 'SET_PLAYING', payload: false });
+    }
     nextWaypoint();
-  }, [nextWaypoint]);
+  }, [nextWaypoint, isPlaying, dispatch]);
 
   // Touch/swipe handling
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -212,6 +218,10 @@ const Sogni360Viewer: React.FC = () => {
 
     // Determine if it's a horizontal swipe (vs vertical or tap)
     if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      // Stop auto-play when user manually swipes
+      if (isPlaying) {
+        dispatch({ type: 'SET_PLAYING', payload: false });
+      }
       if (deltaX > 0) {
         // Swipe right - go to previous
         previousWaypoint();
@@ -225,7 +235,7 @@ const Sogni360Viewer: React.FC = () => {
     }
 
     touchStartRef.current = null;
-  }, [nextWaypoint, previousWaypoint, togglePlayback]);
+  }, [nextWaypoint, previousWaypoint, togglePlayback, isPlaying, dispatch]);
 
   if (!content) {
     return (
@@ -331,6 +341,10 @@ const Sogni360Viewer: React.FC = () => {
               }`}
               onClick={() => {
                 if (index === currentWaypointIndex || isTransitionPlaying) return;
+                // Stop auto-play when user manually selects a waypoint
+                if (isPlaying) {
+                  dispatch({ type: 'SET_PLAYING', payload: false });
+                }
                 const direction = index > currentWaypointIndex ? 'forward' : 'backward';
                 navigateToWaypoint(index, direction);
               }}
