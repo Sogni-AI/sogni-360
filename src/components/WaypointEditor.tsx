@@ -49,10 +49,10 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
   useEffect(() => {
     if (waypoints.length === 0 && !hasAutoLoadedPreset.current) {
       hasAutoLoadedPreset.current = true;
-      const defaultPreset = MULTI_ANGLE_PRESETS.find(p => p.key === 'zoom-out-360');
+      const defaultPreset = MULTI_ANGLE_PRESETS.find(p => p.key === 'zoom-out-360-9');
       if (defaultPreset) {
         handleLoadPreset(defaultPreset);
-        setSelectedPresetKey('zoom-out-360');
+        setSelectedPresetKey('zoom-out-360-9');
       }
     }
   }, [waypoints.length]);
@@ -328,6 +328,16 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
                   />
                   <span>Use original image</span>
                 </label>
+
+                {/* Original image preview */}
+                {waypoint.isOriginal && currentProject?.sourceImageUrl && (
+                  <div className="step-original-preview">
+                    <img
+                      src={currentProject.sourceImageUrl}
+                      alt="Original"
+                    />
+                  </div>
+                )}
 
                 {/* 3D Control for non-original angles */}
                 {!waypoint.isOriginal && (

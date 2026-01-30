@@ -624,6 +624,40 @@ html, body {
   display: flex;
   justify-content: center;
   margin-top: 0.5rem;
+  min-height: 190px;
+}
+
+/* Original image preview in step card */
+.step-original-preview {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  min-height: 190px;
+}
+
+.step-original-preview img {
+  max-width: 100%;
+  max-height: 140px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0.25rem;
+}
+
+@media (max-width: 767px) {
+  .step-original-preview img {
+    max-height: 100px;
+  }
+  .step-3d-control,
+  .step-original-preview {
+    min-height: 160px;
+  }
 }
 
 /* Status indicator */
@@ -1788,7 +1822,7 @@ html, body {
   overflow-x: auto;
   overflow-y: hidden;
   align-items: stretch; /* Cards fill vertical space */
-  justify-content: center; /* Center cards horizontally when few */
+  justify-content: flex-start; /* Start from left edge for proper scrolling */
   min-height: 0; /* Allow flex shrink */
 }
 

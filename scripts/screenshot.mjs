@@ -22,15 +22,25 @@ async function captureWaypointEditor() {
       await page.waitForTimeout(2000);
     }
 
-    console.log('3. Looking for Camera Angles button...');
-    await page.waitForTimeout(1000);
-    const angleButton = await page.$('text=Choose Camera Angles');
-    if (angleButton) {
-      await angleButton.click();
+    console.log('3. Looking for Continue button (naming dialog)...');
+    await page.waitForTimeout(500);
+    const continueButton = await page.$('text=Continue');
+    if (continueButton) {
+      await continueButton.click();
+      console.log('   Clicked Continue');
       await page.waitForTimeout(1000);
     }
 
-    console.log('4. Taking screenshot...');
+    console.log('4. Looking for Camera Angles button...');
+    await page.waitForTimeout(500);
+    const angleButton = await page.$('text=Choose Camera Angles');
+    if (angleButton) {
+      await angleButton.click();
+      console.log('   Opened Camera Angles modal');
+      await page.waitForTimeout(1000);
+    }
+
+    console.log('5. Taking screenshot...');
     await page.screenshot({ path: outputPath, fullPage: false });
     console.log(`Screenshot saved to: ${outputPath}`);
 

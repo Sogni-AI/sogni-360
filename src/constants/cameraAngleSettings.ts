@@ -128,16 +128,32 @@ export const MULTI_ANGLE_PRESETS: MultiAnglePreset[] = [
     ]
   },
   {
-    key: 'zoom-out-360',
-    label: 'Zoom Out 360',
-    description: 'Original + 4 angles - 360° rotation',
+    key: 'zoom-out-360-9',
+    label: 'Zoom Out 360 (9)',
+    description: '9 angles - 45° steps',
+    icon: '🔄',
+    angles: [
+      { azimuth: 'front', elevation: 'eye-level', distance: 'close-up', isOriginal: true },
+      { azimuth: 'front-right', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'right', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'back-right', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'back', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'back-left', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'left', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'front-left', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'front', elevation: 'eye-level', distance: 'close-up' }
+    ]
+  },
+  {
+    key: 'zoom-out-360-4',
+    label: 'Zoom Out 360 (4)',
+    description: '4 angles - 90° steps',
     icon: '🔄',
     angles: [
       { azimuth: 'front', elevation: 'eye-level', distance: 'close-up', isOriginal: true },
       { azimuth: 'right', elevation: 'eye-level', distance: 'close-up' },
       { azimuth: 'back', elevation: 'eye-level', distance: 'close-up' },
-      { azimuth: 'left', elevation: 'eye-level', distance: 'close-up' },
-      { azimuth: 'front', elevation: 'eye-level', distance: 'close-up' }
+      { azimuth: 'left', elevation: 'eye-level', distance: 'close-up' }
     ]
   },
   {
