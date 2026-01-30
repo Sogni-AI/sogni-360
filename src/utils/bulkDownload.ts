@@ -87,6 +87,45 @@ function isMobile(): boolean {
 }
 
 /**
+ * Try to share a file using the native Web Share API (shows OS share sheet on mobile)
+ * Returns true if sharing succeeded, false if not supported or failed
+ */
+async function tryNativeShare(
+  blob: Blob,
+  filename: string,
+  title: string = 'Sogni 360 Creation'
+): Promise<boolean> {
+  // Check if Web Share API is available with file support
+  if (!navigator.share || !navigator.canShare) {
+    return false;
+  }
+
+  try {
+    const file = new File([blob], filename, { type: blob.type });
+
+    // Check if we can share this file type
+    if (!navigator.canShare({ files: [file] })) {
+      return false;
+    }
+
+    await navigator.share({
+      files: [file],
+      title,
+      text: 'Check out this creation from Sogni 360!'
+    });
+
+    return true;
+  } catch (error) {
+    // AbortError means user cancelled - that's not a failure
+    if ((error as Error).name === 'AbortError') {
+      return true;
+    }
+    console.warn('Native share failed:', error);
+    return false;
+  }
+}
+
+/**
  * Download a single image by triggering a browser download
  */
 export async function downloadSingleImage(
@@ -103,19 +142,25 @@ export async function downloadSingleImage(
     }
 
     const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
 
+    // On mobile, try native share sheet first (better UX)
     if (isMobile()) {
-      window.open(blobUrl, '_blank');
-    } else {
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const shared = await tryNativeShare(blob, filename, 'Sogni 360 Image');
+      if (shared) {
+        return true;
+      }
+      // Fall through to traditional download if share not supported
     }
+
+    // Traditional download approach
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);
@@ -189,19 +234,25 @@ export async function downloadImagesAsZip(
 
     onProgress?.(totalImages, totalImages, 'Downloading ZIP file...');
 
-    const blobUrl = URL.createObjectURL(zipBlob);
-
+    // On mobile, try native share sheet first (better UX)
     if (isMobile()) {
-      window.open(blobUrl, '_blank');
-    } else {
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = zipFilename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const shared = await tryNativeShare(zipBlob, zipFilename, 'Sogni 360 Images');
+      if (shared) {
+        onProgress?.(totalImages, totalImages, 'Download complete!');
+        return true;
+      }
+      // Fall through to traditional download if share not supported
     }
+
+    // Traditional download approach
+    const blobUrl = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = zipFilename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);
@@ -233,19 +284,25 @@ export async function downloadSingleVideo(
     }
 
     const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
 
+    // On mobile, try native share sheet first (better UX)
     if (isMobile()) {
-      window.open(blobUrl, '_blank');
-    } else {
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const shared = await tryNativeShare(blob, filename, 'Sogni 360 Video');
+      if (shared) {
+        return true;
+      }
+      // Fall through to traditional download if share not supported
     }
+
+    // Traditional download approach
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);
@@ -319,19 +376,25 @@ export async function downloadVideosAsZip(
 
     onProgress?.(totalVideos, totalVideos, 'Downloading ZIP file...');
 
-    const blobUrl = URL.createObjectURL(zipBlob);
-
+    // On mobile, try native share sheet first (better UX)
     if (isMobile()) {
-      window.open(blobUrl, '_blank');
-    } else {
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = zipFilename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const shared = await tryNativeShare(zipBlob, zipFilename, 'Sogni 360 Videos');
+      if (shared) {
+        onProgress?.(totalVideos, totalVideos, 'Download complete!');
+        return true;
+      }
+      // Fall through to traditional download if share not supported
     }
+
+    // Traditional download approach
+    const blobUrl = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = zipFilename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);

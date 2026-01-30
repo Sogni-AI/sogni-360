@@ -5,6 +5,7 @@ const outputPath = process.argv[3] || '/tmp/screenshot.png';
 const testImage = process.argv[4] || '/Users/markledford/Pictures/1.jpg';
 const width = parseInt(process.argv[5]) || 1440;
 const height = parseInt(process.argv[6]) || 900;
+const skipEditor = process.argv[7] === 'skip_editor';
 
 async function captureWaypointEditor() {
   const browser = await chromium.launch({ headless: true });
@@ -31,13 +32,17 @@ async function captureWaypointEditor() {
       await page.waitForTimeout(1000);
     }
 
-    console.log('4. Looking for Camera Angles button...');
-    await page.waitForTimeout(500);
-    const angleButton = await page.$('text=Choose Camera Angles');
-    if (angleButton) {
-      await angleButton.click();
-      console.log('   Opened Camera Angles modal');
-      await page.waitForTimeout(1000);
+    if (!skipEditor) {
+      console.log('4. Looking for Camera Angles button...');
+      await page.waitForTimeout(500);
+      const angleButton = await page.$('text=Choose Camera Angles');
+      if (angleButton) {
+        await angleButton.click();
+        console.log('   Opened Camera Angles modal');
+        await page.waitForTimeout(1000);
+      }
+    } else {
+      console.log('4. Skipping editor (showing main viewer)...');
     }
 
     console.log('5. Taking screenshot...');
