@@ -10,14 +10,15 @@ import WorkflowWizard, { computeWorkflowStep, WorkflowStep } from './shared/Work
 import TransitionConfigPanel from './TransitionConfigPanel';
 import TransitionReviewPanel from './TransitionReviewPanel';
 import FinalVideoPanel from './FinalVideoPanel';
+import ProjectManagerModal from './ProjectManagerModal';
 import useAutoHideUI from '../hooks/useAutoHideUI';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
 
 const Sogni360Container: React.FC = () => {
-  const { state, dispatch, setUIVisible, isRestoring, updateSegment } = useApp();
+  const { state, dispatch, setUIVisible, isRestoring, updateSegment, clearProject, loadProjectById } = useApp();
   const { nextWaypoint, previousWaypoint, isTransitionPlaying } = useTransitionNavigation();
-  const { currentProject, showWaypointEditor, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview } = state;
+  const { currentProject, showWaypointEditor, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager } = state;
   const hasAutoOpenedEditor = useRef(false);
   const [isTransitionGenerating, setIsTransitionGenerating] = useState(false);
 
@@ -155,7 +156,6 @@ const Sogni360Container: React.FC = () => {
           tokenType: currentProject.settings.tokenType || 'spark',
           sourceWidth: currentProject.sourceImageDimensions?.width || 480,
           sourceHeight: currentProject.sourceImageDimensions?.height || 640,
-          concurrency: 2,
           onSegmentStart: (segmentId) => {
             updateSegment(segmentId, { status: 'generating', progress: 0 });
           },
@@ -211,7 +211,6 @@ const Sogni360Container: React.FC = () => {
           tokenType: currentProject.settings.tokenType || 'spark',
           sourceWidth: currentProject.sourceImageDimensions?.width || 480,
           sourceHeight: currentProject.sourceImageDimensions?.height || 640,
-          concurrency: 1,
           onSegmentProgress: (segmentId, progress, workerName) => {
             updateSegment(segmentId, { progress, workerName });
           },
@@ -257,6 +256,30 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: false });
   }, [dispatch]);
 
+  // Handle new project - clear current and show uploader
+  const handleNewProject = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
+    clearProject();
+    hasAutoOpenedEditor.current = false;
+  }, [clearProject, dispatch]);
+
+  // Handle loading a project
+  const handleLoadProject = useCallback(async (projectId: string) => {
+    dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
+    await loadProjectById(projectId);
+    hasAutoOpenedEditor.current = true; // Don't auto-open editor for loaded projects
+  }, [loadProjectById, dispatch]);
+
+  // Handle closing project manager
+  const handleCloseProjectManager = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
+  }, [dispatch]);
+
+  // Handle opening project manager
+  const handleOpenProjectManager = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: true });
+  }, [dispatch]);
+
   // Handle workflow step navigation
   const handleWorkflowStepClick = useCallback((step: WorkflowStep) => {
     // Close all panels first
@@ -268,6 +291,10 @@ const Sogni360Container: React.FC = () => {
 
     // Navigate to the clicked step
     switch (step) {
+      case 'upload':
+        // Start a new project
+        handleNewProject();
+        break;
       case 'define-angles':
         // Show editor in configuration mode
         dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
@@ -296,7 +323,7 @@ const Sogni360Container: React.FC = () => {
         }
         break;
     }
-  }, [dispatch, hasGeneratedImages, currentProject]);
+  }, [dispatch, hasGeneratedImages, currentProject, handleNewProject]);
 
   // Compute workflow state
   const { currentStep, completedSteps } = computeWorkflowStep(currentProject);
@@ -320,6 +347,15 @@ const Sogni360Container: React.FC = () => {
     return (
       <div className="sogni-360-container">
         <SourceUploader />
+        {/* Project Manager Modal - also available from uploader */}
+        {showProjectManager && (
+          <ProjectManagerModal
+            onClose={handleCloseProjectManager}
+            onLoadProject={handleLoadProject}
+            onNewProject={handleNewProject}
+            currentProjectId={currentProject?.id}
+          />
+        )}
       </div>
     );
   }
@@ -329,11 +365,28 @@ const Sogni360Container: React.FC = () => {
       {/* Global Workflow Wizard - always visible when project exists */}
       {currentProject && (
         <div className="global-wizard-bar">
-          <WorkflowWizard
-            currentStep={currentStep}
-            completedSteps={completedSteps}
-            onStepClick={handleWorkflowStepClick}
-          />
+          <div className="global-wizard-bar-inner">
+            <WorkflowWizard
+              currentStep={currentStep}
+              completedSteps={completedSteps}
+              onStepClick={handleWorkflowStepClick}
+            />
+            <div className="project-actions-bar">
+              <button className="project-action-btn" onClick={handleNewProject} title="New Project">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New</span>
+              </button>
+              <button className="project-action-btn" onClick={handleOpenProjectManager} title="My Projects">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                <span>Projects</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -463,6 +516,16 @@ const Sogni360Container: React.FC = () => {
           videoUrls={currentProject.segments.map(s => s.videoUrl).filter(Boolean) as string[]}
           onClose={handleCloseFinalVideo}
           onBackToEditor={handleBackToEditor}
+        />
+      )}
+
+      {/* Project Manager Modal */}
+      {showProjectManager && (
+        <ProjectManagerModal
+          onClose={handleCloseProjectManager}
+          onLoadProject={handleLoadProject}
+          onNewProject={handleNewProject}
+          currentProjectId={currentProject?.id}
         />
       )}
     </div>

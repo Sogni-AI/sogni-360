@@ -3,6 +3,7 @@
  *
  * Generates video transitions between camera angle images.
  * Uses the backend API for video generation via SSE progress tracking.
+ * All transitions are submitted in parallel to leverage dePIN network concurrency.
  */
 
 import { api } from './api';
@@ -15,6 +16,24 @@ import {
   VideoResolution
 } from '../constants/videoSettings';
 import { v4 as uuidv4 } from 'uuid';
+
+// Retry configuration
+// No delay needed between retries - each request goes to a different worker in the dePIN network
+const MAX_ATTEMPTS = 3;
+
+/**
+ * Check if an error is non-retryable (e.g., insufficient credits)
+ */
+function isNonRetryableError(error: Error): boolean {
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('insufficient') ||
+    message.includes('credits') ||
+    message.includes('balance') ||
+    message.includes('unauthorized') ||
+    message.includes('forbidden')
+  );
+}
 
 export interface GenerateTransitionOptions {
   segment: Segment;
@@ -176,6 +195,9 @@ export async function generateTransition(options: GenerateTransitionOptions): Pr
 
 /**
  * Generate multiple transitions in parallel
+ *
+ * All transitions are submitted to the dePIN network simultaneously for maximum
+ * throughput. The network handles load balancing across available workers.
  */
 export async function generateMultipleTransitions(
   segments: Segment[],
@@ -194,7 +216,6 @@ export async function generateMultipleTransitions(
     onSegmentComplete?: (segmentId: string, videoUrl: string, version: TransitionVersion) => void;
     onSegmentError?: (segmentId: string, error: Error) => void;
     onAllComplete?: () => void;
-    concurrency?: number;
   }
 ): Promise<Map<string, string | null>> {
   const {
@@ -210,19 +231,13 @@ export async function generateMultipleTransitions(
     onSegmentProgress,
     onSegmentComplete,
     onSegmentError,
-    onAllComplete,
-    concurrency = 2
+    onAllComplete
   } = options;
 
   const results = new Map<string, string | null>();
-  const pending = [...segments];
-  const inFlight = new Set<string>();
 
-  const processNext = async (): Promise<void> => {
-    if (pending.length === 0) return;
-
-    const segment = pending.shift()!;
-    inFlight.add(segment.id);
+  // Process a single segment with automatic retry logic
+  const processSegment = async (segment: Segment): Promise<void> => {
     onSegmentStart?.(segment.id);
 
     const fromImageUrl = waypointImages.get(segment.fromWaypointId);
@@ -231,58 +246,101 @@ export async function generateMultipleTransitions(
     if (!fromImageUrl || !toImageUrl) {
       const error = new Error('Missing waypoint images');
       results.set(segment.id, null);
-      inFlight.delete(segment.id);
       onSegmentError?.(segment.id, error);
-      if (pending.length > 0) await processNext();
       return;
     }
 
-    const videoUrl = await generateTransition({
-      segment,
-      fromImageUrl,
-      toImageUrl,
-      prompt,
-      negativePrompt,
-      resolution,
-      quality,
-      duration,
-      tokenType,
-      sourceWidth,
-      sourceHeight,
-      onProgress: (progress, workerName) => {
-        onSegmentProgress?.(segment.id, progress, workerName);
-      },
-      onComplete: (url) => {
-        const version: TransitionVersion = {
-          id: uuidv4(),
-          videoUrl: url,
-          createdAt: Date.now(),
-          isSelected: true
-        };
-        onSegmentComplete?.(segment.id, url, version);
-      },
-      onError: (error) => {
-        onSegmentError?.(segment.id, error);
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        console.log(`[TransitionGenerator] Segment ${segment.id} attempt ${attempt}/${MAX_ATTEMPTS}`);
+
+        // Reset progress on retry attempts
+        if (attempt > 1) {
+          onSegmentProgress?.(segment.id, 0);
+        }
+
+        const videoUrl = await generateTransition({
+          segment,
+          fromImageUrl,
+          toImageUrl,
+          prompt,
+          negativePrompt,
+          resolution,
+          quality,
+          duration,
+          tokenType,
+          sourceWidth,
+          sourceHeight,
+          onProgress: (progress, workerName) => {
+            onSegmentProgress?.(segment.id, progress, workerName);
+          },
+          onComplete: (url) => {
+            const version: TransitionVersion = {
+              id: uuidv4(),
+              videoUrl: url,
+              createdAt: Date.now(),
+              isSelected: true
+            };
+            onSegmentComplete?.(segment.id, url, version);
+          },
+          onError: (error) => {
+            // Don't call onSegmentError here - we'll handle it after all retries
+            lastError = error;
+          }
+        });
+
+        if (videoUrl) {
+          // Success!
+          results.set(segment.id, videoUrl);
+          if (attempt > 1) {
+            console.log(`[TransitionGenerator] Segment ${segment.id} succeeded on attempt ${attempt}`);
+          }
+          return;
+        }
+
+        // If we got null but no error, treat it as a failure
+        if (!lastError) {
+          lastError = new Error('Generation returned no video');
+        }
+        throw lastError;
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Don't retry non-retryable errors (like insufficient credits)
+        if (isNonRetryableError(lastError)) {
+          console.error(`[TransitionGenerator] Segment ${segment.id} failed with non-retryable error:`, lastError.message);
+          break;
+        }
+
+        // If we have more attempts, retry immediately (no delay - different worker each time)
+        if (attempt < MAX_ATTEMPTS) {
+          console.warn(
+            `[TransitionGenerator] Segment ${segment.id} attempt ${attempt} failed: ${lastError.message}. ` +
+            `Retrying immediately...`
+          );
+        } else {
+          console.error(
+            `[TransitionGenerator] Segment ${segment.id} failed after ${MAX_ATTEMPTS} attempts:`,
+            lastError.message
+          );
+        }
       }
-    });
+    }
 
-    results.set(segment.id, videoUrl);
-    inFlight.delete(segment.id);
-
-    if (pending.length > 0) {
-      await processNext();
+    // All attempts failed
+    results.set(segment.id, null);
+    if (lastError) {
+      onSegmentError?.(segment.id, lastError);
     }
   };
 
-  // Start initial batch
-  const initialBatch = Math.min(concurrency, segments.length);
-  const promises = [];
+  // Fire ALL requests simultaneously - the dePIN network handles concurrency
+  console.log(`[TransitionGenerator] Starting ${segments.length} transition generations in parallel`);
+  await Promise.all(segments.map(processSegment));
 
-  for (let i = 0; i < initialBatch; i++) {
-    promises.push(processNext());
-  }
-
-  await Promise.all(promises);
   onAllComplete?.();
 
   return results;

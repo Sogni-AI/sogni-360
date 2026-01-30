@@ -9,6 +9,24 @@ import { api } from './api';
 import type { Waypoint, GenerationProgressEvent } from '../types';
 import { CAMERA_ANGLE_LORA } from '../constants/cameraAngleSettings';
 
+// Retry configuration
+// No delay needed between retries - each request goes to a different worker in the dePIN network
+const MAX_ATTEMPTS = 3;
+
+/**
+ * Check if an error is non-retryable (e.g., insufficient credits)
+ */
+function isNonRetryableError(error: Error): boolean {
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('insufficient') ||
+    message.includes('credits') ||
+    message.includes('balance') ||
+    message.includes('unauthorized') ||
+    message.includes('forbidden')
+  );
+}
+
 export interface GenerateAngleOptions {
   sourceImageUrl: string;
   waypoint: Waypoint;
@@ -133,6 +151,9 @@ export async function generateCameraAngle(options: GenerateAngleOptions): Promis
 
 /**
  * Generate multiple camera angles in parallel
+ *
+ * All angles are submitted to the dePIN network simultaneously for maximum
+ * throughput. The network handles load balancing across available workers.
  */
 export async function generateMultipleAngles(
   sourceImageUrl: string,
@@ -147,7 +168,6 @@ export async function generateMultipleAngles(
     onWaypointComplete?: (waypointId: string, imageUrl: string) => void;
     onWaypointError?: (waypointId: string, error: Error) => void;
     onAllComplete?: () => void;
-    concurrency?: number;
   } = {}
 ): Promise<Map<string, string | null>> {
   const {
@@ -157,72 +177,104 @@ export async function generateMultipleAngles(
     onWaypointProgress,
     onWaypointComplete,
     onWaypointError,
-    onAllComplete,
-    concurrency = 4
+    onAllComplete
   } = options;
 
   const results = new Map<string, string | null>();
-  const pending = [...waypoints];
-  const inFlight = new Set<string>();
 
-  const processNext = async (): Promise<void> => {
-    if (pending.length === 0) return;
-
-    const waypoint = pending.shift()!;
-    inFlight.add(waypoint.id);
+  // Process a single waypoint with automatic retry logic
+  const processWaypoint = async (waypoint: Waypoint): Promise<void> => {
     onWaypointStart?.(waypoint.id);
 
     // If this is an "original" waypoint, use the source image directly
     if (waypoint.isOriginal) {
       console.log(`[Generator] Waypoint ${waypoint.id} is original, using source image`);
       results.set(waypoint.id, sourceImageUrl);
-      inFlight.delete(waypoint.id);
       onWaypointProgress?.(waypoint.id, 100);
       onWaypointComplete?.(waypoint.id, sourceImageUrl);
-
-      // Process next if available
-      if (pending.length > 0) {
-        await processNext();
-      }
       return;
     }
 
-    const imageUrl = await generateCameraAngle({
-      sourceImageUrl,
-      waypoint,
-      imageWidth,
-      imageHeight,
-      tokenType,
-      loraStrength,
-      onProgress: (progress) => {
-        onWaypointProgress?.(waypoint.id, progress);
-      },
-      onComplete: (url) => {
-        onWaypointComplete?.(waypoint.id, url);
-      },
-      onError: (error) => {
-        onWaypointError?.(waypoint.id, error);
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        console.log(`[Generator] Waypoint ${waypoint.id} attempt ${attempt}/${MAX_ATTEMPTS}`);
+
+        // Reset progress on retry attempts
+        if (attempt > 1) {
+          onWaypointProgress?.(waypoint.id, 0);
+        }
+
+        const imageUrl = await generateCameraAngle({
+          sourceImageUrl,
+          waypoint,
+          imageWidth,
+          imageHeight,
+          tokenType,
+          loraStrength,
+          onProgress: (progress) => {
+            onWaypointProgress?.(waypoint.id, progress);
+          },
+          onComplete: (url) => {
+            onWaypointComplete?.(waypoint.id, url);
+          },
+          onError: (error) => {
+            // Don't call onWaypointError here - we'll handle it after all retries
+            lastError = error;
+          }
+        });
+
+        if (imageUrl) {
+          // Success!
+          results.set(waypoint.id, imageUrl);
+          if (attempt > 1) {
+            console.log(`[Generator] Waypoint ${waypoint.id} succeeded on attempt ${attempt}`);
+          }
+          return;
+        }
+
+        // If we got null but no error, treat it as a failure
+        if (!lastError) {
+          lastError = new Error('Generation returned no image');
+        }
+        throw lastError;
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Don't retry non-retryable errors (like insufficient credits)
+        if (isNonRetryableError(lastError)) {
+          console.error(`[Generator] Waypoint ${waypoint.id} failed with non-retryable error:`, lastError.message);
+          break;
+        }
+
+        // If we have more attempts, retry immediately (no delay - different worker each time)
+        if (attempt < MAX_ATTEMPTS) {
+          console.warn(
+            `[Generator] Waypoint ${waypoint.id} attempt ${attempt} failed: ${lastError.message}. ` +
+            `Retrying immediately...`
+          );
+        } else {
+          console.error(
+            `[Generator] Waypoint ${waypoint.id} failed after ${MAX_ATTEMPTS} attempts:`,
+            lastError.message
+          );
+        }
       }
-    });
+    }
 
-    results.set(waypoint.id, imageUrl);
-    inFlight.delete(waypoint.id);
-
-    // Process next if available
-    if (pending.length > 0) {
-      await processNext();
+    // All attempts failed
+    results.set(waypoint.id, null);
+    if (lastError) {
+      onWaypointError?.(waypoint.id, lastError);
     }
   };
 
-  // Start initial batch
-  const initialBatch = Math.min(concurrency, waypoints.length);
-  const promises = [];
+  // Fire ALL requests simultaneously - the dePIN network handles concurrency
+  console.log(`[Generator] Starting ${waypoints.length} angle generations in parallel`);
+  await Promise.all(waypoints.map(processWaypoint));
 
-  for (let i = 0; i < initialBatch; i++) {
-    promises.push(processNext());
-  }
-
-  await Promise.all(promises);
   onAllComplete?.();
 
   return results;
