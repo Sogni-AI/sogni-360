@@ -18,10 +18,9 @@
     "prepare": "npm run server:install"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.2",
     "@sogni-ai/sogni-client": "4.0.0-alpha.52",
     "framer-motion": "^12.9.2",
+    "jszip": "^3.10.1",
     "mp4box": "^2.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

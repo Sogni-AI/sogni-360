@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import type { Waypoint } from '../types';
@@ -9,6 +9,7 @@ import {
 } from '../constants/cameraAngleSettings';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import WorkflowWizard from './shared/WorkflowWizard';
+import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
@@ -25,6 +26,9 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const { showToast } = useToast();
   const { currentProject } = state;
   const carouselRef = useRef<HTMLDivElement>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<string | null>(null);
 
   const waypoints = currentProject?.waypoints || [];
 
@@ -131,6 +135,75 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     };
   };
 
+  // Download single image
+  const handleDownloadSingle = useCallback(async (waypoint: Waypoint, index: number) => {
+    if (!waypoint.imageUrl) return;
+
+    setDownloadingId(waypoint.id);
+    try {
+      const angleLabel = waypoint.isOriginal
+        ? 'original'
+        : `${waypoint.azimuth}-${waypoint.elevation}-${waypoint.distance}`;
+      const filename = `sogni-360-step${index + 1}-${angleLabel}.jpg`;
+
+      const success = await downloadSingleImage(waypoint.imageUrl, filename);
+      if (success) {
+        showToast({ message: 'Image downloaded', type: 'success' });
+      } else {
+        showToast({ message: 'Download failed', type: 'error' });
+      }
+    } catch {
+      showToast({ message: 'Download failed', type: 'error' });
+    } finally {
+      setDownloadingId(null);
+    }
+  }, [showToast]);
+
+  // Download all images as ZIP
+  const handleDownloadAll = useCallback(async () => {
+    const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
+    if (readyWaypoints.length === 0) {
+      showToast({ message: 'No images to download', type: 'error' });
+      return;
+    }
+
+    setIsDownloadingAll(true);
+    setDownloadProgress('Preparing download...');
+
+    try {
+      const images: ImageDownloadItem[] = readyWaypoints.map((wp) => {
+        const originalIndex = waypoints.indexOf(wp);
+        const angleLabel = wp.isOriginal
+          ? 'original'
+          : `${wp.azimuth}-${wp.elevation}-${wp.distance}`;
+        return {
+          url: wp.imageUrl!,
+          filename: `sogni-360-step${originalIndex + 1}-${angleLabel}.jpg`
+        };
+      });
+
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const success = await downloadImagesAsZip(
+        images,
+        `sogni-360-angles-${timestamp}.zip`,
+        (_current, _total, message) => {
+          setDownloadProgress(message);
+        }
+      );
+
+      if (success) {
+        showToast({ message: 'ZIP download complete', type: 'success' });
+      } else {
+        showToast({ message: 'ZIP download failed', type: 'error' });
+      }
+    } catch {
+      showToast({ message: 'ZIP download failed', type: 'error' });
+    } finally {
+      setIsDownloadingAll(false);
+      setDownloadProgress(null);
+    }
+  }, [waypoints, showToast]);
+
   const canProceed = readyCount >= 2 && generatingCount === 0 && failedCount === 0;
   const totalComplete = readyCount;
   const totalAngles = waypoints.length;
@@ -170,15 +243,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                 {waypoint.isOriginal && <span className="review-card-orig-tag">Original</span>}
               </div>
 
-              {/* Image */}
-              <div
-                className="review-card-img"
-                style={{
-                  aspectRatio: currentProject?.sourceImageDimensions
-                    ? `${currentProject.sourceImageDimensions.width} / ${currentProject.sourceImageDimensions.height}`
-                    : '3 / 4'
-                }}
-              >
+              {/* Image - Expands to fill available vertical space */}
+              <div className="review-card-img">
                 {waypoint.imageUrl ? (
                   <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} />
                 ) : currentProject?.sourceImageUrl ? (
@@ -253,17 +319,38 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                   )}
                 </div>
 
-                {/* Regenerate Button - Always same position */}
-                <button
-                  className={`review-card-regen ${waypoint.isOriginal ? 'invisible' : ''} ${waypoint.status === 'generating' ? 'loading' : ''}`}
-                  onClick={() => handleRedo(waypoint)}
-                  disabled={waypoint.isOriginal || waypoint.status === 'generating'}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Regenerate
-                </button>
+                {/* Action Buttons Row */}
+                <div className="review-card-actions">
+                  {/* Download Button - Only when ready with image */}
+                  <button
+                    className={`review-card-btn download ${waypoint.status !== 'ready' || !waypoint.imageUrl ? 'invisible' : ''}`}
+                    onClick={() => handleDownloadSingle(waypoint, index)}
+                    disabled={waypoint.status !== 'ready' || !waypoint.imageUrl || downloadingId === waypoint.id}
+                  >
+                    {downloadingId === waypoint.id ? (
+                      <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    )}
+                    Download
+                  </button>
+
+                  {/* Regenerate Button - Always same position */}
+                  <button
+                    className={`review-card-btn regen ${waypoint.isOriginal ? 'invisible' : ''} ${waypoint.status === 'generating' ? 'loading' : ''}`}
+                    onClick={() => handleRedo(waypoint)}
+                    disabled={waypoint.isOriginal || waypoint.status === 'generating'}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Regenerate
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -301,6 +388,30 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
 
         <div className="review-actions-bar">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+
+          {/* Download All Button */}
+          <button
+            className={`btn btn-secondary ${readyCount === 0 || isDownloadingAll ? 'btn-disabled' : ''}`}
+            onClick={handleDownloadAll}
+            disabled={readyCount === 0 || isDownloadingAll}
+          >
+            {isDownloadingAll ? (
+              <>
+                <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {downloadProgress || 'Downloading...'}
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download All
+              </>
+            )}
+          </button>
+
           <button
             className={`btn ${canProceed ? 'btn-primary' : 'btn-disabled'}`}
             onClick={onApply}

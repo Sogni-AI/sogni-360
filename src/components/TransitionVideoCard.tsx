@@ -14,6 +14,8 @@ interface TransitionVideoCardProps {
   onPrevVersion: () => void;
   onNextVersion: () => void;
   onRegenerate: () => void;
+  onDownload: () => void;
+  isDownloading: boolean;
 }
 
 /**
@@ -31,7 +33,9 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   versionInfo,
   onPrevVersion,
   onNextVersion,
-  onRegenerate
+  onRegenerate,
+  onDownload,
+  isDownloading
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -216,16 +220,38 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
           )}
         </div>
 
-        <button
-          className={`transition-regen-btn ${segment.status === 'generating' ? 'disabled' : ''}`}
-          onClick={onRegenerate}
-          disabled={segment.status === 'generating'}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Regenerate
-        </button>
+        {/* Action Buttons Row */}
+        <div className="transition-card-actions">
+          {/* Download Button - Only when ready with video */}
+          <button
+            className={`transition-action-btn download ${segment.status !== 'ready' || !segment.videoUrl ? 'invisible' : ''}`}
+            onClick={onDownload}
+            disabled={segment.status !== 'ready' || !segment.videoUrl || isDownloading}
+          >
+            {isDownloading ? (
+              <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            )}
+            Download
+          </button>
+
+          {/* Regenerate Button */}
+          <button
+            className={`transition-action-btn regen ${segment.status === 'generating' ? 'disabled' : ''}`}
+            onClick={onRegenerate}
+            disabled={segment.status === 'generating'}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Regenerate
+          </button>
+        </div>
       </div>
     </div>
   );
