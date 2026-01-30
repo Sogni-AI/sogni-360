@@ -137,8 +137,8 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
         ) : (
           /* Not ready - show thumbnails and separate progress row */
           <>
-            {/* Thumbnails Row - From → To */}
-            <div className="transition-thumbs-row">
+            {/* Thumbnails - stacked for landscape, side by side for portrait */}
+            <div className={`transition-thumbs-row ${thumbAspect > 1 ? 'stacked' : ''}`}>
               <div className="transition-thumb" style={{ aspectRatio: thumbAspect }}>
                 {fromImageUrl && <img src={fromImageUrl} alt="From" />}
                 <span className="thumb-label">From</span>

@@ -362,13 +362,23 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       setIsEnhancingAll(true);
       setEnhanceAllProgress({ current: 0, total: readyWaypoints.length });
 
-      let successCount = 0;
-      for (let i = 0; i < readyWaypoints.length; i++) {
-        const wp = readyWaypoints[i];
-        setEnhanceAllProgress({ current: i + 1, total: readyWaypoints.length });
-        const success = await executeEnhance(wp, prompt);
-        if (success) successCount++;
-      }
+      // Track completed count for progress updates
+      let completedCount = 0;
+      const updateProgress = () => {
+        completedCount++;
+        setEnhanceAllProgress({ current: completedCount, total: readyWaypoints.length });
+      };
+
+      // Run ALL enhancements in parallel for maximum dePIN network throughput
+      const results = await Promise.all(
+        readyWaypoints.map(async (wp) => {
+          const success = await executeEnhance(wp, prompt);
+          updateProgress();
+          return success;
+        })
+      );
+
+      const successCount = results.filter(Boolean).length;
 
       setIsEnhancingAll(false);
       setEnhanceAllProgress(null);
