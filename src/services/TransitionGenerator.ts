@@ -36,6 +36,12 @@ function isNonRetryableError(error: Error): boolean {
   );
 }
 
+export interface GenerateTransitionResult {
+  videoUrl: string;
+  sdkProjectId?: string;
+  sdkJobId?: string;
+}
+
 export interface GenerateTransitionOptions {
   segment: Segment;
   fromImageUrl: string;
@@ -49,7 +55,7 @@ export interface GenerateTransitionOptions {
   sourceWidth?: number;
   sourceHeight?: number;
   onProgress?: (progress: number, workerName?: string) => void;
-  onComplete?: (videoUrl: string) => void;
+  onComplete?: (result: GenerateTransitionResult) => void;
   onError?: (error: Error) => void;
 }
 
@@ -76,7 +82,7 @@ function prepareImageForBackend(imageUrl: string): string {
 /**
  * Generate a single video transition between two images
  */
-export async function generateTransition(options: GenerateTransitionOptions): Promise<string | null> {
+export async function generateTransition(options: GenerateTransitionOptions): Promise<GenerateTransitionResult | null> {
   const {
     segment,
     fromImageUrl,
@@ -128,7 +134,7 @@ export async function generateTransition(options: GenerateTransitionOptions): Pr
 
     // Subscribe to progress events
     return new Promise((resolve) => {
-      let resultUrl: string | null = null;
+      let result: GenerateTransitionResult | null = null;
 
       const unsubscribe = api.subscribeToProgress(
         projectId,
@@ -149,26 +155,38 @@ export async function generateTransition(options: GenerateTransitionOptions): Pr
 
             case 'jobCompleted':
               if (event.resultUrl) {
-                resultUrl = event.resultUrl;
-                onComplete?.(resultUrl);
+                result = {
+                  videoUrl: event.resultUrl,
+                  sdkProjectId: event.sdkProjectId,
+                  sdkJobId: event.sdkJobId
+                };
+                onComplete?.(result);
               }
               break;
 
             case 'completed':
-              if (event.resultUrl && !resultUrl) {
-                resultUrl = event.resultUrl;
-                onComplete?.(resultUrl);
+              if (event.resultUrl && !result) {
+                result = {
+                  videoUrl: event.resultUrl,
+                  sdkProjectId: event.sdkProjectId,
+                  sdkJobId: event.sdkJobId
+                };
+                onComplete?.(result);
               }
               // Also check for videoUrls array
-              if (!resultUrl && event.imageUrls && event.imageUrls.length > 0) {
-                resultUrl = event.imageUrls[0];
-                onComplete?.(resultUrl);
+              if (!result && event.imageUrls && event.imageUrls.length > 0) {
+                result = {
+                  videoUrl: event.imageUrls[0],
+                  sdkProjectId: event.sdkProjectId,
+                  sdkJobId: event.sdkJobId
+                };
+                onComplete?.(result);
               }
               unsubscribe();
-              if (!resultUrl) {
+              if (!result) {
                 onError?.(new Error('Generation completed but no video URL received'));
               }
-              resolve(resultUrl);
+              resolve(result);
               break;
 
             case 'error':
@@ -214,11 +232,11 @@ export async function generateMultipleTransitions(
     sourceHeight?: number;
     onSegmentStart?: (segmentId: string) => void;
     onSegmentProgress?: (segmentId: string, progress: number, workerName?: string) => void;
-    onSegmentComplete?: (segmentId: string, videoUrl: string, version: TransitionVersion) => void;
+    onSegmentComplete?: (segmentId: string, result: GenerateTransitionResult, version: TransitionVersion) => void;
     onSegmentError?: (segmentId: string, error: Error) => void;
     onAllComplete?: () => void;
   }
-): Promise<Map<string, string | null>> {
+): Promise<Map<string, GenerateTransitionResult | null>> {
   const {
     prompt,
     negativePrompt = '',
@@ -235,7 +253,7 @@ export async function generateMultipleTransitions(
     onAllComplete
   } = options;
 
-  const results = new Map<string, string | null>();
+  const results = new Map<string, GenerateTransitionResult | null>();
 
   // Process a single segment with automatic retry logic
   const processSegment = async (segment: Segment): Promise<void> => {
@@ -262,7 +280,7 @@ export async function generateMultipleTransitions(
           onSegmentProgress?.(segment.id, 0);
         }
 
-        const videoUrl = await generateTransition({
+        const result = await generateTransition({
           segment,
           fromImageUrl,
           toImageUrl,
@@ -277,14 +295,16 @@ export async function generateMultipleTransitions(
           onProgress: (progress, workerName) => {
             onSegmentProgress?.(segment.id, progress, workerName);
           },
-          onComplete: (url) => {
+          onComplete: (r) => {
             const version: TransitionVersion = {
               id: uuidv4(),
-              videoUrl: url,
+              videoUrl: r.videoUrl,
               createdAt: Date.now(),
-              isSelected: true
+              isSelected: true,
+              sdkProjectId: r.sdkProjectId,
+              sdkJobId: r.sdkJobId
             };
-            onSegmentComplete?.(segment.id, url, version);
+            onSegmentComplete?.(segment.id, r, version);
           },
           onError: (error) => {
             // Don't call onSegmentError here - we'll handle it after all retries
@@ -292,9 +312,9 @@ export async function generateMultipleTransitions(
           }
         });
 
-        if (videoUrl) {
+        if (result) {
           // Success!
-          results.set(segment.id, videoUrl);
+          results.set(segment.id, result);
           if (attempt > 1) {
             console.log(`[TransitionGenerator] Segment ${segment.id} succeeded on attempt ${attempt}`);
           }

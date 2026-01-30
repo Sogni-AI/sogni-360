@@ -27,6 +27,12 @@ function isNonRetryableError(error: Error): boolean {
   );
 }
 
+export interface GenerateAngleResult {
+  imageUrl: string;
+  sdkProjectId?: string;
+  sdkJobId?: string;
+}
+
 export interface GenerateAngleOptions {
   sourceImageUrl: string;
   waypoint: Waypoint;
@@ -35,14 +41,14 @@ export interface GenerateAngleOptions {
   tokenType?: 'spark' | 'sogni';
   loraStrength?: number;
   onProgress?: (progress: number, workerName?: string) => void;
-  onComplete?: (imageUrl: string) => void;
+  onComplete?: (result: GenerateAngleResult) => void;
   onError?: (error: Error) => void;
 }
 
 /**
  * Generates an image from a different camera angle using the backend API
  */
-export async function generateCameraAngle(options: GenerateAngleOptions): Promise<string | null> {
+export async function generateCameraAngle(options: GenerateAngleOptions): Promise<GenerateAngleResult | null> {
   const {
     sourceImageUrl,
     waypoint,
@@ -71,7 +77,7 @@ export async function generateCameraAngle(options: GenerateAngleOptions): Promis
     // Subscribe to progress events
     console.log(`[Generator] Subscribing to progress for project ${projectId}, waypoint ${waypoint.id}`);
     return new Promise((resolve) => {
-      let resultUrl: string | null = null;
+      let result: GenerateAngleResult | null = null;
 
       const unsubscribe = api.subscribeToProgress(
         projectId,
@@ -94,8 +100,12 @@ export async function generateCameraAngle(options: GenerateAngleOptions): Promis
             case 'jobCompleted':
               console.log(`[Generator] Job completed for waypoint ${waypoint.id}, resultUrl:`, event.resultUrl);
               if (event.resultUrl) {
-                resultUrl = event.resultUrl;
-                onComplete?.(resultUrl);
+                result = {
+                  imageUrl: event.resultUrl,
+                  sdkProjectId: event.sdkProjectId,
+                  sdkJobId: event.sdkJobId
+                };
+                onComplete?.(result);
               } else {
                 console.warn(`[Generator] jobCompleted but no resultUrl for waypoint ${waypoint.id}`);
               }
@@ -103,24 +113,32 @@ export async function generateCameraAngle(options: GenerateAngleOptions): Promis
 
             case 'completed':
               // Check if resultUrl is in the completed event itself (backend may send it here)
-              if (event.resultUrl && !resultUrl) {
-                resultUrl = event.resultUrl;
-                console.log(`[Generator] Got resultUrl from completed event for waypoint ${waypoint.id}:`, resultUrl);
-                onComplete?.(resultUrl);
+              if (event.resultUrl && !result) {
+                result = {
+                  imageUrl: event.resultUrl,
+                  sdkProjectId: event.sdkProjectId,
+                  sdkJobId: event.sdkJobId
+                };
+                console.log(`[Generator] Got resultUrl from completed event for waypoint ${waypoint.id}:`, result.imageUrl);
+                onComplete?.(result);
               }
               // Also check for imageUrls array (backend sends this for project completion)
-              if (!resultUrl && event.imageUrls && event.imageUrls.length > 0) {
-                resultUrl = event.imageUrls[0];
-                console.log(`[Generator] Got resultUrl from imageUrls array for waypoint ${waypoint.id}:`, resultUrl);
-                onComplete?.(resultUrl);
+              if (!result && event.imageUrls && event.imageUrls.length > 0) {
+                result = {
+                  imageUrl: event.imageUrls[0],
+                  sdkProjectId: event.sdkProjectId,
+                  sdkJobId: event.sdkJobId
+                };
+                console.log(`[Generator] Got resultUrl from imageUrls array for waypoint ${waypoint.id}:`, result.imageUrl);
+                onComplete?.(result);
               }
-              console.log(`[Generator] Project completed for waypoint ${waypoint.id}, resultUrl:`, resultUrl);
+              console.log(`[Generator] Project completed for waypoint ${waypoint.id}, resultUrl:`, result?.imageUrl);
               unsubscribe();
-              if (!resultUrl) {
+              if (!result) {
                 console.error(`[Generator] Completed but no resultUrl! Event data:`, event);
                 onError?.(new Error('Generation completed but no image URL received'));
               }
-              resolve(resultUrl);
+              resolve(result);
               break;
 
             case 'error':
@@ -165,11 +183,11 @@ export async function generateMultipleAngles(
     loraStrength?: number;
     onWaypointStart?: (waypointId: string) => void;
     onWaypointProgress?: (waypointId: string, progress: number) => void;
-    onWaypointComplete?: (waypointId: string, imageUrl: string) => void;
+    onWaypointComplete?: (waypointId: string, result: GenerateAngleResult) => void;
     onWaypointError?: (waypointId: string, error: Error) => void;
     onAllComplete?: () => void;
   } = {}
-): Promise<Map<string, string | null>> {
+): Promise<Map<string, GenerateAngleResult | null>> {
   const {
     tokenType = 'spark',
     loraStrength,
@@ -180,7 +198,7 @@ export async function generateMultipleAngles(
     onAllComplete
   } = options;
 
-  const results = new Map<string, string | null>();
+  const results = new Map<string, GenerateAngleResult | null>();
 
   // Process a single waypoint with automatic retry logic
   const processWaypoint = async (waypoint: Waypoint): Promise<void> => {
@@ -189,9 +207,10 @@ export async function generateMultipleAngles(
     // If this is an "original" waypoint, use the source image directly
     if (waypoint.isOriginal) {
       console.log(`[Generator] Waypoint ${waypoint.id} is original, using source image`);
-      results.set(waypoint.id, sourceImageUrl);
+      const result: GenerateAngleResult = { imageUrl: sourceImageUrl };
+      results.set(waypoint.id, result);
       onWaypointProgress?.(waypoint.id, 100);
-      onWaypointComplete?.(waypoint.id, sourceImageUrl);
+      onWaypointComplete?.(waypoint.id, result);
       return;
     }
 
@@ -206,7 +225,7 @@ export async function generateMultipleAngles(
           onWaypointProgress?.(waypoint.id, 0);
         }
 
-        const imageUrl = await generateCameraAngle({
+        const result = await generateCameraAngle({
           sourceImageUrl,
           waypoint,
           imageWidth,
@@ -216,8 +235,8 @@ export async function generateMultipleAngles(
           onProgress: (progress) => {
             onWaypointProgress?.(waypoint.id, progress);
           },
-          onComplete: (url) => {
-            onWaypointComplete?.(waypoint.id, url);
+          onComplete: (r) => {
+            onWaypointComplete?.(waypoint.id, r);
           },
           onError: (error) => {
             // Don't call onWaypointError here - we'll handle it after all retries
@@ -225,9 +244,9 @@ export async function generateMultipleAngles(
           }
         });
 
-        if (imageUrl) {
+        if (result) {
           // Success!
-          results.set(waypoint.id, imageUrl);
+          results.set(waypoint.id, result);
           if (attempt > 1) {
             console.log(`[Generator] Waypoint ${waypoint.id} succeeded on attempt ${attempt}`);
           }

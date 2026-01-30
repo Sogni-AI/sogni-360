@@ -24,6 +24,9 @@ export interface Waypoint {
   isOriginal?: boolean; // If true, use source image directly (no generation needed)
   imageHistory?: string[]; // History of all generated versions (for redo navigation)
   currentImageIndex?: number; // Index of currently displayed version in imageHistory
+  // SDK IDs for URL refresh (needed when presigned URLs expire)
+  sdkProjectId?: string; // Sogni SDK project ID
+  sdkJobId?: string; // Sogni SDK job ID
   // Enhancement state
   enhancing?: boolean; // Currently enhancing this waypoint
   enhanced?: boolean; // Has been enhanced at least once
@@ -40,6 +43,9 @@ export interface TransitionVersion {
   videoUrl: string;
   createdAt: number;
   isSelected: boolean; // Whether this version is the active one for stitching
+  // SDK IDs for URL refresh (needed when presigned URLs expire)
+  sdkProjectId?: string; // Sogni SDK project ID
+  sdkJobId?: string; // Sogni SDK job ID
 }
 
 // Segment represents a video transition between two waypoints
@@ -56,6 +62,9 @@ export interface Segment {
   workerName?: string; // Worker name for display during generation
   versions?: TransitionVersion[]; // History of all generated versions
   currentVersionIndex?: number; // Index of currently selected version
+  // SDK IDs for URL refresh (needed when presigned URLs expire)
+  sdkProjectId?: string; // Sogni SDK project ID
+  sdkJobId?: string; // Sogni SDK job ID
 }
 
 // Video generation quality presets
@@ -190,6 +199,9 @@ export interface GenerationProgressEvent {
   errorCode?: string;
   workerName?: string;
   queuePosition?: number;
+  // SDK IDs for URL refresh (needed when presigned URLs expire)
+  sdkProjectId?: string; // Sogni SDK project ID
+  sdkJobId?: string; // Sogni SDK job ID
 }
 
 // Local project for IndexedDB storage

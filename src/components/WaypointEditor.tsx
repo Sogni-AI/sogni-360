@@ -177,8 +177,18 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
           onWaypointProgress: (waypointId, progress) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { progress } } });
           },
-          onWaypointComplete: (waypointId, imageUrl) => {
-            dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'ready', imageUrl, progress: 100, error: undefined } } });
+          onWaypointComplete: (waypointId, result) => {
+            dispatch({ type: 'UPDATE_WAYPOINT', payload: {
+              id: waypointId,
+              updates: {
+                status: 'ready',
+                imageUrl: result.imageUrl,
+                progress: 100,
+                error: undefined,
+                sdkProjectId: result.sdkProjectId,
+                sdkJobId: result.sdkJobId
+              }
+            } });
           },
           onWaypointError: (waypointId, error) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined } } });

@@ -618,6 +618,52 @@ router.get('/proxy-image', async (req, res) => {
   }
 });
 
+// Refresh signed URL for expired media
+router.post('/refresh-url', ensureSessionId, async (req, res) => {
+  try {
+    const { sdkProjectId, sdkJobId, mediaType = 'image' } = req.body;
+
+    if (!sdkProjectId || !sdkJobId) {
+      return res.status(400).json({
+        error: 'Missing required parameters: sdkProjectId and sdkJobId'
+      });
+    }
+
+    console.log(`[Refresh URL] Refreshing ${mediaType} URL for project=${sdkProjectId}, job=${sdkJobId}`);
+
+    const client = await getSessionClient(req.sessionId);
+
+    let freshUrl;
+    if (mediaType === 'video') {
+      freshUrl = await client.projects.mediaDownloadUrl({
+        jobId: sdkProjectId,
+        id: sdkJobId,
+        type: 'complete'
+      });
+    } else {
+      freshUrl = await client.projects.downloadUrl({
+        jobId: sdkProjectId,
+        imageId: sdkJobId,
+        type: 'complete'
+      });
+    }
+
+    console.log(`[Refresh URL] Got fresh URL for ${mediaType}`);
+
+    res.json({
+      success: true,
+      url: freshUrl
+    });
+
+  } catch (error) {
+    console.error('[Refresh URL] Error:', error);
+    res.status(500).json({
+      error: 'Failed to refresh URL',
+      message: error.message
+    });
+  }
+});
+
 // Disconnect
 router.post('/disconnect', ensureSessionId, async (req, res) => {
   try {

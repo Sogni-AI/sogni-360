@@ -225,8 +225,14 @@ const Sogni360Container: React.FC = () => {
           onSegmentProgress: (segmentId, progress, workerName) => {
             updateSegment(segmentId, { progress, workerName });
           },
-          onSegmentComplete: (segmentId, videoUrl, version) => {
-            updateSegment(segmentId, { status: 'ready', videoUrl, progress: 100 });
+          onSegmentComplete: (segmentId, result, version) => {
+            updateSegment(segmentId, {
+              status: 'ready',
+              videoUrl: result.videoUrl,
+              progress: 100,
+              sdkProjectId: result.sdkProjectId,
+              sdkJobId: result.sdkJobId
+            });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
             // Play sound when each transition completes
             playVideoCompleteIfEnabled();
@@ -292,8 +298,14 @@ const Sogni360Container: React.FC = () => {
           onSegmentProgress: (segmentId, progress, workerName) => {
             updateSegment(segmentId, { progress, workerName });
           },
-          onSegmentComplete: (segmentId, videoUrl, version) => {
-            updateSegment(segmentId, { status: 'ready', videoUrl, progress: 100 });
+          onSegmentComplete: (segmentId, result, version) => {
+            updateSegment(segmentId, {
+              status: 'ready',
+              videoUrl: result.videoUrl,
+              progress: 100,
+              sdkProjectId: result.sdkProjectId,
+              sdkJobId: result.sdkJobId
+            });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
             // Play sound when redo transition completes
             playVideoCompleteIfEnabled();

@@ -291,6 +291,30 @@ class ApiClient {
   }
 
   /**
+   * Refresh an expired signed URL for media (images or videos)
+   * This is used when loading older projects where S3 presigned URLs have expired.
+   */
+  async refreshUrl(params: {
+    sdkProjectId: string;
+    sdkJobId: string;
+    mediaType: 'image' | 'video';
+  }): Promise<string> {
+    const response = await this.fetch<{
+      success: boolean;
+      url: string;
+    }>('/api/sogni/refresh-url', {
+      method: 'POST',
+      body: JSON.stringify({
+        sdkProjectId: params.sdkProjectId,
+        sdkJobId: params.sdkJobId,
+        mediaType: params.mediaType,
+      }),
+    });
+
+    return response.url;
+  }
+
+  /**
    * Disconnect from backend
    */
   async disconnect(): Promise<void> {

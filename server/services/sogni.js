@@ -298,7 +298,10 @@ export async function generateImage(client, params, progressCallback, localProje
               projectId: localProjectId || event.projectId,
               resultUrl: event.resultUrl,
               isNSFW: event.isNSFW,
-              seed: event.seed
+              seed: event.seed,
+              // Include SDK IDs for URL refresh capability
+              sdkProjectId: event.projectId,
+              sdkJobId: event.jobId
             };
           }
           break;
@@ -496,7 +499,10 @@ export async function generateVideo(client, params, progressCallback, localProje
               projectId: localProjectId || event.projectId,
               resultUrl: event.resultUrl,
               isNSFW: event.isNSFW,
-              seed: event.seed
+              seed: event.seed,
+              // Include SDK IDs for URL refresh capability
+              sdkProjectId: event.projectId,
+              sdkJobId: event.jobId
             };
           }
           break;

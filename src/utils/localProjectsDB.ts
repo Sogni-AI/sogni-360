@@ -54,6 +54,7 @@ function openDB(): Promise<IDBDatabase> {
 
 /**
  * Save a project to IndexedDB
+ * Blob URLs are stripped as they don't persist across page reloads
  */
 export async function saveProject(project: Sogni360Project): Promise<void> {
   const db = await openDB();
@@ -62,13 +63,22 @@ export async function saveProject(project: Sogni360Project): Promise<void> {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
 
+    // Create a clean copy of the project, stripping blob URLs
+    const cleanProject = {
+      ...project,
+      // Don't save blob URLs - they won't work after page reload
+      finalLoopUrl: project.finalLoopUrl?.startsWith('blob:')
+        ? undefined
+        : project.finalLoopUrl
+    };
+
     const localProject: LocalProject = {
       id: project.id,
       name: project.name,
       createdAt: project.createdAt,
       updatedAt: Date.now(),
       thumbnailUrl: project.waypoints[0]?.imageUrl || project.sourceImageUrl,
-      project
+      project: cleanProject
     };
 
     const request = store.put(localProject);
@@ -82,6 +92,26 @@ export async function saveProject(project: Sogni360Project): Promise<void> {
       resolve();
     };
   });
+}
+
+/**
+ * Sanitize a loaded project by clearing stale blob URLs
+ * Blob URLs don't persist across page reloads, so they need to be cleared
+ */
+function sanitizeLoadedProject(project: Sogni360Project): Sogni360Project {
+  const sanitized = { ...project };
+
+  // Clear finalLoopUrl if it's a blob URL (won't work after page reload)
+  if (sanitized.finalLoopUrl?.startsWith('blob:')) {
+    console.log('[LocalDB] Clearing stale blob URL for finalLoopUrl');
+    sanitized.finalLoopUrl = undefined;
+  }
+
+  // Note: S3 presigned URLs in waypoints/segments may also be expired,
+  // but we now have infrastructure to refresh them using SDK IDs when needed.
+  // The refresh happens at download/fetch time via the /refresh-url endpoint.
+
+  return sanitized;
 }
 
 /**
@@ -102,7 +132,9 @@ export async function loadProject(id: string): Promise<Sogni360Project | null> {
 
     request.onsuccess = () => {
       const result = request.result as LocalProject | undefined;
-      resolve(result?.project || null);
+      const project = result?.project || null;
+      // Sanitize the loaded project to clear stale blob URLs
+      resolve(project ? sanitizeLoadedProject(project) : null);
     };
   });
 }
@@ -364,7 +396,8 @@ export async function getMostRecentProject(): Promise<Sogni360Project | null> {
     const mostRecent = projects[0]; // Already sorted by updatedAt desc
     setCurrentProjectId(mostRecent.id);
     console.log('[LocalDB] Restored most recent project:', mostRecent.id);
-    return mostRecent.project;
+    // Sanitize the loaded project to clear stale blob URLs
+    return sanitizeLoadedProject(mostRecent.project);
   }
 
   return null;

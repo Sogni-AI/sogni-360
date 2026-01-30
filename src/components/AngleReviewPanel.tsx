@@ -85,10 +85,10 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               payload: { id: waypointId, updates: { progress } }
             });
           },
-          onWaypointComplete: (waypointId, imageUrl) => {
+          onWaypointComplete: (waypointId, result) => {
             dispatch({
               type: 'ADD_WAYPOINT_VERSION',
-              payload: { waypointId, imageUrl }
+              payload: { waypointId, imageUrl: result.imageUrl }
             });
             dispatch({
               type: 'UPDATE_WAYPOINT',
@@ -98,6 +98,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                   status: 'ready',
                   progress: 100,
                   error: undefined,
+                  sdkProjectId: result.sdkProjectId,
+                  sdkJobId: result.sdkJobId,
                   // Reset enhancement state on regenerate
                   enhanced: false,
                   enhancing: false,

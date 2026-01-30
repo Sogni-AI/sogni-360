@@ -86,11 +86,38 @@ export function useFinalVideoActions({
     }
   }, [videoUrls, onStitchComplete, showToast]);
 
-  // Auto-stitch on mount if no stitched URL provided (with initial music if set)
+  // Validate that a blob URL is still accessible
+  const validateBlobUrl = useCallback(async (url: string): Promise<boolean> => {
+    if (!url.startsWith('blob:')) return true;
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Auto-stitch on mount if no valid stitched URL (with initial music if set)
   useEffect(() => {
-    if (localStitchedUrl || videoUrls.length === 0) return;
-    stitchVideos(initialMusicSelection || null);
-  }, [videoUrls, localStitchedUrl, stitchVideos, initialMusicSelection]);
+    if (videoUrls.length === 0) return;
+
+    const checkAndStitch = async () => {
+      // If we have a stitched URL, validate it
+      if (localStitchedUrl) {
+        const isValid = await validateBlobUrl(localStitchedUrl);
+        if (isValid) return; // URL is valid, no need to re-stitch
+
+        // URL is stale (blob expired), clear it and re-stitch
+        console.log('[useFinalVideoActions] Stitched URL is stale, re-stitching...');
+        setLocalStitchedUrl(null);
+      }
+
+      // No valid stitched URL, stitch now
+      stitchVideos(initialMusicSelection || null);
+    };
+
+    checkAndStitch();
+  }, [videoUrls, localStitchedUrl, stitchVideos, initialMusicSelection, validateBlobUrl]);
 
   // Handle music selection confirmation
   const handleMusicConfirm = useCallback(async (selection: MusicSelection) => {
