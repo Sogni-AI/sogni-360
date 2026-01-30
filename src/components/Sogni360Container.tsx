@@ -510,12 +510,16 @@ const Sogni360Container: React.FC = () => {
         />
       )}
 
-      {/* Final Video Preview Panel - plays all segment videos in sequence */}
+      {/* Final Video Preview Panel - plays stitched video with gapless playback */}
       {showFinalVideoPreview && currentProject?.segments && (
         <FinalVideoPanel
           videoUrls={currentProject.segments.map(s => s.videoUrl).filter(Boolean) as string[]}
+          stitchedVideoUrl={currentProject.finalLoopUrl}
           onClose={handleCloseFinalVideo}
           onBackToEditor={handleBackToEditor}
+          onStitchComplete={(url) => {
+            dispatch({ type: 'SET_FINAL_LOOP_URL', payload: url });
+          }}
         />
       )}
 

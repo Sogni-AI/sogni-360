@@ -1,0 +1,6 @@
+# Build outputs
+dist/
+node_modules/
+
+# Vendor/third-party utilities (adapted from other Sogni projects)
+src/utils/video-concatenation.js
