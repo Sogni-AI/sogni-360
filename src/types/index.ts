@@ -87,6 +87,14 @@ export interface Sogni360Project {
   finalLoopUrl?: string;
 }
 
+// Video transition state (for playing transitions between waypoints)
+export interface VideoTransitionState {
+  isPlaying: boolean;
+  videoUrl: string;
+  targetWaypointIndex: number;
+  isVideoReady: boolean;
+}
+
 // App state
 export interface Sogni360State {
   // Project state
@@ -98,6 +106,9 @@ export interface Sogni360State {
   playbackDirection: 'forward' | 'backward';
   playbackSpeed: number;
 
+  // Video transition state
+  videoTransition: VideoTransitionState | null;
+
   // UI state
   uiVisible: boolean;
   showWaypointEditor: boolean;
@@ -107,6 +118,7 @@ export interface Sogni360State {
   showTransitionConfig: boolean;
   showTransitionReview: boolean;
   showFinalVideoPreview: boolean;
+  showProjectManager: boolean;
 
   // Auth
   isAuthenticated: boolean;
@@ -143,11 +155,14 @@ export type Sogni360Action =
   | { type: 'SET_SHOW_TRANSITION_CONFIG'; payload: boolean }
   | { type: 'SET_SHOW_TRANSITION_REVIEW'; payload: boolean }
   | { type: 'SET_SHOW_FINAL_VIDEO_PREVIEW'; payload: boolean }
+  | { type: 'SET_SHOW_PROJECT_MANAGER'; payload: boolean }
   | { type: 'SET_FINAL_LOOP_URL'; payload: string | undefined }
   | { type: 'SET_AUTHENTICATED'; payload: boolean }
   | { type: 'SET_AUTH_MODE'; payload: 'frontend' | 'demo' | null }
   | { type: 'SET_WALLET_BALANCE'; payload: { spark: number; sogni: number } | null }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Sogni360Settings> }
+  | { type: 'SET_VIDEO_TRANSITION'; payload: VideoTransitionState | null }
+  | { type: 'SET_VIDEO_TRANSITION_READY'; payload: boolean }
   | { type: 'RESET_STATE' };
 
 // Generation event types

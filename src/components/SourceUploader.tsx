@@ -1,13 +1,20 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
+import { getProjectCount } from '../utils/localProjectsDB';
 
 const SourceUploader: React.FC = () => {
-  const { setSourceImage } = useApp();
+  const { setSourceImage, dispatch } = useApp();
   const { showToast } = useToast();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [projectCount, setProjectCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check for existing projects
+  useEffect(() => {
+    getProjectCount().then(setProjectCount).catch(() => setProjectCount(0));
+  }, []);
 
   const processImage = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -79,6 +86,10 @@ const SourceUploader: React.FC = () => {
     fileInputRef.current?.click();
   }, []);
 
+  const handleOpenProjects = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: true });
+  }, [dispatch]);
+
   return (
     <div className="flex flex-col items-center justify-center w-full h-full p-8">
       <div className="text-center mb-8">
@@ -115,6 +126,19 @@ const SourceUploader: React.FC = () => {
           </>
         )}
       </div>
+
+      {projectCount > 0 && (
+        <button
+          className="uploader-load-projects-btn"
+          onClick={handleOpenProjects}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+          Load Existing Project ({projectCount})
+        </button>
+      )}
     </div>
   );
 };

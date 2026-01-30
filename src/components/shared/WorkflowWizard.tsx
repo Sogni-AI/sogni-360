@@ -29,9 +29,9 @@ const WorkflowWizard: React.FC<WorkflowWizardProps> = ({
     return 'upcoming';
   };
 
-  const isClickable = (step: WorkflowStep) => {
-    // Allow clicking on completed steps or the current step (to re-enter that view)
-    return (completedSteps.includes(step) || step === currentStep) && onStepClick;
+  const isClickable = (_step: WorkflowStep) => {
+    // Allow clicking on any step - navigation logic handles confirmation for backward navigation
+    return onStepClick !== undefined;
   };
 
   return (

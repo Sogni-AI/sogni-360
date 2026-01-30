@@ -9,7 +9,7 @@ import type {
   ProjectStatus
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { saveCurrentProject, getMostRecentProject, setCurrentProjectId } from '../utils/localProjectsDB';
+import { saveCurrentProject, getMostRecentProject, setCurrentProjectId, loadProject } from '../utils/localProjectsDB';
 
 // Initial state
 const initialState: Sogni360State = {
@@ -18,6 +18,7 @@ const initialState: Sogni360State = {
   isPlaying: false,
   playbackDirection: 'forward',
   playbackSpeed: 1,
+  videoTransition: null,
   uiVisible: true,
   showWaypointEditor: false,
   showAngleReview: false,
@@ -26,6 +27,7 @@ const initialState: Sogni360State = {
   showTransitionConfig: false,
   showTransitionReview: false,
   showFinalVideoPreview: false,
+  showProjectManager: false,
   isAuthenticated: false,
   authMode: null,
   walletBalance: null
@@ -314,6 +316,9 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
     case 'SET_SHOW_FINAL_VIDEO_PREVIEW':
       return { ...state, showFinalVideoPreview: action.payload };
 
+    case 'SET_SHOW_PROJECT_MANAGER':
+      return { ...state, showProjectManager: action.payload };
+
     case 'SET_FINAL_LOOP_URL':
       if (!state.currentProject) return state;
       return {
@@ -345,6 +350,16 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         }
       };
 
+    case 'SET_VIDEO_TRANSITION':
+      return { ...state, videoTransition: action.payload };
+
+    case 'SET_VIDEO_TRANSITION_READY':
+      if (!state.videoTransition) return state;
+      return {
+        ...state,
+        videoTransition: { ...state.videoTransition, isVideoReady: action.payload }
+      };
+
     case 'RESET_STATE':
       return initialState;
 
@@ -372,6 +387,7 @@ interface AppContextType {
   togglePlayback: () => void;
   setUIVisible: (visible: boolean) => void;
   clearProject: () => void;
+  loadProjectById: (projectId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -512,6 +528,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     lastSavedProjectRef.current = null;
   }, []);
 
+  const loadProjectById = useCallback(async (projectId: string) => {
+    try {
+      const project = await loadProject(projectId);
+      if (project) {
+        dispatch({ type: 'SET_PROJECT', payload: project });
+        setCurrentProjectId(projectId);
+        lastSavedProjectRef.current = JSON.stringify(project);
+        console.log('[AppContext] Loaded project:', projectId);
+      }
+    } catch (error) {
+      console.error('[AppContext] Failed to load project:', error);
+    }
+  }, []);
+
   const value: AppContextType = {
     state,
     dispatch,
@@ -528,7 +558,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     previousWaypoint,
     togglePlayback,
     setUIVisible,
-    clearProject
+    clearProject,
+    loadProjectById
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

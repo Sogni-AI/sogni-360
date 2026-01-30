@@ -20,6 +20,12 @@ interface CameraAngle3DControlProps {
   onDistanceChange: (distance: DistanceKey) => void;
   /** compact = tiny non-interactive indicator, card = small interactive, full = full size */
   size?: 'full' | 'card' | 'compact';
+  // Animation props for compact mode
+  targetAzimuth?: AzimuthKey;
+  targetElevation?: ElevationKey;
+  targetDistance?: DistanceKey;
+  animationDuration?: number;
+  isAnimating?: boolean;
 }
 
 const CameraAngle3DControl: React.FC<CameraAngle3DControlProps> = ({
@@ -29,7 +35,12 @@ const CameraAngle3DControl: React.FC<CameraAngle3DControlProps> = ({
   onAzimuthChange,
   onElevationChange,
   onDistanceChange,
-  size = 'full'
+  size = 'full',
+  targetAzimuth,
+  targetElevation,
+  targetDistance,
+  animationDuration,
+  isAnimating
 }) => {
   const orbitalSize = size === 'full' ? 200 : size === 'card' ? 120 : 80;
 
@@ -40,6 +51,11 @@ const CameraAngle3DControl: React.FC<CameraAngle3DControlProps> = ({
         elevation={elevation}
         distance={distance}
         orbitalSize={orbitalSize}
+        targetAzimuth={targetAzimuth}
+        targetElevation={targetElevation}
+        targetDistance={targetDistance}
+        animationDuration={animationDuration}
+        isAnimating={isAnimating}
       />
     );
   }

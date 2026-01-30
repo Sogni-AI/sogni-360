@@ -337,6 +337,27 @@ export async function saveCurrentProject(project: Sogni360Project): Promise<void
   setCurrentProjectId(project.id);
 }
 
+/**
+ * Duplicate a project with a new name
+ * Returns the new project with a fresh ID
+ */
+export async function duplicateProject(
+  project: Sogni360Project,
+  newName: string
+): Promise<Sogni360Project> {
+  const newProject: Sogni360Project = {
+    ...project,
+    id: crypto.randomUUID(),
+    name: newName,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+
+  await saveProject(newProject);
+  console.log('[LocalDB] Duplicated project:', project.id, '→', newProject.id);
+  return newProject;
+}
+
 export default {
   saveProject,
   loadProject,
@@ -347,5 +368,6 @@ export default {
   setCurrentProjectId,
   getCurrentProjectId,
   getMostRecentProject,
-  saveCurrentProject
+  saveCurrentProject,
+  duplicateProject
 };

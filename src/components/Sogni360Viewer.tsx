@@ -1,10 +1,14 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 
 const Sogni360Viewer: React.FC = () => {
   const { state } = useApp();
   const { currentProject, currentWaypointIndex } = state;
+
+  // Track the displayed image dimensions for scaling video to match
+  const [imageDisplaySize, setImageDisplaySize] = useState<{ width: number; height: number } | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   const {
     nextWaypoint,
@@ -13,11 +17,28 @@ const Sogni360Viewer: React.FC = () => {
     togglePlayback,
     isTransitionPlaying,
     handleTransitionEnd,
+    handleVideoCanPlay,
     getCurrentContent
   } = useTransitionNavigation();
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const backgroundImageRef = useRef<HTMLImageElement>(null);
   const content = getCurrentContent();
+
+  // Track background image size for scaling video to match
+  useEffect(() => {
+    const updateImageSize = () => {
+      const img = backgroundImageRef.current || imageRef.current;
+      if (img && img.complete && img.naturalWidth > 0) {
+        setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
+      }
+    };
+
+    // Update on image load and window resize
+    updateImageSize();
+    window.addEventListener('resize', updateImageSize);
+    return () => window.removeEventListener('resize', updateImageSize);
+  }, [content]);
 
   // Handle click zones
   const handleLeftClick = useCallback(() => {
@@ -87,22 +108,56 @@ const Sogni360Viewer: React.FC = () => {
       {/* Image or Video display */}
       {content.type === 'image' ? (
         <img
+          ref={imageRef}
           src={content.url}
           alt="Current view"
           className="max-w-full max-h-full object-contain select-none"
           draggable={false}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
+          }}
         />
       ) : (
-        <video
-          ref={videoRef}
-          key={content.url} // Force remount on URL change
-          src={content.url}
-          className="max-w-full max-h-full object-contain"
-          autoPlay
-          muted
-          playsInline
-          onEnded={handleTransitionEnd}
-        />
+        <div className="relative max-w-full max-h-full flex items-center justify-center">
+          {/* Destination image ALWAYS shown behind video - prevents flash when video ends */}
+          {content.backgroundImageUrl && (
+            <img
+              ref={backgroundImageRef}
+              src={content.backgroundImageUrl}
+              alt="Destination"
+              className="max-w-full max-h-full object-contain select-none absolute inset-0 m-auto"
+              draggable={false}
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
+              }}
+            />
+          )}
+          {/* Video element layered on top - scaled to match image size */}
+          <video
+            ref={videoRef}
+            key={content.url}
+            src={content.url}
+            className={`absolute inset-0 m-auto transition-opacity duration-150 ${
+              content.isVideoReady ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={imageDisplaySize ? {
+              width: `${imageDisplaySize.width}px`,
+              height: `${imageDisplaySize.height}px`,
+              objectFit: 'cover'
+            } : {
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain'
+            }}
+            autoPlay
+            muted
+            playsInline
+            onCanPlayThrough={handleVideoCanPlay}
+            onEnded={handleTransitionEnd}
+          />
+        </div>
       )}
 
       {/* Click zones (desktop) */}

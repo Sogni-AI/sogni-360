@@ -2,25 +2,57 @@
  * useTransitionNavigation
  *
  * Provides waypoint navigation that plays video transitions when available.
- * Use this hook instead of direct nextWaypoint/previousWaypoint from AppContext
- * to get smooth video transitions between waypoints.
+ * Uses global state from AppContext for transition state to avoid hooks order issues.
+ *
+ * Features:
+ * - Preloads all transition videos for instant playback
+ * - Shows current waypoint image while video loads (no black flash)
+ * - Tracks video ready state for smooth transitions
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import type { VideoTransitionState } from '../types';
 
-interface TransitionState {
-  isPlaying: boolean;
-  videoUrl: string;
-  targetWaypointIndex: number;
-}
+// Cache for preloaded video elements (module-level singleton)
+const videoCache = new Map<string, HTMLVideoElement>();
 
 export function useTransitionNavigation() {
   const { state, dispatch } = useApp();
-  const { currentProject, currentWaypointIndex, isPlaying: isAutoPlaying, playbackSpeed } = state;
-  const [transition, setTransition] = useState<TransitionState | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const {
+    currentProject,
+    currentWaypointIndex,
+    isPlaying: isAutoPlaying,
+    playbackSpeed,
+    videoTransition
+  } = state;
+
   const autoPlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Preload all segment videos when project changes or segments update
+  useEffect(() => {
+    if (!currentProject || currentProject.segments.length === 0) return;
+
+    currentProject.segments.forEach(segment => {
+      if (segment.status === 'ready' && segment.videoUrl && !videoCache.has(segment.videoUrl)) {
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.muted = true;
+        video.playsInline = true;
+
+        video.oncanplaythrough = () => {
+          videoCache.set(segment.videoUrl!, video);
+        };
+
+        video.onerror = () => {
+          console.warn('[useTransitionNavigation] Failed to preload video:', segment.videoUrl);
+        };
+
+        video.src = segment.videoUrl;
+        video.load();
+      }
+    });
+  }, [currentProject?.segments]);
 
   // Find segment video URL between two waypoint indices
   const findSegmentVideoUrl = useCallback((fromIndex: number, toIndex: number): string | null => {
@@ -41,8 +73,7 @@ export function useTransitionNavigation() {
       return forwardSegment.videoUrl;
     }
 
-    // Look for a segment to -> from (reverse direction - just use the video as-is)
-    // Note: True reverse playback not supported by browsers, so we just play forward
+    // Look for a segment to -> from (reverse direction)
     const reverseSegment = currentProject.segments.find(
       s => s.fromWaypointId === toWaypoint.id && s.toWaypointId === fromWaypoint.id
     );
@@ -64,12 +95,17 @@ export function useTransitionNavigation() {
     const videoUrl = findSegmentVideoUrl(currentWaypointIndex, clampedTarget);
 
     if (videoUrl) {
-      // Play video transition
-      setTransition({
+      // Check if video is already preloaded
+      const isVideoReady = videoCache.has(videoUrl);
+
+      // Set transition state in global context
+      const transition: VideoTransitionState = {
         isPlaying: true,
         videoUrl,
-        targetWaypointIndex: clampedTarget
-      });
+        targetWaypointIndex: clampedTarget,
+        isVideoReady
+      };
+      dispatch({ type: 'SET_VIDEO_TRANSITION', payload: transition });
     } else {
       // No video transition, just navigate directly
       dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: clampedTarget });
@@ -79,34 +115,41 @@ export function useTransitionNavigation() {
 
   // Next waypoint handler
   const nextWaypoint = useCallback(() => {
-    if (!currentProject || transition?.isPlaying) return;
+    if (!currentProject || videoTransition?.isPlaying) return;
     const maxIndex = currentProject.waypoints.length - 1;
     const newIndex = currentWaypointIndex >= maxIndex ? 0 : currentWaypointIndex + 1;
     navigateWithTransition(newIndex, 'forward');
-  }, [currentProject, currentWaypointIndex, navigateWithTransition, transition?.isPlaying]);
+  }, [currentProject, currentWaypointIndex, navigateWithTransition, videoTransition?.isPlaying]);
 
   // Previous waypoint handler
   const previousWaypoint = useCallback(() => {
-    if (!currentProject || transition?.isPlaying) return;
+    if (!currentProject || videoTransition?.isPlaying) return;
     const maxIndex = currentProject.waypoints.length - 1;
     const newIndex = currentWaypointIndex <= 0 ? maxIndex : currentWaypointIndex - 1;
     navigateWithTransition(newIndex, 'backward');
-  }, [currentProject, currentWaypointIndex, navigateWithTransition, transition?.isPlaying]);
+  }, [currentProject, currentWaypointIndex, navigateWithTransition, videoTransition?.isPlaying]);
 
   // Handle video transition end
   const handleTransitionEnd = useCallback(() => {
-    if (!transition) return;
+    if (!videoTransition) return;
 
     // Update to target waypoint
-    dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: transition.targetWaypointIndex });
+    dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: videoTransition.targetWaypointIndex });
 
     // Clear transition state
-    setTransition(null);
-  }, [transition, dispatch]);
+    dispatch({ type: 'SET_VIDEO_TRANSITION', payload: null });
+  }, [videoTransition, dispatch]);
+
+  // Handle video becoming ready to play (for non-preloaded videos)
+  const handleVideoCanPlay = useCallback(() => {
+    if (videoTransition && !videoTransition.isVideoReady) {
+      dispatch({ type: 'SET_VIDEO_TRANSITION_READY', payload: true });
+    }
+  }, [videoTransition, dispatch]);
 
   // Auto-play handling - waits for video transitions to complete
   useEffect(() => {
-    if (!isAutoPlaying || !currentProject || transition?.isPlaying) {
+    if (!isAutoPlaying || !currentProject || videoTransition?.isPlaying) {
       if (autoPlayTimerRef.current) {
         clearTimeout(autoPlayTimerRef.current);
         autoPlayTimerRef.current = null;
@@ -114,8 +157,6 @@ export function useTransitionNavigation() {
       return;
     }
 
-    // When a video is playing as part of auto-play, don't start another timer
-    // The video's onEnded will trigger the next advance
     autoPlayTimerRef.current = setTimeout(() => {
       nextWaypoint();
     }, 3000 / playbackSpeed);
@@ -126,20 +167,38 @@ export function useTransitionNavigation() {
         autoPlayTimerRef.current = null;
       }
     };
-  }, [isAutoPlaying, playbackSpeed, currentProject, nextWaypoint, transition?.isPlaying, currentWaypointIndex]);
+  }, [isAutoPlaying, playbackSpeed, currentProject, nextWaypoint, videoTransition?.isPlaying, currentWaypointIndex]);
 
   // Toggle playback
   const togglePlayback = useCallback(() => {
     dispatch({ type: 'SET_PLAYING', payload: !isAutoPlaying });
   }, [dispatch, isAutoPlaying]);
 
+  // Get waypoint image URL by index
+  const getWaypointImageUrl = useCallback((index: number) => {
+    if (!currentProject) return '';
+    const waypoints = currentProject.waypoints;
+    if (index < 0 || index >= waypoints.length) return currentProject.sourceImageUrl;
+    return waypoints[index]?.imageUrl || currentProject.sourceImageUrl;
+  }, [currentProject]);
+
   // Get current content (image or video)
   const getCurrentContent = useCallback(() => {
     if (!currentProject) return null;
 
-    // If a transition video is playing, show that
-    if (transition?.isPlaying && transition.videoUrl) {
-      return { type: 'video' as const, url: transition.videoUrl };
+    // If a transition video is playing
+    if (videoTransition?.isPlaying && videoTransition.videoUrl) {
+      // Use DESTINATION waypoint image as background - this way when video ends,
+      // the correct image is already visible (no flash)
+      const destinationImageUrl = getWaypointImageUrl(videoTransition.targetWaypointIndex);
+
+      return {
+        type: 'video' as const,
+        url: videoTransition.videoUrl,
+        isVideoReady: videoTransition.isVideoReady,
+        // Always show destination image behind video
+        backgroundImageUrl: destinationImageUrl
+      };
     }
 
     const waypoints = currentProject.waypoints;
@@ -162,7 +221,7 @@ export function useTransitionNavigation() {
 
     // Fallback to source image
     return { type: 'image' as const, url: currentProject.sourceImageUrl };
-  }, [currentProject, currentWaypointIndex, transition]);
+  }, [currentProject, currentWaypointIndex, videoTransition, getWaypointImageUrl]);
 
   return {
     // Navigation functions
@@ -171,15 +230,15 @@ export function useTransitionNavigation() {
     navigateToWaypoint: navigateWithTransition,
     togglePlayback,
 
-    // Transition state
-    isTransitionPlaying: transition?.isPlaying || false,
-    transitionVideoUrl: transition?.videoUrl || null,
+    // Transition state (from global context)
+    isTransitionPlaying: videoTransition?.isPlaying || false,
+    transitionVideoUrl: videoTransition?.videoUrl || null,
+    isVideoReady: videoTransition?.isVideoReady || false,
+    targetWaypointIndex: videoTransition?.targetWaypointIndex ?? null,
     handleTransitionEnd,
+    handleVideoCanPlay,
 
     // Content helpers
-    getCurrentContent,
-
-    // Refs for video element
-    videoRef
+    getCurrentContent
   };
 }

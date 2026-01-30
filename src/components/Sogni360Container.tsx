@@ -11,16 +11,19 @@ import TransitionConfigPanel from './TransitionConfigPanel';
 import TransitionReviewPanel from './TransitionReviewPanel';
 import FinalVideoPanel from './FinalVideoPanel';
 import ProjectManagerModal from './ProjectManagerModal';
+import WorkflowNavigationModal from './WorkflowNavigationModal';
 import useAutoHideUI from '../hooks/useAutoHideUI';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
+import { duplicateProject } from '../utils/localProjectsDB';
 
 const Sogni360Container: React.FC = () => {
   const { state, dispatch, setUIVisible, isRestoring, updateSegment, clearProject, loadProjectById } = useApp();
-  const { nextWaypoint, previousWaypoint, isTransitionPlaying } = useTransitionNavigation();
+  const { nextWaypoint, previousWaypoint, isTransitionPlaying, targetWaypointIndex } = useTransitionNavigation();
   const { currentProject, showWaypointEditor, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager } = state;
   const hasAutoOpenedEditor = useRef(false);
   const [isTransitionGenerating, setIsTransitionGenerating] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<{ from: WorkflowStep; to: WorkflowStep } | null>(null);
 
   // Auth state
   const { isAuthenticated, isLoading: authLoading } = useSogniAuth();
@@ -38,6 +41,12 @@ const Sogni360Container: React.FC = () => {
 
   // Get current waypoint for 3D control display
   const currentWaypoint = waypoints[currentWaypointIndex];
+
+  // Get target waypoint during video transition for camera animation
+  const targetWaypoint = targetWaypointIndex !== null ? waypoints[targetWaypointIndex] : null;
+
+  // Get video duration for camera animation sync
+  const videoDuration = currentProject?.settings?.transitionDuration || 1.5;
 
   // Auto-open editor when image is uploaded but no waypoints exist
   useEffect(() => {
@@ -280,8 +289,44 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: true });
   }, [dispatch]);
 
-  // Handle workflow step navigation
-  const handleWorkflowStepClick = useCallback((step: WorkflowStep) => {
+  // Compute workflow state - needs to be before callbacks that use it
+  const { currentStep, completedSteps } = computeWorkflowStep(currentProject);
+
+  // Check if navigating to a step would lose work
+  const wouldLoseWork = useCallback((toStep: WorkflowStep): boolean => {
+    if (!currentProject) return false;
+
+    // Check what work exists after the target step
+    if (toStep === 'upload') {
+      // Going to upload always loses everything
+      return currentProject.waypoints.length > 0 ||
+             currentProject.segments.length > 0 ||
+             !!currentProject.finalLoopUrl;
+    }
+
+    if (toStep === 'define-angles') {
+      // Lose rendered angles, videos, export
+      const hasRenderedAngles = currentProject.waypoints.some(wp => wp.status === 'ready' && wp.imageUrl && !wp.isOriginal);
+      return hasRenderedAngles ||
+             currentProject.segments.length > 0 ||
+             !!currentProject.finalLoopUrl;
+    }
+
+    if (toStep === 'render-angles') {
+      // Lose videos and export
+      return currentProject.segments.length > 0 || !!currentProject.finalLoopUrl;
+    }
+
+    if (toStep === 'render-videos') {
+      // Lose export
+      return !!currentProject.finalLoopUrl;
+    }
+
+    return false;
+  }, [currentProject]);
+
+  // Execute the actual navigation (called after user confirms or no confirmation needed)
+  const executeNavigation = useCallback((step: WorkflowStep, clearSubsequentData: boolean = false) => {
     // Close all panels first
     dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: false });
     dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
@@ -289,26 +334,57 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: false });
     dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: false });
 
+    // Clear subsequent data if going backward
+    if (clearSubsequentData && currentProject) {
+      if (step === 'upload') {
+        handleNewProject();
+        return;
+      }
+
+      if (step === 'define-angles') {
+        // Reset all waypoints to pending, clear segments
+        const resetWaypoints = currentProject.waypoints.map(wp => ({
+          ...wp,
+          status: (wp.isOriginal ? 'ready' : 'pending') as 'ready' | 'pending',
+          imageUrl: wp.isOriginal ? currentProject.sourceImageUrl : undefined,
+          imageHistory: undefined,
+          currentImageIndex: undefined
+        }));
+        dispatch({ type: 'SET_WAYPOINTS', payload: resetWaypoints });
+        dispatch({ type: 'SET_SEGMENTS', payload: [] });
+        dispatch({ type: 'SET_FINAL_LOOP_URL', payload: undefined });
+        dispatch({ type: 'SET_PROJECT_STATUS', payload: 'draft' });
+      }
+
+      if (step === 'render-angles') {
+        // Clear segments and final video
+        dispatch({ type: 'SET_SEGMENTS', payload: [] });
+        dispatch({ type: 'SET_FINAL_LOOP_URL', payload: undefined });
+        dispatch({ type: 'SET_PROJECT_STATUS', payload: 'draft' });
+      }
+
+      if (step === 'render-videos') {
+        // Clear final video
+        dispatch({ type: 'SET_FINAL_LOOP_URL', payload: undefined });
+      }
+    }
+
     // Navigate to the clicked step
     switch (step) {
       case 'upload':
-        // Start a new project
         handleNewProject();
         break;
       case 'define-angles':
-        // Show editor in configuration mode
         dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
         dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
         break;
       case 'render-angles':
-        // Show editor in review mode if we have generated angles
         if (hasGeneratedImages) {
           dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: true });
         }
         dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
         break;
       case 'render-videos':
-        // Show transition review if we have some videos, otherwise show config
         if (currentProject?.segments?.some(s => s.status === 'ready' || s.status === 'generating')) {
           dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: true });
         } else if (hasGeneratedImages) {
@@ -325,8 +401,40 @@ const Sogni360Container: React.FC = () => {
     }
   }, [dispatch, hasGeneratedImages, currentProject, handleNewProject]);
 
-  // Compute workflow state
-  const { currentStep, completedSteps } = computeWorkflowStep(currentProject);
+  // Handle workflow step navigation
+  const handleWorkflowStepClick = useCallback((step: WorkflowStep) => {
+    // Check if this navigation would lose work
+    if (wouldLoseWork(step)) {
+      // Show confirmation modal
+      setPendingNavigation({ from: currentStep, to: step });
+      return;
+    }
+
+    // No work to lose, navigate directly
+    executeNavigation(step, false);
+  }, [currentStep, wouldLoseWork, executeNavigation]);
+
+  // Handle navigation modal actions
+  const handleNavigationCancel = useCallback(() => {
+    setPendingNavigation(null);
+  }, []);
+
+  const handleNavigationDiscard = useCallback(() => {
+    if (!pendingNavigation) return;
+    setPendingNavigation(null);
+    executeNavigation(pendingNavigation.to, true);
+  }, [pendingNavigation, executeNavigation]);
+
+  const handleNavigationSaveCopy = useCallback(async (newName: string) => {
+    if (!pendingNavigation || !currentProject) return;
+
+    // Duplicate the project with the new name
+    await duplicateProject(currentProject, newName);
+
+    // Now navigate with data clearing
+    setPendingNavigation(null);
+    executeNavigation(pendingNavigation.to, true);
+  }, [pendingNavigation, currentProject, executeNavigation]);
 
   // If loading auth or restoring project, show loading state
   if (authLoading || isRestoring) {
@@ -420,6 +528,12 @@ const Sogni360Container: React.FC = () => {
               onElevationChange={() => {}}
               onDistanceChange={() => {}}
               size="compact"
+              // Animation props for synced camera movement during video playback
+              targetAzimuth={targetWaypoint?.azimuth}
+              targetElevation={targetWaypoint?.elevation}
+              targetDistance={targetWaypoint?.distance}
+              animationDuration={videoDuration}
+              isAnimating={isTransitionPlaying && !!targetWaypoint}
             />
             {/* Waypoint counter */}
             {hasGeneratedImages && (
@@ -530,6 +644,18 @@ const Sogni360Container: React.FC = () => {
           onLoadProject={handleLoadProject}
           onNewProject={handleNewProject}
           currentProjectId={currentProject?.id}
+        />
+      )}
+
+      {/* Workflow Navigation Confirmation Modal */}
+      {pendingNavigation && currentProject && (
+        <WorkflowNavigationModal
+          fromStep={pendingNavigation.from}
+          toStep={pendingNavigation.to}
+          currentProjectName={currentProject.name}
+          onCancel={handleNavigationCancel}
+          onDiscard={handleNavigationDiscard}
+          onSaveCopy={handleNavigationSaveCopy}
         />
       )}
     </div>

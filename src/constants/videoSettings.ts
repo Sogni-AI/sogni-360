@@ -68,7 +68,7 @@ export type VideoResolution = keyof typeof VIDEO_RESOLUTIONS;
 
 // Default video settings for 360 transitions
 export const DEFAULT_VIDEO_SETTINGS = {
-  resolution: '480p' as VideoResolution,
+  resolution: '720p' as VideoResolution,
   quality: 'fast' as VideoQualityPreset,
   frames: 49, // ~3 seconds at 16fps for smooth transitions
   fps: 16,
