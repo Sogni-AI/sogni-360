@@ -106,7 +106,6 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
       const success = await downloadSingleVideo(segment.videoUrl, filename);
       if (success) {
-        showToast({ message: 'Video downloaded', type: 'success' });
       } else {
         showToast({ message: 'Download failed', type: 'error' });
       }

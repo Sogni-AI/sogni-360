@@ -5,6 +5,7 @@ import { useSogniAuth } from '../services/sogniAuth';
 import SourceUploader from './SourceUploader';
 import Sogni360Viewer from './Sogni360Viewer';
 import WaypointEditor from './WaypointEditor';
+import AngleReviewPanel from './AngleReviewPanel';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
 import WorkflowWizard, { computeWorkflowStep, WorkflowStep } from './shared/WorkflowWizard';
 import TransitionConfigPanel, { TransitionGenerationSettings } from './TransitionConfigPanel';
@@ -31,7 +32,7 @@ interface PendingDestructiveAction {
 const Sogni360Container: React.FC = () => {
   const { state, dispatch, setUIVisible, isRestoring, updateSegment, clearProject, loadProjectById } = useApp();
   const { nextWaypoint, previousWaypoint, isTransitionPlaying, targetWaypointIndex } = useTransitionNavigation();
-  const { currentProject, showWaypointEditor, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager } = state;
+  const { currentProject, showWaypointEditor, showAngleReview, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager } = state;
   const hasAutoOpenedEditor = useRef(false);
   const [isTransitionGenerating, setIsTransitionGenerating] = useState(false);
   const [pendingDestructiveAction, setPendingDestructiveAction] = useState<PendingDestructiveAction | null>(null);
@@ -335,6 +336,17 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: false });
   }, [dispatch]);
 
+  // Handle closing standalone angle review (accessed from timeline)
+  const handleStandaloneAngleReviewClose = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
+  }, [dispatch]);
+
+  // Handle applying from standalone angle review (proceed to transitions)
+  const handleStandaloneAngleReviewApply = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
+    dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
+  }, [dispatch]);
+
   // Check if current project has work that would be lost
   const hasUnsavedWork = useCallback(() => {
     if (!currentProject) return false;
@@ -494,9 +506,12 @@ const Sogni360Container: React.FC = () => {
         break;
       case 'render-angles':
         if (hasGeneratedImages) {
+          // Show review panel standalone (not wrapped in waypoint editor)
           dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: true });
+        } else {
+          // No generated images yet - need to configure and generate
+          dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
         }
-        dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
         break;
       case 'render-videos':
         if (currentProject?.segments?.some(s => s.status === 'ready' || s.status === 'generating')) {
@@ -619,13 +634,12 @@ const Sogni360Container: React.FC = () => {
       {/* Global Workflow Wizard - always visible when project exists */}
       {currentProject && (
         <div className="global-wizard-bar">
-          <div className="global-wizard-bar-inner">
-            <WorkflowWizard
-              currentStep={currentStep}
-              completedSteps={completedSteps}
-              onStepClick={handleWorkflowStepClick}
-            />
-          </div>
+          <div className="global-wizard-bar-spacer" />
+          <WorkflowWizard
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+            onStepClick={handleWorkflowStepClick}
+          />
           <div className="project-actions-bar">
             <button className="project-action-btn" onClick={handleNewProject} title="New Project">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -744,6 +758,17 @@ const Sogni360Container: React.FC = () => {
         </div>
       )}
 
+      {/* Standalone Angle Review Panel - shown when accessed from timeline (not from editor) */}
+      {showAngleReview && !showWaypointEditor && (
+        <div className="waypoint-editor-panel">
+          <AngleReviewPanel
+            onClose={handleStandaloneAngleReviewClose}
+            onApply={handleStandaloneAngleReviewApply}
+            isGenerating={false}
+            onConfirmDestructiveAction={confirmDestructiveAction}
+          />
+        </div>
+      )}
 
       {/* Transition Config Panel */}
       {showTransitionConfig && (

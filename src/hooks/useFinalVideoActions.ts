@@ -141,8 +141,6 @@ export function useFinalVideoActions({
     setIsDownloading(true);
 
     try {
-      showToast({ message: 'Preparing download...', type: 'info' });
-
       const response = await fetch(localStitchedUrl);
       if (!response.ok) throw new Error('Download failed');
 
@@ -157,8 +155,6 @@ export function useFinalVideoActions({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
-
-      showToast({ message: 'Download complete!', type: 'success' });
     } catch (error) {
       console.error('Download error:', error);
       showToast({ message: 'Download failed', type: 'error' });

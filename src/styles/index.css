@@ -1779,7 +1779,9 @@ html, body {
 
 /* Global Wizard Bar - takes up space at top */
 .global-wizard-bar {
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 20;
   background: rgba(0, 0, 0, 0.9);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -1787,26 +1789,17 @@ html, body {
   flex-shrink: 0;
 }
 
-.global-wizard-bar-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  max-width: 1400px;
-  margin: 0 auto;
+/* Left spacer - hidden, not needed */
+.global-wizard-bar-spacer {
+  display: none;
 }
 
-.global-wizard-bar-inner .workflow-wizard {
-  flex: 1;
-  justify-content: center;
-  min-width: 0;
-}
-
+/* Project actions fixed to top right corner of screen */
 .global-wizard-bar .project-actions-bar {
-  position: absolute;
+  position: fixed;
+  top: 0.75rem;
   right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
+  z-index: 100;
 }
 
 /* Review panel wizard wrapper */

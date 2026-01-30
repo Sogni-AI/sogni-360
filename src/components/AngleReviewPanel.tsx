@@ -109,7 +109,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                 }
               }
             });
-            showToast({ message: 'Angle regenerated', type: 'success' });
             // Play sound when single angle completes
             playVideoCompleteIfEnabled();
           },
@@ -189,9 +188,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       const filename = `sogni-360-step${index + 1}-${angleLabel}.jpg`;
 
       const success = await downloadSingleImage(waypoint.imageUrl, filename);
-      if (success) {
-        showToast({ message: 'Image downloaded', type: 'success' });
-      } else {
+      if (!success) {
         showToast({ message: 'Download failed', type: 'error' });
       }
     } catch {
@@ -388,7 +385,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       // Enhance single waypoint
       const success = await executeEnhance(pendingEnhanceWaypoint, prompt);
       if (success) {
-        showToast({ message: 'Image enhanced', type: 'success' });
         playVideoCompleteIfEnabled();
       } else {
         showToast({ message: 'Enhancement failed', type: 'error' });

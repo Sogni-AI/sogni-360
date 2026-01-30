@@ -219,8 +219,7 @@ const OrbitalChoreographer: React.FC<OrbitalChoreographerProps> = ({
     });
 
     setShowPresetPicker(false);
-    showToast({ message: `Loaded "${preset.label}"`, type: 'success' });
-  }, [waypoints, dispatch, showToast]);
+  }, [waypoints, dispatch]);
 
   // Select a waypoint
   const handleSelectWaypoint = useCallback((index: number) => {
@@ -270,8 +269,7 @@ const OrbitalChoreographer: React.FC<OrbitalChoreographerProps> = ({
 
     dispatch({ type: 'ADD_WAYPOINT', payload: newWaypoint });
     dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: waypoints.length });
-    showToast({ message: 'Waypoint added', type: 'success' });
-  }, [waypoints, dispatch, showToast]);
+  }, [waypoints, dispatch]);
 
   // Cycle through azimuth for selected waypoint
   const handleCycleAzimuth = useCallback((direction: 1 | -1) => {

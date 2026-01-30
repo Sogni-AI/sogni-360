@@ -182,6 +182,57 @@ export const MULTI_ANGLE_PRESETS: MultiAnglePreset[] = [
       { azimuth: 'front-left', elevation: 'eye-level', distance: 'medium' },
       { azimuth: 'front', elevation: 'elevated', distance: 'medium' }
     ]
+  },
+  {
+    key: '360-spin-close-9',
+    label: '360 Spin Close (9)',
+    description: '9 angles - close-up, eye-level',
+    icon: '🎯',
+    angles: [
+      { azimuth: 'front', elevation: 'eye-level', distance: 'close-up', isOriginal: true },
+      { azimuth: 'front-right', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'right', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'back-right', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'back', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'back-left', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'left', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'front-left', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'front', elevation: 'eye-level', distance: 'close-up' }
+    ]
+  },
+  {
+    key: '360-spin-high-wide-9',
+    label: '360 Spin High+Wide (9)',
+    description: '9 angles - high angle, wide shot',
+    icon: '🦅',
+    angles: [
+      { azimuth: 'front', elevation: 'high-angle', distance: 'wide', isOriginal: true },
+      { azimuth: 'front-right', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'right', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'back-right', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'back', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'back-left', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'left', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'front-left', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'front', elevation: 'high-angle', distance: 'wide' }
+    ]
+  },
+  {
+    key: '360-spin-random-9',
+    label: '360 Spin Random (9)',
+    description: '9 angles - varied heights & distances',
+    icon: '🎲',
+    angles: [
+      { azimuth: 'front', elevation: 'eye-level', distance: 'close-up', isOriginal: true },
+      { azimuth: 'front-right', elevation: 'elevated', distance: 'medium' },
+      { azimuth: 'right', elevation: 'low-angle', distance: 'wide' },
+      { azimuth: 'back-right', elevation: 'high-angle', distance: 'close-up' },
+      { azimuth: 'back', elevation: 'eye-level', distance: 'medium' },
+      { azimuth: 'back-left', elevation: 'elevated', distance: 'wide' },
+      { azimuth: 'left', elevation: 'low-angle', distance: 'close-up' },
+      { azimuth: 'front-left', elevation: 'high-angle', distance: 'medium' },
+      { azimuth: 'front', elevation: 'eye-level', distance: 'close-up' }
+    ]
   }
 ];
 

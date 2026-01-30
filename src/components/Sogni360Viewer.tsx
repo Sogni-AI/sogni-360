@@ -52,8 +52,6 @@ const Sogni360Viewer: React.FC = () => {
 
     setIsDownloading(true);
     try {
-      showToast({ message: 'Preparing download...', type: 'info' });
-
       const response = await fetch(currentProject.finalLoopUrl);
       if (!response.ok) throw new Error('Download failed');
 
@@ -68,8 +66,6 @@ const Sogni360Viewer: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
-
-      showToast({ message: 'Download complete!', type: 'success' });
     } catch (error) {
       console.error('Download error:', error);
       showToast({ message: 'Download failed', type: 'error' });
