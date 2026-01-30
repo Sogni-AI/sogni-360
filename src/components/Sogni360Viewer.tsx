@@ -95,7 +95,7 @@ const Sogni360Viewer: React.FC = () => {
     updateImageSize();
     window.addEventListener('resize', updateImageSize);
     return () => window.removeEventListener('resize', updateImageSize);
-  }, [content]);
+  }, [content?.url, content?.type]);
 
   // Handle reverse video playback using requestAnimationFrame
   useEffect(() => {

@@ -63,6 +63,8 @@ export interface Sogni360Settings {
   transitionPrompt?: string;
   transitionQuality?: TransitionQuality;
   transitionDuration?: number; // Duration per clip in seconds
+  // Music for final video
+  musicSelection?: MusicSelection;
 }
 
 // Project status

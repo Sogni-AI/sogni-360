@@ -16,6 +16,7 @@ import type { WorkflowStep } from './shared/WorkflowWizard';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import AngleReviewPanel from './AngleReviewPanel';
+import { warmUpAudio, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
 
 const SPARK_PER_ANGLE = 2.59;
 const USD_PER_SPARK = 0.005;
@@ -182,6 +183,8 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
           onAllComplete: () => {
             setIsGenerating(false);
             dispatch({ type: 'SET_PROJECT_STATUS', payload: 'draft' });
+            // Play sound when all angles complete
+            playSogniSignatureIfEnabled();
           }
         }
       );
@@ -208,6 +211,9 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
       showToast({ message: `Add at least ${MIN_WAYPOINTS} angles`, type: 'warning' });
       return;
     }
+
+    // Warm up audio on user interaction for iOS compatibility
+    warmUpAudio();
 
     // Use confirmation callback if provided, otherwise execute directly
     if (onConfirmDestructiveAction) {

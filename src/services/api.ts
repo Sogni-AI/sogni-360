@@ -164,8 +164,8 @@ class ApiClient {
         referenceImageEnd: imageToBase64(params.referenceImageEnd),
         prompt: params.prompt,
         negativePrompt: params.negativePrompt || '',
-        width: params.width || 480,
-        height: params.height || 480,
+        width: params.width || 720,  // Default to 720p if not specified
+        height: params.height || 720,
         frames: params.frames || 49,
         steps: params.steps || 4,
         model: params.model || 'wan_v2.2-14b-fp8_i2v_lightx2v',

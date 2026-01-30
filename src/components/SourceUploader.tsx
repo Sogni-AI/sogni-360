@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { getProjectCount } from '../utils/localProjectsDB';
+import { resizeImageIfNeeded } from '../utils/imageUtils';
 
 const SourceUploader: React.FC = () => {
   const { setSourceImage, dispatch } = useApp();
@@ -39,14 +40,17 @@ const SourceUploader: React.FC = () => {
       });
 
       // Get image dimensions
-      const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const originalDimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
         img.onerror = reject;
         img.src = dataUrl;
       });
 
-      setSourceImage(dataUrl, dimensions);
+      // Resize if longest dimension exceeds 2048px
+      const { dataUrl: finalDataUrl, dimensions } = await resizeImageIfNeeded(dataUrl, originalDimensions);
+
+      setSourceImage(finalDataUrl, dimensions);
     } catch (error) {
       console.error('Error processing image:', error);
       showToast({ message: 'Failed to process image', type: 'error' });

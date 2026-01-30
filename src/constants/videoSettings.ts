@@ -101,7 +101,7 @@ export const VIDEO_CONFIG = {
 export function calculateVideoDimensions(
   imageWidth: number,
   imageHeight: number,
-  resolution: VideoResolution = '480p'
+  resolution: VideoResolution = DEFAULT_VIDEO_SETTINGS.resolution
 ): { width: number; height: number } {
   const targetShortSide = VIDEO_RESOLUTIONS[resolution].maxDimension;
   const divisor = VIDEO_CONFIG.dimensionDivisor;

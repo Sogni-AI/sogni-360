@@ -1,16 +1,20 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
-import type { Segment } from '../types';
+import type { Segment, MusicSelection } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import {
   VIDEO_QUALITY_PRESETS,
   VIDEO_RESOLUTIONS,
   VIDEO_CONFIG,
+  DEFAULT_VIDEO_SETTINGS,
   VideoQualityPreset,
   VideoResolution
 } from '../constants/videoSettings';
 import type { WorkflowStep } from './shared/WorkflowWizard';
+import MusicSelector from './shared/MusicSelector';
+import MusicConfigSection from './shared/MusicConfigSection';
+import { isSoundEnabled, setSoundEnabled, warmUpAudio } from '../utils/sonicLogos';
 
 // Cost estimation constants
 const SPARK_PER_SECOND = 3.92; // Approximate spark cost per second of video
@@ -39,7 +43,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     currentProject?.settings.transitionPrompt || DEFAULT_TRANSITION_PROMPT
   );
   const [resolution, setResolution] = useState<VideoResolution>(
-    (currentProject?.settings.videoResolution as VideoResolution) || '480p'
+    (currentProject?.settings.videoResolution as VideoResolution) || DEFAULT_VIDEO_SETTINGS.resolution
   );
   const [duration, setDuration] = useState(
     currentProject?.settings.transitionDuration || 1.5
@@ -47,6 +51,13 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   const [quality, setQuality] = useState<VideoQualityPreset>(
     (currentProject?.settings.transitionQuality as VideoQualityPreset) || 'fast'
   );
+
+  // Music state
+  const [showMusicSelector, setShowMusicSelector] = useState(false);
+  const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(null);
+
+  // Sound effects state
+  const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
 
   const waypoints = currentProject?.waypoints || [];
   const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
@@ -68,16 +79,26 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     return options;
   }, []);
 
+  // Handle sound toggle
+  const handleSoundToggle = useCallback(() => {
+    const newValue = !soundEnabled;
+    setSoundEnabledState(newValue);
+    setSoundEnabled(newValue);
+  }, [soundEnabled]);
+
   // Execute the actual generation (called after confirmation)
   const executeStartGeneration = useCallback(() => {
-    // Save settings to project
+    // Warm up audio on user interaction for iOS compatibility
+    warmUpAudio();
+    // Save settings to project (including music selection)
     dispatch({
       type: 'UPDATE_SETTINGS',
       payload: {
         transitionPrompt,
         videoResolution: resolution,
         transitionDuration: duration,
-        transitionQuality: quality
+        transitionQuality: quality,
+        musicSelection: musicSelection || undefined
       }
     });
 
@@ -101,7 +122,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
 
     // Trigger generation with the segments directly (avoids async state timing issue)
     onStartGeneration(newSegments);
-  }, [readyWaypoints, transitionPrompt, resolution, duration, quality, dispatch, onStartGeneration]);
+  }, [readyWaypoints, transitionPrompt, resolution, duration, quality, musicSelection, dispatch, onStartGeneration]);
 
   // Handle start generation button click - confirms if work would be lost
   const handleStartGeneration = useCallback(() => {
@@ -204,6 +225,29 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           </div>
         </div>
 
+        {/* Sound Effects Toggle */}
+        <div className="config-setting-row" style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+          <label className="config-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={soundEnabled}
+              onChange={handleSoundToggle}
+              style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+              Sound effects when generation completes
+            </span>
+          </label>
+        </div>
+
+        {/* Music Section */}
+        <MusicConfigSection
+          musicSelection={musicSelection}
+          onAddMusic={() => setShowMusicSelector(true)}
+          onChangeMusic={() => setShowMusicSelector(true)}
+          onRemoveMusic={() => setMusicSelection(null)}
+        />
+
         {/* Cost estimate */}
         <div className="config-cost">
           <div className="config-cost-left">
@@ -228,6 +272,17 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           Generate {transitionCount} Transition Video{transitionCount !== 1 ? 's' : ''}
         </button>
       </div>
+
+      {/* Music Selector Modal */}
+      <MusicSelector
+        visible={showMusicSelector}
+        onConfirm={(selection) => {
+          setMusicSelection(selection);
+          setShowMusicSelector(false);
+        }}
+        onClose={() => setShowMusicSelector(false)}
+        videoDuration={totalSeconds}
+      />
     </div>
   );
 };

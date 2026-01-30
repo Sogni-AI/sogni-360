@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { saveCurrentProject, getMostRecentProject, setCurrentProjectId, loadProject } from '../utils/localProjectsDB';
+import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
 
 // Initial state
 const initialState: Sogni360State = {
@@ -36,7 +37,7 @@ const initialState: Sogni360State = {
 // Default project settings
 const defaultSettings: Sogni360Settings = {
   videoQuality: 'fast',
-  videoResolution: '480p',
+  videoResolution: DEFAULT_VIDEO_SETTINGS.resolution,
   videoDuration: 3,
   tokenType: 'spark'
 };

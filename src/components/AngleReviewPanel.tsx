@@ -9,6 +9,7 @@ import {
 } from '../constants/cameraAngleSettings';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
+import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 
 interface AngleReviewPanelProps {
@@ -84,6 +85,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               payload: { id: waypointId, updates: { status: 'ready', progress: 100, error: undefined } }
             });
             showToast({ message: 'Angle regenerated', type: 'success' });
+            // Play sound when single angle completes
+            playVideoCompleteIfEnabled();
           },
           onWaypointError: (waypointId, error) => {
             dispatch({

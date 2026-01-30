@@ -18,6 +18,8 @@ import useAutoHideUI from '../hooks/useAutoHideUI';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
 import { duplicateProject, getProjectCount } from '../utils/localProjectsDB';
+import { playVideoCompleteIfEnabled, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
+import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
 
 // Type for pending destructive action that needs confirmation
 interface PendingDestructiveAction {
@@ -178,18 +180,35 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_PROJECT_STATUS', payload: 'generating-transitions' });
     setIsTransitionGenerating(true);
 
+    // Get source dimensions - MUST use actual dimensions, not fallbacks
+    const sourceWidth = currentProject.sourceImageDimensions?.width;
+    const sourceHeight = currentProject.sourceImageDimensions?.height;
+    const resolution = currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
+
+    console.log('[Sogni360Container] Transition generation config:', {
+      resolution,
+      sourceWidth,
+      sourceHeight,
+      hasSourceDimensions: !!currentProject.sourceImageDimensions,
+      settings: currentProject.settings
+    });
+
+    if (!sourceWidth || !sourceHeight) {
+      console.error('[Sogni360Container] WARNING: sourceImageDimensions is missing! Video will generate at wrong size.');
+    }
+
     try {
       await generateMultipleTransitions(
         segments,
         waypointImages,
         {
           prompt: currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.',
-          resolution: (currentProject.settings.videoResolution as '480p' | '580p' | '720p') || '480p',
+          resolution,
           quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast',
           duration: currentProject.settings.transitionDuration || 1.5,
           tokenType: currentProject.settings.tokenType || 'spark',
-          sourceWidth: currentProject.sourceImageDimensions?.width || 480,
-          sourceHeight: currentProject.sourceImageDimensions?.height || 640,
+          sourceWidth: sourceWidth || 1024,  // Default to 1024 if missing
+          sourceHeight: sourceHeight || 1024,  // Default to 1024 if missing
           onSegmentStart: (segmentId) => {
             updateSegment(segmentId, { status: 'generating', progress: 0 });
           },
@@ -199,6 +218,8 @@ const Sogni360Container: React.FC = () => {
           onSegmentComplete: (segmentId, videoUrl, version) => {
             updateSegment(segmentId, { status: 'ready', videoUrl, progress: 100 });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
+            // Play sound when each transition completes
+            playVideoCompleteIfEnabled();
           },
           onSegmentError: (segmentId, error) => {
             updateSegment(segmentId, { status: 'failed', error: error.message });
@@ -206,6 +227,8 @@ const Sogni360Container: React.FC = () => {
           onAllComplete: () => {
             setIsTransitionGenerating(false);
             dispatch({ type: 'SET_PROJECT_STATUS', payload: 'complete' });
+            // Play signature sound when all transitions complete
+            playSogniSignatureIfEnabled();
           }
         }
       );
@@ -233,24 +256,37 @@ const Sogni360Container: React.FC = () => {
     // Reset segment to generating
     updateSegment(segmentId, { status: 'generating', progress: 0 });
 
+    // Get source dimensions - MUST use actual dimensions
+    const redoSourceWidth = currentProject.sourceImageDimensions?.width;
+    const redoSourceHeight = currentProject.sourceImageDimensions?.height;
+    const redoResolution = currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
+
+    console.log('[Sogni360Container] Redo transition config:', {
+      resolution: redoResolution,
+      sourceWidth: redoSourceWidth,
+      sourceHeight: redoSourceHeight
+    });
+
     try {
       await generateMultipleTransitions(
         [segment],
         waypointImages,
         {
           prompt: currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.',
-          resolution: (currentProject.settings.videoResolution as '480p' | '580p' | '720p') || '480p',
+          resolution: redoResolution,
           quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast',
           duration: currentProject.settings.transitionDuration || 1.5,
           tokenType: currentProject.settings.tokenType || 'spark',
-          sourceWidth: currentProject.sourceImageDimensions?.width || 480,
-          sourceHeight: currentProject.sourceImageDimensions?.height || 640,
+          sourceWidth: redoSourceWidth || 1024,
+          sourceHeight: redoSourceHeight || 1024,
           onSegmentProgress: (segmentId, progress, workerName) => {
             updateSegment(segmentId, { progress, workerName });
           },
           onSegmentComplete: (segmentId, videoUrl, version) => {
             updateSegment(segmentId, { status: 'ready', videoUrl, progress: 100 });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
+            // Play sound when redo transition completes
+            playVideoCompleteIfEnabled();
           },
           onSegmentError: (segmentId, error) => {
             updateSegment(segmentId, { status: 'failed', error: error.message });
@@ -737,6 +773,7 @@ const Sogni360Container: React.FC = () => {
           onStitchComplete={(url) => {
             dispatch({ type: 'SET_FINAL_LOOP_URL', payload: url });
           }}
+          initialMusicSelection={currentProject.settings.musicSelection}
         />
       )}
 

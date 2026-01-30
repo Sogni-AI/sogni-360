@@ -12,6 +12,7 @@ import {
   VIDEO_QUALITY_PRESETS,
   calculateVideoFrames,
   calculateVideoDimensions,
+  DEFAULT_VIDEO_SETTINGS,
   VideoQualityPreset,
   VideoResolution
 } from '../constants/videoSettings';
@@ -82,12 +83,12 @@ export async function generateTransition(options: GenerateTransitionOptions): Pr
     toImageUrl,
     prompt,
     negativePrompt = '',
-    resolution = '480p',
+    resolution = DEFAULT_VIDEO_SETTINGS.resolution,
     quality = 'fast',
     duration = 1.5,
     tokenType = 'spark',
-    sourceWidth = 480,
-    sourceHeight = 640,
+    sourceWidth = 1024,  // Default to 1024 for square images
+    sourceHeight = 1024,
     onProgress,
     onComplete,
     onError
@@ -221,12 +222,12 @@ export async function generateMultipleTransitions(
   const {
     prompt,
     negativePrompt = '',
-    resolution = '480p',
+    resolution = DEFAULT_VIDEO_SETTINGS.resolution,
     quality = 'fast',
     duration = 1.5,
     tokenType = 'spark',
-    sourceWidth = 480,
-    sourceHeight = 640,
+    sourceWidth = 1024,  // Default to 1024 for square images
+    sourceHeight = 1024,
     onSegmentStart,
     onSegmentProgress,
     onSegmentComplete,

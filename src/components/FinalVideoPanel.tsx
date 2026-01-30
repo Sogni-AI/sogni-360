@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import MusicSelector from './shared/MusicSelector';
 import { useFinalVideoActions } from '../hooks/useFinalVideoActions';
+import type { MusicSelection } from '../types';
 
 interface FinalVideoPanelProps {
   videoUrls: string[];
@@ -8,6 +9,7 @@ interface FinalVideoPanelProps {
   onClose: () => void;
   onBackToEditor: () => void;
   onStitchComplete?: (url: string) => void;
+  initialMusicSelection?: MusicSelection | null;
 }
 
 const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
@@ -15,7 +17,8 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   stitchedVideoUrl,
   onClose,
   onBackToEditor,
-  onStitchComplete
+  onStitchComplete,
+  initialMusicSelection
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
@@ -35,7 +38,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     handleDownload,
     handleShare,
     setCurrentSegmentIndex
-  } = useFinalVideoActions({ videoUrls, stitchedVideoUrl, onStitchComplete });
+  } = useFinalVideoActions({ videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection });
 
   // Auto-play when stitched video is ready
   useEffect(() => {

@@ -8,12 +8,14 @@ interface UseFinalVideoActionsProps {
   videoUrls: string[];
   stitchedVideoUrl?: string;
   onStitchComplete?: (url: string) => void;
+  initialMusicSelection?: MusicSelection | null;
 }
 
 export function useFinalVideoActions({
   videoUrls,
   stitchedVideoUrl,
-  onStitchComplete
+  onStitchComplete,
+  initialMusicSelection
 }: UseFinalVideoActionsProps) {
   const { showToast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
@@ -21,7 +23,7 @@ export function useFinalVideoActions({
   const [stitchProgress, setStitchProgress] = useState('');
   const [localStitchedUrl, setLocalStitchedUrl] = useState<string | null>(stitchedVideoUrl || null);
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
-  const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(null);
+  const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(initialMusicSelection || null);
   const [videoDuration, setVideoDuration] = useState(0);
   const segmentDuration = useRef<number>(0);
 
@@ -84,11 +86,11 @@ export function useFinalVideoActions({
     }
   }, [videoUrls, onStitchComplete, showToast]);
 
-  // Auto-stitch on mount if no stitched URL provided
+  // Auto-stitch on mount if no stitched URL provided (with initial music if set)
   useEffect(() => {
     if (localStitchedUrl || videoUrls.length === 0) return;
-    stitchVideos(null);
-  }, [videoUrls, localStitchedUrl, stitchVideos]);
+    stitchVideos(initialMusicSelection || null);
+  }, [videoUrls, localStitchedUrl, stitchVideos, initialMusicSelection]);
 
   // Handle music selection confirmation
   const handleMusicConfirm = useCallback(async (selection: MusicSelection) => {

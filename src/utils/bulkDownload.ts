@@ -3,10 +3,65 @@
  *
  * Downloads multiple images as a ZIP file using JSZip.
  * Based on the pattern from sogni-photobooth.
+ * Uses backend proxy for S3 URLs to bypass CORS restrictions.
  */
 
 import JSZip from 'jszip';
 import { fetchWithRetry } from './fetchWithRetry';
+import { API_URL } from '../config/urls';
+
+/**
+ * Check if a URL is an S3 URL that can be proxied
+ */
+function isS3Url(url: string): boolean {
+  const s3Patterns = [
+    's3.amazonaws.com',
+    's3-accelerate.amazonaws.com',
+    'complete-images-production',
+    'complete-images-staging'
+  ];
+  return s3Patterns.some(pattern => url.includes(pattern));
+}
+
+/**
+ * Get the proxied URL for S3 resources
+ */
+function getProxiedUrl(url: string): string {
+  return `${API_URL}/api/sogni/proxy-image?url=${encodeURIComponent(url)}`;
+}
+
+/**
+ * Fetch with fallback to proxy for CORS-blocked S3 URLs
+ * Tries direct fetch first, falls back to proxy on CORS/network errors
+ */
+async function fetchWithProxyFallback(
+  url: string,
+  context: string
+): Promise<Response> {
+  // Try direct fetch first
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      return response;
+    }
+    // Non-ok response - might still work, let caller handle
+    return response;
+  } catch (directError) {
+    // Direct fetch failed (likely CORS) - try proxy for S3 URLs
+    if (isS3Url(url)) {
+      console.log(`[${context}] Direct fetch failed, trying proxy...`);
+      const proxyUrl = getProxiedUrl(url);
+      const proxyResponse = await fetchWithRetry(proxyUrl, { credentials: 'include' }, {
+        context: `${context} (proxy)`,
+        maxRetries: 2,
+        initialDelay: 1000
+      });
+      return proxyResponse;
+    }
+    // Not an S3 URL, rethrow original error
+    throw directError;
+  }
+}
 
 export interface ImageDownloadItem {
   url: string;
@@ -39,11 +94,8 @@ export async function downloadSingleImage(
   filename: string
 ): Promise<boolean> {
   try {
-    const response = await fetchWithRetry(url, undefined, {
-      context: 'Image Download',
-      maxRetries: 2,
-      initialDelay: 1000
-    });
+    // Try direct fetch, fall back to proxy for CORS-blocked S3 URLs
+    const response = await fetchWithProxyFallback(url, 'Image Download');
 
     if (!response.ok) {
       console.warn(`Failed to fetch image: ${response.status}`);
@@ -101,11 +153,8 @@ export async function downloadImagesAsZip(
       try {
         onProgress?.(i, totalImages, `Adding image ${i + 1} of ${totalImages}...`);
 
-        const response = await fetchWithRetry(image.url, undefined, {
-          context: `Image ${i + 1} Download`,
-          maxRetries: 2,
-          initialDelay: 1000
-        });
+        // Try direct fetch, fall back to proxy for CORS-blocked S3 URLs
+        const response = await fetchWithProxyFallback(image.url, `Image ${i + 1} Download`);
 
         if (!response.ok) {
           console.warn(`Failed to fetch image ${i + 1}: ${image.filename}`);
@@ -175,11 +224,8 @@ export async function downloadSingleVideo(
   filename: string
 ): Promise<boolean> {
   try {
-    const response = await fetchWithRetry(url, undefined, {
-      context: 'Video Download',
-      maxRetries: 2,
-      initialDelay: 1000
-    });
+    // Try direct fetch, fall back to proxy for CORS-blocked S3 URLs
+    const response = await fetchWithProxyFallback(url, 'Video Download');
 
     if (!response.ok) {
       console.warn(`Failed to fetch video: ${response.status}`);
@@ -237,11 +283,8 @@ export async function downloadVideosAsZip(
       try {
         onProgress?.(i, totalVideos, `Adding video ${i + 1} of ${totalVideos}...`);
 
-        const response = await fetchWithRetry(video.url, undefined, {
-          context: `Video ${i + 1} Download`,
-          maxRetries: 2,
-          initialDelay: 1000
-        });
+        // Try direct fetch, fall back to proxy for CORS-blocked S3 URLs
+        const response = await fetchWithProxyFallback(video.url, `Video ${i + 1} Download`);
 
         if (!response.ok) {
           console.warn(`Failed to fetch video ${i + 1}: ${video.filename}`);
