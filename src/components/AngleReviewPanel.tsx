@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import type { Waypoint } from '../types';
@@ -8,6 +8,7 @@ import {
   getDistanceConfig
 } from '../constants/cameraAngleSettings';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
+import WorkflowWizard from './shared/WorkflowWizard';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
@@ -23,6 +24,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject } = state;
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const waypoints = currentProject?.waypoints || [];
 
@@ -30,15 +32,17 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const readyCount = waypoints.filter(wp => wp.status === 'ready').length;
   const generatingCount = waypoints.filter(wp => wp.status === 'generating').length;
   const failedCount = waypoints.filter(wp => wp.status === 'failed').length;
-  const pendingCount = waypoints.filter(wp => wp.status === 'pending').length;
+
+  // Workflow step
+  const completedSteps: ('upload' | 'define-angles' | 'render-angles' | 'render-videos' | 'export')[] = ['upload', 'define-angles'];
 
   // Get angle label
   const getAngleLabel = (waypoint: Waypoint): string => {
-    if (waypoint.isOriginal) return 'source image';
+    if (waypoint.isOriginal) return 'Original Image';
     const az = getAzimuthConfig(waypoint.azimuth);
     const el = getElevationConfig(waypoint.elevation);
     const dist = getDistanceConfig(waypoint.distance);
-    return `${az.label.toLowerCase()} · ${el.label.toLowerCase()} · ${dist.label.toLowerCase()}`;
+    return `${az.label} · ${el.label} · ${dist.label}`;
   };
 
   // Redo a single waypoint
@@ -65,7 +69,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             });
           },
           onWaypointComplete: (waypointId, imageUrl) => {
-            // Add to version history instead of overwriting
             dispatch({
               type: 'ADD_WAYPOINT_VERSION',
               payload: { waypointId, imageUrl }
@@ -94,7 +97,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     }
   }, [currentProject, dispatch, showToast]);
 
-  // Navigate to previous version
+  // Navigate versions
   const handlePrevVersion = useCallback((waypoint: Waypoint) => {
     if (!waypoint.imageHistory || waypoint.imageHistory.length <= 1) return;
     const currentIdx = waypoint.currentImageIndex ?? waypoint.imageHistory.length - 1;
@@ -106,7 +109,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     }
   }, [dispatch]);
 
-  // Navigate to next version
   const handleNextVersion = useCallback((waypoint: Waypoint) => {
     if (!waypoint.imageHistory || waypoint.imageHistory.length <= 1) return;
     const currentIdx = waypoint.currentImageIndex ?? waypoint.imageHistory.length - 1;
@@ -118,7 +120,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     }
   }, [dispatch]);
 
-  // Get version info for a waypoint
   const getVersionInfo = (waypoint: Waypoint) => {
     if (!waypoint.imageHistory || waypoint.imageHistory.length <= 1) return null;
     const currentIdx = waypoint.currentImageIndex ?? waypoint.imageHistory.length - 1;
@@ -130,197 +131,185 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     };
   };
 
-  const canApply = readyCount >= 2 && generatingCount === 0 && failedCount === 0;
+  const canProceed = readyCount >= 2 && generatingCount === 0 && failedCount === 0;
   const totalComplete = readyCount;
   const totalAngles = waypoints.length;
 
   return (
-    <div className="angle-review-panel">
+    <div className="review-panel">
+      {/* Wizard Progress Bar */}
+      <div className="review-wizard-wrap">
+        <WorkflowWizard
+          currentStep="render-angles"
+          completedSteps={completedSteps}
+        />
+      </div>
+
       {/* Header */}
-      <div className="review-header">
-        <div className="review-header-left">
-          <div className="review-icon">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div className="review-title-group">
-            <h2 className="review-title">{isGenerating ? 'Generating Angles' : 'Review Angles'}</h2>
-            <p className="review-subtitle">{totalComplete} of {totalAngles} complete</p>
-          </div>
+      <div className="review-header-bar">
+        <div>
+          <h2 className="review-main-title">{isGenerating ? 'Generating Angles' : 'Review Angles'}</h2>
+          <p className="review-main-subtitle">{totalComplete} of {totalAngles} complete</p>
         </div>
-        <button
-          className="review-close-btn"
-          onClick={onClose}
-          title="Close"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button className="review-close" onClick={onClose}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      {/* Grid of angle tiles */}
-      <div className="review-grid">
-        {waypoints.map((waypoint, index) => (
-          <div key={waypoint.id} className="review-tile">
-            {/* Status badge */}
-            <div className={`tile-status-badge ${waypoint.isOriginal ? 'original' : waypoint.status}`}>
-              {waypoint.isOriginal ? 'original' : waypoint.status === 'generating'
-                ? `${Math.round(waypoint.progress || 0)}%`
-                : waypoint.status}
-            </div>
+      {/* Carousel */}
+      <div className="review-carousel-wrap" ref={carouselRef}>
+        {waypoints.map((waypoint, index) => {
+          const versionInfo = getVersionInfo(waypoint);
+          return (
+            <div key={waypoint.id} className="review-card-clean">
+              {/* Card Header */}
+              <div className="review-card-top">
+                <span className="review-card-step-num">Step {index + 1}</span>
+                {waypoint.isOriginal && <span className="review-card-orig-tag">Original</span>}
+              </div>
 
-            {/* Index badge */}
-            <div className="tile-index-badge">{index}</div>
-
-            {/* Image area - respect source aspect ratio */}
-            <div
-              className="tile-image-area"
-              style={{
-                aspectRatio: currentProject?.sourceImageDimensions
-                  ? `${currentProject.sourceImageDimensions.width} / ${currentProject.sourceImageDimensions.height}`
-                  : '3 / 4'
-              }}
-            >
-              {waypoint.imageUrl ? (
-                <img src={waypoint.imageUrl} alt={`Angle ${index}`} />
-              ) : currentProject?.sourceImageUrl ? (
-                <img
-                  src={currentProject.sourceImageUrl}
-                  alt={`Angle ${index}`}
-                  className={waypoint.status === 'generating' ? 'dimmed' : 'preview'}
-                />
-              ) : null}
-
-              {/* Generating overlay */}
-              {waypoint.status === 'generating' && (
-                <div className="tile-generating-overlay">
-                  <div className="progress-ring">
-                    <svg viewBox="0 0 36 36">
-                      <path
-                        className="progress-ring-bg"
-                        d="M18 2.0845
-                          a 15.9155 15.9155 0 0 1 0 31.831
-                          a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                      <path
-                        className="progress-ring-fill"
-                        strokeDasharray={`${waypoint.progress || 0}, 100`}
-                        d="M18 2.0845
-                          a 15.9155 15.9155 0 0 1 0 31.831
-                          a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                    </svg>
-                    <div className="progress-center-dot" />
-                  </div>
-                  <div className="generating-stats">
-                    <div className="generating-percent">{Math.round(waypoint.progress || 0)}%</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Failed overlay */}
-              {waypoint.status === 'failed' && (
-                <div className="tile-failed-overlay">
-                  <div className="failed-icon">!</div>
-                  <div className="failed-text">{waypoint.error || 'Failed'}</div>
-                </div>
-              )}
-            </div>
-
-            {/* Angle info */}
-            <div className="tile-info">
-              <div className="tile-angle-label">{getAngleLabel(waypoint)}</div>
-            </div>
-
-            {/* Version navigation - only show if multiple versions exist */}
-            {(() => {
-              const versionInfo = getVersionInfo(waypoint);
-              if (!versionInfo) return null;
-              return (
-                <div className="tile-version-nav">
-                  <button
-                    className="version-nav-btn"
-                    onClick={() => handlePrevVersion(waypoint)}
-                    disabled={!versionInfo.canPrev || waypoint.status === 'generating'}
-                    title="Previous version"
-                  >
-                    ‹
-                  </button>
-                  <span className="version-indicator">
-                    {versionInfo.current} / {versionInfo.total}
-                  </span>
-                  <button
-                    className="version-nav-btn"
-                    onClick={() => handleNextVersion(waypoint)}
-                    disabled={!versionInfo.canNext || waypoint.status === 'generating'}
-                    title="Next version"
-                  >
-                    ›
-                  </button>
-                </div>
-              );
-            })()}
-
-            {/* Redo button */}
-            {!waypoint.isOriginal && waypoint.status !== 'pending' && (
-              <button
-                className={`tile-redo-btn ${waypoint.status === 'generating' ? 'generating' : ''}`}
-                onClick={() => handleRedo(waypoint)}
-                disabled={waypoint.status === 'generating'}
+              {/* Image */}
+              <div
+                className="review-card-img"
+                style={{
+                  aspectRatio: currentProject?.sourceImageDimensions
+                    ? `${currentProject.sourceImageDimensions.width} / ${currentProject.sourceImageDimensions.height}`
+                    : '3 / 4'
+                }}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                redo
-              </button>
-            )}
-          </div>
-        ))}
+                {waypoint.imageUrl ? (
+                  <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} />
+                ) : currentProject?.sourceImageUrl ? (
+                  <img
+                    src={currentProject.sourceImageUrl}
+                    alt={`Step ${index + 1}`}
+                    className={waypoint.status === 'generating' ? 'dimmed' : ''}
+                  />
+                ) : null}
+
+                {/* Status overlays */}
+                {waypoint.status === 'generating' && (
+                  <div className="review-card-overlay">
+                    <div className="review-progress-ring">
+                      <svg viewBox="0 0 100 100">
+                        <circle className="ring-bg" cx="50" cy="50" r="42" />
+                        <circle
+                          className="ring-fill"
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          strokeDasharray={`${(waypoint.progress || 0) * 2.64} 264`}
+                        />
+                      </svg>
+                      <span className="ring-text">{Math.round(waypoint.progress || 0)}%</span>
+                    </div>
+                  </div>
+                )}
+
+                {waypoint.status === 'failed' && (
+                  <div className="review-card-overlay failed">
+                    <div className="failed-badge">!</div>
+                    <span>{waypoint.error || 'Failed'}</span>
+                  </div>
+                )}
+
+                {waypoint.status === 'ready' && (
+                  <div className="review-card-check">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Info Section - Fixed Height */}
+              <div className="review-card-info">
+                <div className="review-card-angle">{getAngleLabel(waypoint)}</div>
+
+                {/* Version Nav - Always reserve space */}
+                <div className={`review-card-versions ${versionInfo ? 'visible' : 'hidden'}`}>
+                  {versionInfo ? (
+                    <>
+                      <button
+                        className="ver-btn"
+                        onClick={() => handlePrevVersion(waypoint)}
+                        disabled={!versionInfo.canPrev}
+                      >
+                        ‹
+                      </button>
+                      <span>Version {versionInfo.current} of {versionInfo.total}</span>
+                      <button
+                        className="ver-btn"
+                        onClick={() => handleNextVersion(waypoint)}
+                        disabled={!versionInfo.canNext}
+                      >
+                        ›
+                      </button>
+                    </>
+                  ) : (
+                    <span className="ver-placeholder">&nbsp;</span>
+                  )}
+                </div>
+
+                {/* Regenerate Button - Always same position */}
+                <button
+                  className={`review-card-regen ${waypoint.isOriginal ? 'invisible' : ''} ${waypoint.status === 'generating' ? 'loading' : ''}`}
+                  onClick={() => handleRedo(waypoint)}
+                  disabled={waypoint.isOriginal || waypoint.status === 'generating'}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Regenerate
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer */}
-      <div className="review-footer">
-        <div className="review-status-summary">
+      <div className="review-footer-bar">
+        <div className="review-status-tags">
           {readyCount > 0 && (
-            <span className="status-item ready">
-              <span className="status-icon">✓</span>
+            <span className="status-tag ready">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
               {readyCount} ready
             </span>
           )}
           {generatingCount > 0 && (
-            <span className="status-item generating">
-              <span className="status-icon spinning">⟳</span>
+            <span className="status-tag generating">
+              <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
               {generatingCount} generating
             </span>
           )}
           {failedCount > 0 && (
-            <span className="status-item failed">
-              <span className="status-icon">!</span>
+            <span className="status-tag failed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
               {failedCount} failed
-            </span>
-          )}
-          {pendingCount > 0 && (
-            <span className="status-item pending">
-              {pendingCount} pending
             </span>
           )}
         </div>
 
-        <div className="review-actions">
+        <div className="review-actions-bar">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button
-            className="btn btn-ghost review-cancel-btn"
-            onClick={onClose}
-          >
-            cancel
-          </button>
-          <button
-            className={`btn review-apply-btn ${canApply ? 'ready' : 'disabled'}`}
+            className={`btn ${canProceed ? 'btn-primary' : 'btn-disabled'}`}
             onClick={onApply}
-            disabled={!canApply}
+            disabled={!canProceed}
           >
-            apply to gallery
+            Generate Transitions
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>

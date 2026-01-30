@@ -20,6 +20,7 @@ const initialState: Sogni360State = {
   playbackSpeed: 1,
   uiVisible: true,
   showWaypointEditor: false,
+  showAngleReview: false,
   showExportPanel: false,
   showProgressOverlay: false,
   showTransitionConfig: false,
@@ -234,6 +235,8 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
               videoUrl: action.payload.version.videoUrl
             };
           }),
+          // Clear final loop URL since a segment changed - needs regeneration
+          finalLoopUrl: undefined,
           updatedAt: Date.now()
         }
       };
@@ -258,6 +261,8 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
               videoUrl: selectedVersion?.videoUrl || s.videoUrl
             };
           }),
+          // Clear final loop URL since a segment version changed - needs regeneration
+          finalLoopUrl: undefined,
           updatedAt: Date.now()
         }
       };
@@ -290,6 +295,9 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
 
     case 'SET_SHOW_WAYPOINT_EDITOR':
       return { ...state, showWaypointEditor: action.payload };
+
+    case 'SET_SHOW_ANGLE_REVIEW':
+      return { ...state, showAngleReview: action.payload };
 
     case 'SET_SHOW_EXPORT_PANEL':
       return { ...state, showExportPanel: action.payload };

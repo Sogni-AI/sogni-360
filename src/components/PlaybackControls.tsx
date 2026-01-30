@@ -1,9 +1,11 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 
 const PlaybackControls: React.FC = () => {
-  const { state, dispatch, previousWaypoint, nextWaypoint, togglePlayback } = useApp();
+  const { state, dispatch } = useApp();
   const { currentProject, currentWaypointIndex, isPlaying, playbackSpeed } = state;
+  const { previousWaypoint, nextWaypoint, togglePlayback, isTransitionPlaying } = useTransitionNavigation();
 
   const waypoints = currentProject?.waypoints || [];
   const hasWaypoints = waypoints.length > 0;
@@ -18,7 +20,7 @@ const PlaybackControls: React.FC = () => {
       <button
         className="btn btn-ghost p-2"
         onClick={previousWaypoint}
-        disabled={!hasWaypoints}
+        disabled={!hasWaypoints || isTransitionPlaying}
         title="Previous (←/A)"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,7 +50,7 @@ const PlaybackControls: React.FC = () => {
       <button
         className="btn btn-ghost p-2"
         onClick={nextWaypoint}
-        disabled={!hasWaypoints}
+        disabled={!hasWaypoints || isTransitionPlaying}
         title="Next (→/D)"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

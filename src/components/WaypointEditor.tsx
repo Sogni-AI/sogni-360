@@ -6,7 +6,10 @@ import type { Waypoint, AzimuthKey, ElevationKey, DistanceKey } from '../types';
 import {
   MIN_WAYPOINTS,
   MAX_WAYPOINTS,
-  MULTI_ANGLE_PRESETS
+  MULTI_ANGLE_PRESETS,
+  getAzimuthConfig,
+  getElevationConfig,
+  getDistanceConfig
 } from '../constants/cameraAngleSettings';
 import type { MultiAnglePreset } from '../types/cameraAngle';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
@@ -16,12 +19,22 @@ import AngleReviewPanel from './AngleReviewPanel';
 const SPARK_PER_ANGLE = 2.59;
 const USD_PER_SPARK = 0.005;
 
+/**
+ * Get a human-readable label for a waypoint's angle
+ */
+function getAngleLabel(waypoint: Waypoint): string {
+  if (waypoint.isOriginal) return 'Original Image';
+  const az = getAzimuthConfig(waypoint.azimuth);
+  const el = getElevationConfig(waypoint.elevation);
+  const dist = getDistanceConfig(waypoint.distance);
+  return `${az.label} · ${el.label} · ${dist.label}`;
+}
+
 const WaypointEditor: React.FC = () => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
-  const { currentProject } = state;
+  const { currentProject, showAngleReview } = state;
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [selectedPresetKey, setSelectedPresetKey] = useState<string>('custom');
   const carouselRef = useRef<HTMLDivElement>(null);
   const hasAutoLoadedPreset = useRef(false);
@@ -132,7 +145,7 @@ const WaypointEditor: React.FC = () => {
       return;
     }
 
-    setShowReviewPanel(true);
+    dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: true });
     setIsGenerating(true);
     dispatch({ type: 'SET_PROJECT_STATUS', payload: 'generating-angles' });
 
@@ -184,7 +197,7 @@ const WaypointEditor: React.FC = () => {
   }, [currentProject, waypoints, dispatch, showToast]);
 
   const handleReviewClose = useCallback(() => {
-    setShowReviewPanel(false);
+    dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
     if (isGenerating) {
       for (const wp of waypoints) {
         if (wp.status === 'generating') {
@@ -197,150 +210,149 @@ const WaypointEditor: React.FC = () => {
   }, [isGenerating, waypoints, dispatch]);
 
   const handleReviewApply = useCallback(() => {
-    setShowReviewPanel(false);
+    dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
     dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: false });
-    showToast({ message: 'Angles applied to gallery', type: 'success' });
-  }, [dispatch, showToast]);
+    // Automatically open transition config panel
+    dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
+  }, [dispatch]);
 
   const canGenerate = waypoints.length >= MIN_WAYPOINTS && !isGenerating;
 
-  if (showReviewPanel) {
+  if (showAngleReview) {
     return <AngleReviewPanel onClose={handleReviewClose} onApply={handleReviewApply} isGenerating={isGenerating} />;
   }
 
   return (
-    <div className="waypoint-editor-carousel">
-      {/* Preset tabs */}
-      <div className="preset-tabs">
-        {MULTI_ANGLE_PRESETS.map((preset) => (
+    <div className="waypoint-editor-timeline">
+      {/* Header with presets */}
+      <div className="timeline-header">
+        <div className="timeline-title">
+          <h2>Timeline Editor</h2>
+          <p className="timeline-subtitle">
+            Create a sequence of camera angles. Each step will generate a new perspective.
+          </p>
+        </div>
+        <div className="preset-tabs">
+          {MULTI_ANGLE_PRESETS.map((preset) => (
+            <button
+              key={preset.key}
+              className={`preset-tab ${selectedPresetKey === preset.key ? 'active' : ''}`}
+              onClick={() => handleLoadPreset(preset)}
+              disabled={isGenerating}
+            >
+              <span className="preset-icon">{preset.icon}</span>
+              <span className="preset-label">{preset.label}</span>
+            </button>
+          ))}
           <button
-            key={preset.key}
-            className={`preset-tab ${selectedPresetKey === preset.key ? 'active' : ''}`}
-            onClick={() => handleLoadPreset(preset)}
+            className={`preset-tab ${selectedPresetKey === 'custom' ? 'active' : ''}`}
+            onClick={() => setSelectedPresetKey('custom')}
             disabled={isGenerating}
           >
-            <span className="preset-icon">{preset.icon}</span>
-            <span className="preset-label">{preset.label}</span>
+            <span className="preset-icon">✏️</span>
+            <span className="preset-label">Custom</span>
           </button>
-        ))}
-        <button
-          className={`preset-tab ${selectedPresetKey === 'custom' ? 'active' : ''}`}
-          onClick={() => setSelectedPresetKey('custom')}
-          disabled={isGenerating}
-        >
-          <span className="preset-icon">✏️</span>
-          <span className="preset-label">Custom</span>
-        </button>
+        </div>
       </div>
 
-      {/* Horizontal carousel - large tiles, scrollable */}
-      <div className="angle-carousel" ref={carouselRef}>
-        {waypoints.map((waypoint, index) => (
-          <div key={waypoint.id} className="angle-card">
-            {/* Delete button */}
-            {waypoints.length > 1 && (
-              <button
-                className="angle-card-delete"
-                onClick={() => handleRemoveWaypoint(waypoint.id)}
-                disabled={isGenerating}
-                title="Remove angle"
-              >
-                ×
-              </button>
-            )}
+      {/* Timeline track */}
+      <div className="timeline-track" ref={carouselRef}>
+        <div className="timeline-steps">
+          {waypoints.map((waypoint, index) => (
+            <div key={waypoint.id} className="timeline-step">
+              {/* Connector line (except first) */}
+              {index > 0 && <div className="timeline-connector" />}
 
-            {/* Card number */}
-            <div className="angle-card-number">{index + 1}</div>
+              {/* Step card */}
+              <div className={`step-card ${waypoint.isOriginal ? 'is-original' : ''}`}>
+                {/* Delete button */}
+                {waypoints.length > 1 && (
+                  <button
+                    className="step-delete"
+                    onClick={() => handleRemoveWaypoint(waypoint.id)}
+                    disabled={isGenerating}
+                    title="Remove angle"
+                  >
+                    ×
+                  </button>
+                )}
 
-            {/* Large thumbnail - preserves aspect ratio */}
-            <div
-              className={`angle-card-thumbnail ${waypoint.isOriginal ? 'is-original' : ''}`}
-              style={{
-                aspectRatio: currentProject?.sourceImageDimensions
-                  ? `${currentProject.sourceImageDimensions.width} / ${currentProject.sourceImageDimensions.height}`
-                  : '3 / 4'
-              }}
-            >
-              {waypoint.imageUrl ? (
-                <img src={waypoint.imageUrl} alt={`Angle ${index + 1}`} />
-              ) : currentProject?.sourceImageUrl ? (
-                <img
-                  src={currentProject.sourceImageUrl}
-                  alt={`Angle ${index + 1}`}
-                  className={waypoint.isOriginal ? '' : 'opacity-40'}
-                />
-              ) : (
-                <div className="thumbnail-placeholder">#{index + 1}</div>
-              )}
-
-              {waypoint.status === 'generating' && (
-                <div className="generating-overlay">
-                  <div className="spinner" />
-                  {waypoint.progress !== undefined && waypoint.progress > 0 && (
-                    <span className="progress-text">{Math.round(waypoint.progress)}%</span>
+                {/* Step header */}
+                <div className="step-header">
+                  <div className="step-number">Step {index + 1}</div>
+                  {waypoint.isOriginal && (
+                    <span className="original-badge">Original</span>
                   )}
                 </div>
-              )}
 
-              {waypoint.status === 'ready' && waypoint.isOriginal && (
-                <div className="status-badge original">★</div>
-              )}
-              {waypoint.status === 'ready' && !waypoint.isOriginal && (
-                <div className="status-badge ready">✓</div>
-              )}
-              {waypoint.status === 'failed' && (
-                <div className="status-badge failed">!</div>
-              )}
-            </div>
+                {/* Angle label */}
+                <div className="step-angle-label">
+                  {getAngleLabel(waypoint)}
+                </div>
 
-            {/* Use original checkbox */}
-            <label className="original-checkbox">
-              <input
-                type="checkbox"
-                checked={waypoint.isOriginal || false}
-                onChange={() => handleToggleOriginal(waypoint)}
-                disabled={isGenerating}
-              />
-              <span>Use original</span>
-            </label>
+                {/* Use original toggle */}
+                <label className="step-original-toggle">
+                  <input
+                    type="checkbox"
+                    checked={waypoint.isOriginal || false}
+                    onChange={() => handleToggleOriginal(waypoint)}
+                    disabled={isGenerating}
+                  />
+                  <span>Use original image</span>
+                </label>
 
-            {/* 3D Control for non-original angles */}
-            {!waypoint.isOriginal && (
-              <div className="angle-card-3d-control">
-                <CameraAngle3DControl
-                  azimuth={waypoint.azimuth}
-                  elevation={waypoint.elevation}
-                  distance={waypoint.distance}
-                  onAzimuthChange={(azimuth) => handleUpdateWaypoint(waypoint.id, { azimuth })}
-                  onElevationChange={(elevation) => handleUpdateWaypoint(waypoint.id, { elevation })}
-                  onDistanceChange={(distance) => handleUpdateWaypoint(waypoint.id, { distance })}
-                  size="card"
-                />
+                {/* 3D Control for non-original angles */}
+                {!waypoint.isOriginal && (
+                  <div className="step-3d-control">
+                    <CameraAngle3DControl
+                      azimuth={waypoint.azimuth}
+                      elevation={waypoint.elevation}
+                      distance={waypoint.distance}
+                      onAzimuthChange={(azimuth) => handleUpdateWaypoint(waypoint.id, { azimuth })}
+                      onElevationChange={(elevation) => handleUpdateWaypoint(waypoint.id, { elevation })}
+                      onDistanceChange={(distance) => handleUpdateWaypoint(waypoint.id, { distance })}
+                      size="card"
+                    />
+                  </div>
+                )}
+
+                {/* Status indicator */}
+                {waypoint.status === 'ready' && !waypoint.isOriginal && (
+                  <div className="step-status ready">Generated</div>
+                )}
+                {waypoint.status === 'pending' && !waypoint.isOriginal && (
+                  <div className="step-status pending">Pending</div>
+                )}
+                {waypoint.status === 'failed' && (
+                  <div className="step-status failed">Failed</div>
+                )}
               </div>
-            )}
-
-            {waypoint.isOriginal && (
-              <div className="original-info">Source Image</div>
-            )}
-          </div>
-        ))}
-
-        {/* Add angle card at the end */}
-        {waypoints.length < MAX_WAYPOINTS && (
-          <div className="angle-card add-card" onClick={handleAddWaypoint}>
-            <div className="add-card-content">
-              <div className="add-icon">+</div>
-              <div className="add-label">Add Angle</div>
             </div>
-          </div>
-        )}
+          ))}
+
+          {/* Add angle button */}
+          {waypoints.length < MAX_WAYPOINTS && (
+            <div className="timeline-step">
+              {waypoints.length > 0 && <div className="timeline-connector" />}
+              <button
+                className="step-card add-step"
+                onClick={handleAddWaypoint}
+                disabled={isGenerating}
+              >
+                <div className="add-step-icon">+</div>
+                <div className="add-step-label">Add Step</div>
+                <div className="add-step-count">{waypoints.length}/{MAX_WAYPOINTS}</div>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="editor-footer">
+      <div className="timeline-footer">
         <div className="cost-estimate">
           <div className="cost-breakdown">
-            {anglesToGenerate} angle{anglesToGenerate !== 1 ? 's' : ''} × 1 image
+            {anglesToGenerate} angle{anglesToGenerate !== 1 ? 's' : ''} to generate
           </div>
           <div className="cost-total">
             {totalSpark.toFixed(2)} spark ≈ ${totalUsd.toFixed(2)}

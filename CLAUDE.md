@@ -142,15 +142,27 @@ The only exception to this audit is pure documentation changes or non-UI backend
 
 This app is a **"SuperApp" demo** showcasing Sogni's capabilities. The user experience must be **EXCEPTIONAL** - polished, thoughtful, and delightful. Every detail matters. Mediocre is not acceptable.
 
-### 🔴 CRITICAL: Aspect Ratio Preservation
+### 🔴 CRITICAL: Aspect Ratio Preservation - ABSOLUTE REQUIREMENT
 
-**NEVER display images as squares when the source content is not square.**
+**ASPECT RATIO MUST BE PRESERVED AT ALL COSTS. NO EXCEPTIONS.**
 
-- The source image's aspect ratio is SACRED. Always calculate and preserve it.
-- Thumbnails, previews, cards - ALL must respect the original aspect ratio.
-- Use `object-fit: contain` or calculate dimensions properly. Never `aspect-ratio: 1` on variable content.
-- Store `sourceImageDimensions` and USE it everywhere images are displayed.
-- If you find yourself writing `aspect-ratio: 1` for user-uploaded content, **STOP** - you're doing it wrong.
+The source image's aspect ratio is SACRED. This is non-negotiable:
+
+- **ALL images** must display at their original aspect ratio - thumbnails, previews, cards, comparisons, EVERYTHING
+- **NEVER** use `aspect-ratio: 1` or `object-fit: cover` on user-uploaded content
+- **ALWAYS** use `object-fit: contain` or calculate dimensions from `sourceImageDimensions`
+- **ADAPTIVE LAYOUTS ARE REQUIRED**: When displaying multiple images together:
+  - Portrait images (height > width): Display SIDE BY SIDE horizontally
+  - Landscape images (width > height): Display STACKED VERTICALLY (top to bottom)
+  - This ensures both images fit naturally without distortion
+- **CHECK `isPortrait`**: Always compute `const isPortrait = height > width` and use it to conditionally apply layout classes
+- If you find yourself squishing, stretching, or cropping user images - **STOP AND FIX IT**
+
+```typescript
+// ALWAYS do this check when displaying user images
+const isPortrait = sourceImageDimensions.height > sourceImageDimensions.width;
+// Then apply: className={isPortrait ? 'layout-horizontal' : 'layout-vertical'}
+```
 
 ### 🔴 CRITICAL: No Abbreviated UI
 
@@ -426,6 +438,26 @@ Reference these sibling repos for debugging:
   aspect-ratio: var(--source-aspect-ratio);
   /* Or calculate in JS from sourceImageDimensions */
 }
+```
+
+### Multi-Image Layouts (Side-by-Side Comparisons)
+```tsx
+/* ❌ WRONG - Always horizontal, squishes landscape images */
+<div className="comparison">
+  <img src={image1} />
+  <img src={image2} />
+</div>
+
+/* ✅ RIGHT - Adaptive layout based on aspect ratio */
+const isPortrait = height > width;
+<div className={`comparison ${isPortrait ? 'horizontal' : 'vertical'}`}>
+  <img src={image1} />
+  <img src={image2} />
+</div>
+
+/* CSS */
+.comparison.horizontal { flex-direction: row; }    /* Portrait: side by side */
+.comparison.vertical { flex-direction: column; }   /* Landscape: stacked */
 ```
 
 ### Interactive Controls

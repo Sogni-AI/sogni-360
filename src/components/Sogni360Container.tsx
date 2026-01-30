@@ -1,19 +1,23 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
+import type { Segment } from '../types';
 import { useApp } from '../context/AppContext';
 import { useSogniAuth } from '../services/sogniAuth';
 import SourceUploader from './SourceUploader';
 import Sogni360Viewer from './Sogni360Viewer';
 import WaypointEditor from './WaypointEditor';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
+import WorkflowWizard, { computeWorkflowStep, WorkflowStep } from './shared/WorkflowWizard';
 import TransitionConfigPanel from './TransitionConfigPanel';
 import TransitionReviewPanel from './TransitionReviewPanel';
 import FinalVideoPanel from './FinalVideoPanel';
 import useAutoHideUI from '../hooks/useAutoHideUI';
+import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
 
 const Sogni360Container: React.FC = () => {
-  const { state, dispatch, setUIVisible, nextWaypoint, previousWaypoint, isRestoring, clearProject, updateSegment } = useApp();
-  const { currentProject, uiVisible, showWaypointEditor, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview } = state;
+  const { state, dispatch, setUIVisible, isRestoring, updateSegment } = useApp();
+  const { nextWaypoint, previousWaypoint, isTransitionPlaying } = useTransitionNavigation();
+  const { currentProject, showWaypointEditor, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview } = state;
   const hasAutoOpenedEditor = useRef(false);
   const [isTransitionGenerating, setIsTransitionGenerating] = useState(false);
 
@@ -78,7 +82,7 @@ const Sogni360Container: React.FC = () => {
         case 'ArrowLeft':
         case 'a':
         case 'A':
-          if (hasGeneratedImages) {
+          if (hasGeneratedImages && !isTransitionPlaying) {
             previousWaypoint();
           }
           break;
@@ -86,7 +90,7 @@ const Sogni360Container: React.FC = () => {
         case 'ArrowRight':
         case 'd':
         case 'D':
-          if (hasGeneratedImages) {
+          if (hasGeneratedImages && !isTransitionPlaying) {
             nextWaypoint();
           }
           break;
@@ -115,13 +119,14 @@ const Sogni360Container: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasGeneratedImages, state.isPlaying, state.showWaypointEditor, state.showExportPanel, showWaypointEditor, dispatch, nextWaypoint, previousWaypoint]);
+  }, [hasGeneratedImages, state.isPlaying, state.showWaypointEditor, state.showExportPanel, showWaypointEditor, dispatch, nextWaypoint, previousWaypoint, isTransitionPlaying]);
 
   // Handle starting transition generation
-  const handleStartTransitionGeneration = useCallback(async () => {
+  const handleStartTransitionGeneration = useCallback(async (passedSegments?: Segment[]) => {
     if (!currentProject) return;
 
-    const segments = currentProject.segments;
+    // Use passed segments (from TransitionConfigPanel) or fall back to state
+    const segments = passedSegments || currentProject.segments;
     if (segments.length === 0) return;
 
     // Build waypoint image map
@@ -148,6 +153,8 @@ const Sogni360Container: React.FC = () => {
           quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast',
           duration: currentProject.settings.transitionDuration || 1.5,
           tokenType: currentProject.settings.tokenType || 'spark',
+          sourceWidth: currentProject.sourceImageDimensions?.width || 480,
+          sourceHeight: currentProject.sourceImageDimensions?.height || 640,
           concurrency: 2,
           onSegmentStart: (segmentId) => {
             updateSegment(segmentId, { status: 'generating', progress: 0 });
@@ -202,6 +209,8 @@ const Sogni360Container: React.FC = () => {
           quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast',
           duration: currentProject.settings.transitionDuration || 1.5,
           tokenType: currentProject.settings.tokenType || 'spark',
+          sourceWidth: currentProject.sourceImageDimensions?.width || 480,
+          sourceHeight: currentProject.sourceImageDimensions?.height || 640,
           concurrency: 1,
           onSegmentProgress: (segmentId, progress, workerName) => {
             updateSegment(segmentId, { progress, workerName });
@@ -220,7 +229,7 @@ const Sogni360Container: React.FC = () => {
     }
   }, [currentProject, dispatch, updateSegment]);
 
-  // Handle video stitching (placeholder - client-side stitching to be implemented)
+  // Handle video stitching - plays all segments in sequence
   const handleStitchVideos = useCallback(async () => {
     if (!currentProject) return;
 
@@ -228,13 +237,10 @@ const Sogni360Container: React.FC = () => {
     const allReady = segments.every(s => s.status === 'ready' && s.videoUrl);
     if (!allReady) return;
 
-    // For now, use the first segment's video URL as a placeholder
-    // TODO: Implement actual client-side video stitching with FFmpeg.wasm
+    // Get all video URLs for sequential playback
     const videoUrls = segments.map(s => s.videoUrl).filter(Boolean) as string[];
 
     if (videoUrls.length > 0) {
-      // Placeholder: use first video as final loop (to be replaced with stitched video)
-      dispatch({ type: 'SET_FINAL_LOOP_URL', payload: videoUrls[0] });
       dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: false });
       dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: true });
     }
@@ -250,6 +256,50 @@ const Sogni360Container: React.FC = () => {
   const handleCloseFinalVideo = useCallback(() => {
     dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: false });
   }, [dispatch]);
+
+  // Handle workflow step navigation
+  const handleWorkflowStepClick = useCallback((step: WorkflowStep) => {
+    // Close all panels first
+    dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: false });
+    dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
+    dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: false });
+    dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: false });
+    dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: false });
+
+    // Navigate to the clicked step
+    switch (step) {
+      case 'define-angles':
+        // Show editor in configuration mode
+        dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
+        dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
+        break;
+      case 'render-angles':
+        // Show editor in review mode if we have generated angles
+        if (hasGeneratedImages) {
+          dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: true });
+        }
+        dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
+        break;
+      case 'render-videos':
+        // Show transition review if we have some videos, otherwise show config
+        if (currentProject?.segments?.some(s => s.status === 'ready' || s.status === 'generating')) {
+          dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: true });
+        } else if (hasGeneratedImages) {
+          dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
+        }
+        break;
+      case 'export':
+        if (currentProject?.finalLoopUrl) {
+          dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: true });
+        } else if (currentProject?.segments?.some(s => s.status === 'ready')) {
+          dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: true });
+        }
+        break;
+    }
+  }, [dispatch, hasGeneratedImages, currentProject]);
+
+  // Compute workflow state
+  const { currentStep, completedSteps } = computeWorkflowStep(currentProject);
 
   // If loading auth or restoring project, show loading state
   if (authLoading || isRestoring) {
@@ -276,85 +326,39 @@ const Sogni360Container: React.FC = () => {
 
   return (
     <div className="sogni-360-container">
+      {/* Global Workflow Wizard - always visible when project exists */}
+      {currentProject && (
+        <div className="global-wizard-bar">
+          <WorkflowWizard
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+            onStepClick={handleWorkflowStepClick}
+          />
+        </div>
+      )}
+
       {/* Main viewer */}
       <Sogni360Viewer />
 
-      {/* Hidden UI hint */}
-      {hasGeneratedImages && !uiVisible && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-gray-600 text-xs pointer-events-none animate-pulse">
-          Move mouse to show controls
-        </div>
-      )}
-
-      {/* Bottom controls overlay - ONLY show if we have generated images */}
-      {hasGeneratedImages && (
-        <div className={`ui-overlay transition-opacity duration-300 ${uiVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <div className="flex items-center justify-between">
-            {/* Navigation controls */}
-            <div className="flex items-center gap-2 bg-black/60 rounded-lg px-3 py-2">
-              <button
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                onClick={previousWaypoint}
-                title="Previous (A / Left Arrow)"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-
-              <div className="px-3 text-sm">
-                {currentWaypointIndex + 1} / {waypoints.length}
-              </div>
-
-              <button
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                onClick={nextWaypoint}
-                title="Next (D / Right Arrow)"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-2">
-              <button
-                className="btn btn-ghost text-gray-400 hover:text-white"
-                onClick={() => {
-                  if (window.confirm('Start a new project? Your current work is saved.')) {
-                    clearProject();
-                  }
-                }}
-                title="New Project"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: !showWaypointEditor })}
-              >
-                {showWaypointEditor ? 'Close' : 'Edit'}
-              </button>
-              {readyWaypointCount === waypoints.length && waypoints.length > 0 && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => dispatch({ type: 'SET_SHOW_EXPORT_PANEL', payload: true })}
-                >
-                  Export
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3D Camera Angle Indicator - shows current angle position */}
+      {/* 3D Camera Angle Indicator with Navigation - shows current angle position */}
       {currentWaypoint && !showWaypointEditor && (
-        <div className="fixed top-4 left-4 z-[15] pointer-events-none">
-          <div className="bg-black/60 backdrop-blur-sm rounded-xl p-2" style={{ width: 100 }}>
+        <div className="camera-angle-indicator-with-nav">
+          {/* Previous button */}
+          {hasGeneratedImages && (
+            <button
+              className="nav-arrow nav-arrow-left"
+              onClick={previousWaypoint}
+              disabled={isTransitionPlaying}
+              title="Previous (A / Left Arrow)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+
+          {/* 3D Control */}
+          <div className="camera-angle-indicator-inner">
             <CameraAngle3DControl
               azimuth={currentWaypoint.azimuth}
               elevation={currentWaypoint.elevation}
@@ -364,19 +368,27 @@ const Sogni360Container: React.FC = () => {
               onDistanceChange={() => {}}
               size="compact"
             />
+            {/* Waypoint counter */}
+            {hasGeneratedImages && (
+              <div className="waypoint-counter">
+                {currentWaypointIndex + 1} / {waypoints.length}
+              </div>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Edit button when waypoints exist but editor is closed */}
-      {waypoints.length > 0 && !hasGeneratedImages && !showWaypointEditor && !isGenerating && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[15]">
-          <button
-            className="btn bg-yellow-400 hover:bg-yellow-300 text-black font-semibold px-8 py-3 rounded-lg shadow-lg"
-            onClick={() => dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true })}
-          >
-            Edit Angles
-          </button>
+          {/* Next button */}
+          {hasGeneratedImages && (
+            <button
+              className="nav-arrow nav-arrow-right"
+              onClick={nextWaypoint}
+              disabled={isTransitionPlaying}
+              title="Next (D / Right Arrow)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 
@@ -419,20 +431,6 @@ const Sogni360Container: React.FC = () => {
         </div>
       )}
 
-      {/* Create Transition Video button - shows when all angles ready and not in editor */}
-      {hasGeneratedImages && !showWaypointEditor && !isGenerating && !showTransitionConfig && !showTransitionReview && !showFinalVideoPreview && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[15]">
-          <button
-            className="btn bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-semibold px-6 py-3 rounded-lg shadow-lg flex items-center gap-2"
-            onClick={() => dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true })}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-            </svg>
-            Create Transition Video
-          </button>
-        </div>
-      )}
 
       {/* Transition Config Panel */}
       {showTransitionConfig && (
@@ -444,27 +442,25 @@ const Sogni360Container: React.FC = () => {
         </div>
       )}
 
-      {/* Transition Review Panel */}
+      {/* Transition Review Panel - uses position:fixed internally, no wrapper needed */}
       {showTransitionReview && (
-        <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/60">
-          <TransitionReviewPanel
-            onClose={() => {
-              dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: false });
-              if (!isTransitionGenerating) {
-                dispatch({ type: 'SET_PROJECT_STATUS', payload: 'complete' });
-              }
-            }}
-            onStitch={handleStitchVideos}
-            onRedoSegment={handleRedoSegment}
-            isGenerating={isTransitionGenerating}
-          />
-        </div>
+        <TransitionReviewPanel
+          onClose={() => {
+            dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: false });
+            if (!isTransitionGenerating) {
+              dispatch({ type: 'SET_PROJECT_STATUS', payload: 'complete' });
+            }
+          }}
+          onStitch={handleStitchVideos}
+          onRedoSegment={handleRedoSegment}
+          isGenerating={isTransitionGenerating}
+        />
       )}
 
-      {/* Final Video Preview Panel */}
-      {showFinalVideoPreview && currentProject?.finalLoopUrl && (
+      {/* Final Video Preview Panel - plays all segment videos in sequence */}
+      {showFinalVideoPreview && currentProject?.segments && (
         <FinalVideoPanel
-          videoUrl={currentProject.finalLoopUrl}
+          videoUrls={currentProject.segments.map(s => s.videoUrl).filter(Boolean) as string[]}
           onClose={handleCloseFinalVideo}
           onBackToEditor={handleBackToEditor}
         />

@@ -1,37 +1,22 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
+import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 
 const Sogni360Viewer: React.FC = () => {
-  const { state, nextWaypoint, previousWaypoint, togglePlayback, dispatch } = useApp();
+  const { state } = useApp();
   const { currentProject, currentWaypointIndex } = state;
+
+  const {
+    nextWaypoint,
+    previousWaypoint,
+    navigateToWaypoint,
+    togglePlayback,
+    isTransitionPlaying,
+    handleTransitionEnd,
+    getCurrentContent
+  } = useTransitionNavigation();
+
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Get current content to display
-  const getCurrentContent = useCallback(() => {
-    if (!currentProject) return null;
-
-    const waypoints = currentProject.waypoints;
-
-    // If no waypoints, show source image
-    if (waypoints.length === 0) {
-      return { type: 'image' as const, url: currentProject.sourceImageUrl };
-    }
-
-    // Get current waypoint
-    const currentWaypoint = waypoints[currentWaypointIndex];
-    if (!currentWaypoint) {
-      return { type: 'image' as const, url: currentProject.sourceImageUrl };
-    }
-
-    // If waypoint has an image, show it
-    if (currentWaypoint.imageUrl) {
-      return { type: 'image' as const, url: currentWaypoint.imageUrl };
-    }
-
-    // Fallback to source image
-    return { type: 'image' as const, url: currentProject.sourceImageUrl };
-  }, [currentProject, currentWaypointIndex]);
-
   const content = getCurrentContent();
 
   // Handle click zones
@@ -85,17 +70,6 @@ const Sogni360Viewer: React.FC = () => {
     touchStartRef.current = null;
   }, [nextWaypoint, previousWaypoint, togglePlayback]);
 
-  // Auto-play handling
-  useEffect(() => {
-    if (!state.isPlaying || !currentProject) return;
-
-    const interval = setInterval(() => {
-      nextWaypoint();
-    }, 3000 / state.playbackSpeed); // Move to next waypoint every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [state.isPlaying, state.playbackSpeed, currentProject, nextWaypoint]);
-
   if (!content) {
     return (
       <div className="sogni-360-viewer flex items-center justify-center text-white">
@@ -121,11 +95,13 @@ const Sogni360Viewer: React.FC = () => {
       ) : (
         <video
           ref={videoRef}
+          key={content.url} // Force remount on URL change
           src={content.url}
           className="max-w-full max-h-full object-contain"
           autoPlay
           muted
           playsInline
+          onEnded={handleTransitionEnd}
         />
       )}
 
@@ -157,7 +133,11 @@ const Sogni360Viewer: React.FC = () => {
                   ? 'bg-white w-4'
                   : 'bg-white/50 hover:bg-white/75'
               }`}
-              onClick={() => dispatch({ type: 'SET_CURRENT_WAYPOINT_INDEX', payload: index })}
+              onClick={() => {
+                if (index === currentWaypointIndex || isTransitionPlaying) return;
+                const direction = index > currentWaypointIndex ? 'forward' : 'backward';
+                navigateToWaypoint(index, direction);
+              }}
             />
           ))}
         </div>

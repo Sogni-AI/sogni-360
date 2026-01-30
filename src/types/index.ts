@@ -101,6 +101,7 @@ export interface Sogni360State {
   // UI state
   uiVisible: boolean;
   showWaypointEditor: boolean;
+  showAngleReview: boolean;
   showExportPanel: boolean;
   showProgressOverlay: boolean;
   showTransitionConfig: boolean;
@@ -136,6 +137,7 @@ export type Sogni360Action =
   | { type: 'SET_PLAYBACK_SPEED'; payload: number }
   | { type: 'SET_UI_VISIBLE'; payload: boolean }
   | { type: 'SET_SHOW_WAYPOINT_EDITOR'; payload: boolean }
+  | { type: 'SET_SHOW_ANGLE_REVIEW'; payload: boolean }
   | { type: 'SET_SHOW_EXPORT_PANEL'; payload: boolean }
   | { type: 'SET_SHOW_PROGRESS_OVERLAY'; payload: boolean }
   | { type: 'SET_SHOW_TRANSITION_CONFIG'; payload: boolean }

@@ -38,6 +38,7 @@ const CameraAngle3DControl: React.FC<CameraAngle3DControlProps> = ({
       <CompactMode
         azimuth={azimuth}
         elevation={elevation}
+        distance={distance}
         orbitalSize={orbitalSize}
       />
     );

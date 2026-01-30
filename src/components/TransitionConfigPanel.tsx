@@ -16,11 +16,11 @@ const SPARK_PER_SECOND = 3.92; // Approximate spark cost per second of video
 const USD_PER_SPARK = 0.005;
 
 // Default transition prompt
-const DEFAULT_TRANSITION_PROMPT = `Cinematic transition shot between starting image person and environment to the ending image person and environment. Preserve the same subject identity and facial structure. Use a premium artistic transition or transformation, dynamic action, and atmospheric lighting. Seamless camera movement.`;
+const DEFAULT_TRANSITION_PROMPT = `Smooth camera orbit around the subject. Preserve the same subject identity, facial structure, and environment. Seamless motion between camera angles with consistent lighting.`;
 
 interface TransitionConfigPanelProps {
   onClose: () => void;
-  onStartGeneration: () => void;
+  onStartGeneration: (segments: Segment[]) => void;
 }
 
 const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
@@ -101,8 +101,8 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     // Set segments in project
     dispatch({ type: 'SET_SEGMENTS', payload: newSegments });
 
-    // Trigger generation
-    onStartGeneration();
+    // Trigger generation with the segments directly (avoids async state timing issue)
+    onStartGeneration(newSegments);
   }, [readyWaypoints, transitionPrompt, resolution, duration, quality, dispatch, showToast, onStartGeneration]);
 
   return (
@@ -112,12 +112,15 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
         <div className="config-header-left">
           <div className="config-icon">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div className="config-title-group">
-            <h2 className="config-title">Transition Video</h2>
-            <p className="config-subtitle">Generate a sweet looping transition video between all images.</p>
+            <h2 className="config-title">Orbital Transition Videos</h2>
+            <p className="config-subtitle">
+              Create {transitionCount} video{transitionCount !== 1 ? 's' : ''} connecting your {readyWaypoints.length} camera angles into a seamless 360° loop.
+            </p>
           </div>
         </div>
         <button className="config-close-btn" onClick={onClose}>
@@ -132,16 +135,71 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
         {/* Transition Prompt */}
         <div className="config-section">
           <label className="config-label">
-            <span className="label-icon">✨</span>
-            TRANSITION PROMPT
+            Video Generation Prompt
           </label>
+          <p className="config-hint">
+            Describe how the camera should move between angles. The AI will animate the transition.
+          </p>
           <textarea
             className="config-textarea"
             value={transitionPrompt}
             onChange={(e) => setTransitionPrompt(e.target.value)}
             placeholder="Describe the transition style..."
-            rows={4}
+            rows={3}
           />
+        </div>
+
+        {/* Settings row */}
+        <div className="config-settings-row">
+          <div className="config-setting">
+            <label className="config-setting-label">Resolution</label>
+            <select
+              className="config-select"
+              value={resolution}
+              onChange={(e) => setResolution(e.target.value as VideoResolution)}
+            >
+              {Object.entries(VIDEO_RESOLUTIONS).map(([key, config]) => (
+                <option key={key} value={key}>{config.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="config-setting">
+            <label className="config-setting-label">Duration</label>
+            <select
+              className="config-select"
+              value={duration}
+              onChange={(e) => setDuration(parseFloat(e.target.value))}
+            >
+              {durationOptions.map((d) => (
+                <option key={d} value={d}>{d}s per clip</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="config-setting">
+            <label className="config-setting-label">Quality</label>
+            <select
+              className="config-select"
+              value={quality}
+              onChange={(e) => setQuality(e.target.value as VideoQualityPreset)}
+            >
+              {Object.entries(VIDEO_QUALITY_PRESETS).map(([key, config]) => (
+                <option key={key} value={key}>{config.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Cost estimate */}
+        <div className="config-cost">
+          <div className="config-cost-left">
+            <span className="config-cost-videos">{transitionCount} videos × {duration}s each</span>
+          </div>
+          <div className="config-cost-right">
+            <span className="config-cost-spark">{totalSpark.toFixed(2)} Spark</span>
+            <span className="config-cost-usd">≈ ${totalUsd.toFixed(2)}</span>
+          </div>
         </div>
 
         {/* Generate Button */}
@@ -151,61 +209,11 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           disabled={readyWaypoints.length < 2}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Generate Transition Video
+          Generate {transitionCount} Transition Video{transitionCount !== 1 ? 's' : ''}
         </button>
-
-        {/* Settings bar */}
-        <div className="config-settings-bar">
-          <div className="settings-left">
-            <span className="setting-item">
-              <span className="setting-icon">🎬</span>
-              {transitionCount} videos
-            </span>
-            <span className="setting-divider">·</span>
-
-            {/* Resolution selector */}
-            <select
-              className="setting-select"
-              value={resolution}
-              onChange={(e) => setResolution(e.target.value as VideoResolution)}
-            >
-              {Object.entries(VIDEO_RESOLUTIONS).map(([key, config]) => (
-                <option key={key} value={key}>{config.label}</option>
-              ))}
-            </select>
-            <span className="setting-divider">·</span>
-
-            {/* Duration selector */}
-            <select
-              className="setting-select"
-              value={duration}
-              onChange={(e) => setDuration(parseFloat(e.target.value))}
-            >
-              {durationOptions.map((d) => (
-                <option key={d} value={d}>{d}s</option>
-              ))}
-            </select>
-            <span className="setting-divider">·</span>
-
-            {/* Quality selector */}
-            <select
-              className="setting-select"
-              value={quality}
-              onChange={(e) => setQuality(e.target.value as VideoQualityPreset)}
-            >
-              {Object.entries(VIDEO_QUALITY_PRESETS).map(([key, config]) => (
-                <option key={key} value={key}>{config.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="settings-right">
-            <span className="cost-spark">{totalSpark.toFixed(2)} Spark</span>
-            <span className="cost-usd">≈ ${totalUsd.toFixed(2)} USD</span>
-          </div>
-        </div>
       </div>
     </div>
   );

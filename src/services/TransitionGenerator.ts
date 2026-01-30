@@ -9,8 +9,8 @@ import { api } from './api';
 import type { Segment, GenerationProgressEvent, TransitionVersion } from '../types';
 import {
   VIDEO_QUALITY_PRESETS,
-  VIDEO_RESOLUTIONS,
   calculateVideoFrames,
+  calculateVideoDimensions,
   VideoQualityPreset,
   VideoResolution
 } from '../constants/videoSettings';
@@ -26,31 +26,31 @@ export interface GenerateTransitionOptions {
   quality?: VideoQualityPreset;
   duration?: number;
   tokenType?: 'spark' | 'sogni';
+  sourceWidth?: number;
+  sourceHeight?: number;
   onProgress?: (progress: number, workerName?: string) => void;
   onComplete?: (videoUrl: string) => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * Convert an image URL to a Uint8Array buffer
+ * Prepare image for sending to backend
+ * For data URLs: convert to base64 string
+ * For HTTP URLs: pass through (backend will fetch server-side, avoiding CORS)
  */
-async function fetchImageAsBuffer(imageUrl: string): Promise<Uint8Array> {
-  if (imageUrl.startsWith('data:')) {
-    const base64Data = imageUrl.split(',')[1];
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
+function prepareImageForBackend(imageUrl: string): string {
+  // For HTTP URLs, pass them directly to backend (backend fetches server-side)
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
   }
 
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image: ${response.statusText}`);
+  // For data URLs, pass them as-is (backend can handle data URLs)
+  if (imageUrl.startsWith('data:')) {
+    return imageUrl;
   }
-  const arrayBuffer = await response.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
+
+  // For other formats, assume it's already base64
+  return imageUrl;
 }
 
 /**
@@ -67,33 +67,37 @@ export async function generateTransition(options: GenerateTransitionOptions): Pr
     quality = 'fast',
     duration = 1.5,
     tokenType = 'spark',
+    sourceWidth = 480,
+    sourceHeight = 640,
     onProgress,
     onComplete,
     onError
   } = options;
 
   try {
-    // Fetch images as buffers
-    const [fromBuffer, toBuffer] = await Promise.all([
-      fetchImageAsBuffer(fromImageUrl),
-      fetchImageAsBuffer(toImageUrl)
-    ]);
+    // Prepare images for backend (URLs passed through, backend fetches server-side)
+    const fromImage = prepareImageForBackend(fromImageUrl);
+    const toImage = prepareImageForBackend(toImageUrl);
 
     // Get quality config
     const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
-    const resolutionConfig = VIDEO_RESOLUTIONS[resolution];
+
+    // Calculate video dimensions preserving aspect ratio
+    const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
 
     // Calculate frames from duration
     const frames = calculateVideoFrames(duration);
 
-    // Start generation via API
+    console.log(`[TransitionGenerator] Video dimensions: ${videoDimensions.width}x${videoDimensions.height} (source: ${sourceWidth}x${sourceHeight})`);
+
+    // Start generation via API (backend fetches URLs server-side)
     const { projectId } = await api.generateTransition({
-      referenceImage: fromBuffer,
-      referenceImageEnd: toBuffer,
+      referenceImage: fromImage,
+      referenceImageEnd: toImage,
       prompt,
       negativePrompt,
-      width: resolutionConfig.maxDimension,
-      height: resolutionConfig.maxDimension,
+      width: videoDimensions.width,
+      height: videoDimensions.height,
       frames,
       steps: qualityConfig.steps,
       model: qualityConfig.model,
@@ -183,6 +187,8 @@ export async function generateMultipleTransitions(
     quality?: VideoQualityPreset;
     duration?: number;
     tokenType?: 'spark' | 'sogni';
+    sourceWidth?: number;
+    sourceHeight?: number;
     onSegmentStart?: (segmentId: string) => void;
     onSegmentProgress?: (segmentId: string, progress: number, workerName?: string) => void;
     onSegmentComplete?: (segmentId: string, videoUrl: string, version: TransitionVersion) => void;
@@ -198,6 +204,8 @@ export async function generateMultipleTransitions(
     quality = 'fast',
     duration = 1.5,
     tokenType = 'spark',
+    sourceWidth = 480,
+    sourceHeight = 640,
     onSegmentStart,
     onSegmentProgress,
     onSegmentComplete,
@@ -239,6 +247,8 @@ export async function generateMultipleTransitions(
       quality,
       duration,
       tokenType,
+      sourceWidth,
+      sourceHeight,
       onProgress: (progress, workerName) => {
         onSegmentProgress?.(segment.id, progress, workerName);
       },
