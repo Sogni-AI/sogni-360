@@ -87,6 +87,13 @@ html, body {
   gap: 0.5rem;
 }
 
+@media (max-width: 767px) {
+  .camera-angle-indicator-with-nav {
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+}
+
 .camera-angle-indicator-inner {
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(12px);
@@ -471,9 +478,22 @@ html, body {
   padding: 1rem;
 }
 
+@media (max-width: 767px) {
+  .waypoint-editor-timeline {
+    padding: 0.75rem 0;
+  }
+}
+
 .timeline-header {
   flex-shrink: 0;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 767px) {
+  .timeline-header {
+    padding: 0 0.75rem;
+    margin-bottom: 0.75rem;
+  }
 }
 
 .timeline-title h2 {
@@ -520,6 +540,12 @@ html, body {
   padding: 0 1rem;
 }
 
+@media (max-width: 767px) {
+  .timeline-steps {
+    padding: 0 0.5rem;
+  }
+}
+
 .timeline-step {
   display: flex;
   align-items: center;
@@ -533,14 +559,15 @@ html, body {
   background: linear-gradient(90deg, rgba(59, 130, 246, 0.5), rgba(59, 130, 246, 0.2));
   margin: 0 0.5rem;
   flex-shrink: 0;
-  align-self: center;
-  margin-top: -80px;
+  align-self: flex-start;
+  margin-top: 2.5rem;
 }
 
 @media (max-width: 767px) {
   .timeline-connector {
-    width: 24px;
-    margin: 0 0.25rem;
+    width: 16px;
+    margin: 0 0.125rem;
+    margin-top: 2rem;
   }
 }
 
@@ -1825,6 +1852,21 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Hide workflow wizard on mobile - camera control provides navigation */
+@media (max-width: 767px) {
+  .global-wizard-bar {
+    background: transparent;
+    border-bottom: none;
+    padding: 0;
+    height: 0;
+    overflow: visible;
+  }
+
+  .global-wizard-bar .workflow-wizard {
+    display: none;
+  }
+}
+
 /* Left spacer - hidden, not needed */
 .global-wizard-bar-spacer {
   display: none;
@@ -1836,6 +1878,13 @@ html, body {
   top: 0.75rem;
   right: 1rem;
   z-index: 100;
+}
+
+@media (max-width: 767px) {
+  .global-wizard-bar .project-actions-bar {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
 }
 
 /* Review panel wizard wrapper */
