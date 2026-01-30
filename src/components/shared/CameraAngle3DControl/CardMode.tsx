@@ -42,8 +42,8 @@ const CardMode: React.FC<CardModeProps> = ({
   onDistanceChange,
   orbitalSize: baseOrbitalSize
 }) => {
-  // Use smaller orbital in card mode - base of 80px fits within mobile card width
-  const orbitalSize = Math.min(baseOrbitalSize, 80);
+  // Use smaller orbital in card mode - 70px fits within narrow mobile cards
+  const orbitalSize = Math.min(baseOrbitalSize, 70);
   const currentAzimuth = getAzimuthConfig(azimuth);
   const currentElevation = getElevationConfig(elevation);
 
@@ -92,17 +92,17 @@ const CardMode: React.FC<CardModeProps> = ({
                 key={el.key}
                 onClick={() => onElevationChange(el.key)}
                 style={{
-                  padding: '3px 5px',
+                  padding: '3px 4px',
                   borderRadius: '4px',
                   border: 'none',
                   background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                   color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
                   cursor: 'pointer',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   fontWeight: isSelected ? '600' : '500',
                   transition: 'all 0.15s ease',
-                  minWidth: '32px',
-                  minHeight: '22px'
+                  minWidth: '28px',
+                  minHeight: '20px'
                 }}
               >
                 {label}
@@ -112,12 +112,12 @@ const CardMode: React.FC<CardModeProps> = ({
         </div>
 
         {/* Orbital with rotate buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, justifyContent: 'center', minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, justifyContent: 'center', minWidth: 0 }}>
           <button
             onClick={() => rotateCamera('ccw')}
             style={{
-              width: '22px',
-              height: '22px',
+              width: '20px',
+              height: '20px',
               borderRadius: '50%',
               border: `1px solid ${COLORS.border}`,
               background: 'rgba(30, 30, 30, 0.9)',
@@ -126,7 +126,7 @@ const CardMode: React.FC<CardModeProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '11px',
+              fontSize: '10px',
               padding: 0,
               flexShrink: 0
             }}
@@ -273,8 +273,8 @@ const CardMode: React.FC<CardModeProps> = ({
           <button
             onClick={() => rotateCamera('cw')}
             style={{
-              width: '22px',
-              height: '22px',
+              width: '20px',
+              height: '20px',
               borderRadius: '50%',
               border: `1px solid ${COLORS.border}`,
               background: 'rgba(30, 30, 30, 0.9)',
@@ -283,7 +283,7 @@ const CardMode: React.FC<CardModeProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '11px',
+              fontSize: '10px',
               padding: 0,
               flexShrink: 0
             }}
@@ -312,16 +312,16 @@ const CardMode: React.FC<CardModeProps> = ({
               onClick={() => onDistanceChange(d.key)}
               style={{
                 flex: 1,
-                padding: '4px 2px',
+                padding: '3px 2px',
                 borderRadius: '4px',
                 border: 'none',
                 background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                 color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
                 cursor: 'pointer',
-                fontSize: '12px',
+                fontSize: '10px',
                 fontWeight: isSelected ? '600' : '500',
                 transition: 'all 0.15s ease',
-                minHeight: '24px'
+                minHeight: '20px'
               }}
             >
               {label}
