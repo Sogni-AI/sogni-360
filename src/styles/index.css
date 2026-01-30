@@ -57,6 +57,25 @@ html, body {
   object-fit: contain;
 }
 
+/* Video container - fills viewer space and centers video to match image position */
+.sogni-360-viewer .video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Video overlay - positioned to exactly match the background image */
+.sogni-360-viewer .video-overlay {
+  position: absolute;
+  /* Use same centering as flexbox would give the image */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 /* Camera angle indicator with navigation arrows */
 .camera-angle-indicator-with-nav {
   position: absolute;
@@ -1124,6 +1143,11 @@ html, body {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
+}
+
+.cost-loading {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .footer-actions {
@@ -3127,6 +3151,12 @@ html, body {
 .config-cost-usd {
   font-size: 0.8125rem;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.config-cost-loading {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
 }
 
 /* Generate button */

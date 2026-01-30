@@ -188,7 +188,7 @@ class ApiClient {
     imageCount?: number;
     stepCount?: number;
     tokenType?: 'spark' | 'sogni';
-  }): Promise<{ spark: number; sogni: number }> {
+  }): Promise<{ token: number; usd: number }> {
     return this.fetch('/api/sogni/estimate-cost', {
       method: 'POST',
       body: JSON.stringify({

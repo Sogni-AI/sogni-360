@@ -7,7 +7,7 @@ import Sogni360Viewer from './Sogni360Viewer';
 import WaypointEditor from './WaypointEditor';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
 import WorkflowWizard, { computeWorkflowStep, WorkflowStep } from './shared/WorkflowWizard';
-import TransitionConfigPanel from './TransitionConfigPanel';
+import TransitionConfigPanel, { TransitionGenerationSettings } from './TransitionConfigPanel';
 import TransitionReviewPanel from './TransitionReviewPanel';
 import FinalVideoPanel from './FinalVideoPanel';
 import ProjectManagerModal from './ProjectManagerModal';
@@ -159,7 +159,8 @@ const Sogni360Container: React.FC = () => {
   }, [hasGeneratedImages, state.isPlaying, state.showWaypointEditor, state.showExportPanel, showWaypointEditor, dispatch, nextWaypoint, previousWaypoint, isTransitionPlaying]);
 
   // Handle starting transition generation
-  const handleStartTransitionGeneration = useCallback(async (passedSegments?: Segment[]) => {
+  // Settings are passed directly to avoid React state timing issues
+  const handleStartTransitionGeneration = useCallback(async (passedSegments?: Segment[], passedSettings?: TransitionGenerationSettings) => {
     if (!currentProject) return;
 
     // Use passed segments (from TransitionConfigPanel) or fall back to state
@@ -183,14 +184,22 @@ const Sogni360Container: React.FC = () => {
     // Get source dimensions - MUST use actual dimensions, not fallbacks
     const sourceWidth = currentProject.sourceImageDimensions?.width;
     const sourceHeight = currentProject.sourceImageDimensions?.height;
-    const resolution = currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
+
+    // Use passed settings directly (avoids race condition with state updates)
+    // Fall back to project settings for redo operations
+    const resolution = passedSettings?.resolution || currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
+    const quality = passedSettings?.quality || (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast';
+    const duration = passedSettings?.duration || currentProject.settings.transitionDuration || 1.5;
+    const prompt = passedSettings?.transitionPrompt || currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.';
 
     console.log('[Sogni360Container] Transition generation config:', {
       resolution,
+      quality,
+      duration,
       sourceWidth,
       sourceHeight,
       hasSourceDimensions: !!currentProject.sourceImageDimensions,
-      settings: currentProject.settings
+      passedSettings: !!passedSettings
     });
 
     if (!sourceWidth || !sourceHeight) {
@@ -202,10 +211,10 @@ const Sogni360Container: React.FC = () => {
         segments,
         waypointImages,
         {
-          prompt: currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.',
+          prompt,
           resolution,
-          quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast',
-          duration: currentProject.settings.transitionDuration || 1.5,
+          quality,
+          duration,
           tokenType: currentProject.settings.tokenType || 'spark',
           sourceWidth: sourceWidth || 1024,  // Default to 1024 if missing
           sourceHeight: sourceHeight || 1024,  // Default to 1024 if missing

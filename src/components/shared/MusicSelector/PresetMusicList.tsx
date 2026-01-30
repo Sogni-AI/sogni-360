@@ -1,5 +1,5 @@
 import React from 'react';
-import { MUSIC_PRESETS, type MusicTrack } from '../../../constants/musicPresets';
+import { MUSIC_PRESETS, S2V_TRACKS, WINTER_TRACKS, HALLOWEEN_TRACKS, type MusicTrack } from '../../../constants/musicPresets';
 
 interface PresetMusicListProps {
   selectedPresetId: string | null;
@@ -20,6 +20,12 @@ const PresetMusicList: React.FC<PresetMusicListProps> = ({
     if (track) {
       onSelectPreset(track);
     }
+  };
+
+  // Format track display with emoji if present
+  const formatTrackLabel = (track: MusicTrack) => {
+    const emoji = track.emoji ? `${track.emoji} ` : '';
+    return `${emoji}${track.title} (${track.duration})`;
   };
 
   return (
@@ -48,11 +54,33 @@ const PresetMusicList: React.FC<PresetMusicListProps> = ({
         <option value="" disabled style={{ color: '#666' }}>
           Select a track...
         </option>
-        {MUSIC_PRESETS.map(track => (
-          <option key={track.id} value={track.id} style={{ color: '#000' }}>
-            {track.title} ({track.duration})
-          </option>
-        ))}
+
+        {/* S2V Samples - grouped */}
+        <optgroup label="🎤 Sound Clips" style={{ color: '#000' }}>
+          {S2V_TRACKS.map(track => (
+            <option key={track.id} value={track.id} style={{ color: '#000' }}>
+              {formatTrackLabel(track)}
+            </option>
+          ))}
+        </optgroup>
+
+        {/* Winter Tracks */}
+        <optgroup label="❄️ Winter" style={{ color: '#000' }}>
+          {WINTER_TRACKS.map(track => (
+            <option key={track.id} value={track.id} style={{ color: '#000' }}>
+              {formatTrackLabel(track)}
+            </option>
+          ))}
+        </optgroup>
+
+        {/* Halloween Tracks */}
+        <optgroup label="🎃 Halloween" style={{ color: '#000' }}>
+          {HALLOWEEN_TRACKS.map(track => (
+            <option key={track.id} value={track.id} style={{ color: '#000' }}>
+              {formatTrackLabel(track)}
+            </option>
+          ))}
+        </optgroup>
       </select>
 
       {isLoading && (

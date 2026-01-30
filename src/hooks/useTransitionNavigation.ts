@@ -161,7 +161,7 @@ export function useTransitionNavigation() {
 
     autoPlayTimerRef.current = setTimeout(() => {
       nextWaypoint();
-    }, 3000 / playbackSpeed);
+    }, 500 / playbackSpeed);
 
     return () => {
       if (autoPlayTimerRef.current) {

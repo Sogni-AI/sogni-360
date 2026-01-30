@@ -5,14 +5,148 @@
 
 // Base URL for Sogni assets
 const ASSET_BASE_URL = 'https://cdn.sogni.ai';
+const S2V_ASSET_BASE_URL = 'https://pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev';
 
 export interface MusicTrack {
   id: string;
   title: string;
   url: string;
   duration: string;
-  category: 'winter' | 'halloween';
+  category: 's2v' | 'winter' | 'halloween';
+  emoji?: string;
 }
+
+// Sound-to-Video sample tracks (from Photobooth S2V workflow)
+const S2V_TRACKS: MusicTrack[] = [
+  {
+    id: '6-feet',
+    title: '6 Feet',
+    emoji: '🎵',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/6-feet.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: '8-ball',
+    title: '8 Ball',
+    emoji: '🎱',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/8-ball.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'fast-as-f',
+    title: 'Fast as F',
+    emoji: '⚡',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/fast-as-f.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'hoist-the-colors',
+    title: 'Hoist the Colors',
+    emoji: '🏴‍☠️',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/hoist-the-colors.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'hurricane-katrina',
+    title: 'Hurricane Katrina',
+    emoji: '🌀',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/hurrican-katrina.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'kitty-bed',
+    title: 'Kitty Bed',
+    emoji: '🐱',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/kitty-bed.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'listen-to-me-now',
+    title: 'Listen to Me Now',
+    emoji: '👂',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/listen-to-me-now.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'n-95',
+    title: 'N-95',
+    emoji: '😷',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/n-95.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'noone-is-going-to-know',
+    title: 'No One is Going to Know',
+    emoji: '🤫',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/noone-is-going-to-know.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'o-fortuna',
+    title: 'O Fortuna',
+    emoji: '🎭',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/o-fortuna.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'peter-axel-f',
+    title: 'Peter Axel F',
+    emoji: '🎹',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/peter-axel-f.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'priceless',
+    title: 'Priceless',
+    emoji: '💎',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/priceless.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'runnin-through-the-6',
+    title: 'Runnin Through the 6',
+    emoji: '🏃',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/runnin-through-the-6.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'runnin-up-that-hill',
+    title: 'Runnin Up That Hill',
+    emoji: '⛰️',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/runnin-up-that-hill.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'spider-man-2099',
+    title: 'Spider-Man 2099',
+    emoji: '🕷️',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/spider-man-2099.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'surround-sound',
+    title: 'Surround Sound',
+    emoji: '🔊',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/surrond-sound.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  }
+];
 
 // Winter tracks
 const WINTER_TRACKS: MusicTrack[] = [
@@ -134,8 +268,8 @@ const HALLOWEEN_TRACKS: MusicTrack[] = [
   }
 ];
 
-// Combined preset list
-export const MUSIC_PRESETS: MusicTrack[] = [...WINTER_TRACKS, ...HALLOWEEN_TRACKS];
+// Combined preset list - S2V samples first, then batch transition music
+export const MUSIC_PRESETS: MusicTrack[] = [...S2V_TRACKS, ...WINTER_TRACKS, ...HALLOWEEN_TRACKS];
 
 // Export by category for potential future use
-export { WINTER_TRACKS, HALLOWEEN_TRACKS };
+export { S2V_TRACKS, WINTER_TRACKS, HALLOWEEN_TRACKS };

@@ -14,18 +14,23 @@ import {
 import type { WorkflowStep } from './shared/WorkflowWizard';
 import MusicSelector from './shared/MusicSelector';
 import MusicConfigSection from './shared/MusicConfigSection';
-import { isSoundEnabled, setSoundEnabled, warmUpAudio } from '../utils/sonicLogos';
-
-// Cost estimation constants
-const SPARK_PER_SECOND = 3.92; // Approximate spark cost per second of video
-const USD_PER_SPARK = 0.005;
+import { warmUpAudio } from '../utils/sonicLogos';
+import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
 
 // Default transition prompt
 const DEFAULT_TRANSITION_PROMPT = `Smooth camera orbit around the subject. Preserve the same subject identity, facial structure, and environment. Seamless motion between camera angles with consistent lighting.`;
 
+export interface TransitionGenerationSettings {
+  resolution: VideoResolution;
+  quality: VideoQualityPreset;
+  duration: number;
+  transitionPrompt: string;
+  musicSelection?: MusicSelection;
+}
+
 interface TransitionConfigPanelProps {
   onClose: () => void;
-  onStartGeneration: (segments: Segment[]) => void;
+  onStartGeneration: (segments: Segment[], settings: TransitionGenerationSettings) => void;
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
 }
 
@@ -56,19 +61,26 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   const [showMusicSelector, setShowMusicSelector] = useState(false);
   const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(null);
 
-  // Sound effects state
-  const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
-
   const waypoints = currentProject?.waypoints || [];
   const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
 
   // Calculate number of transitions needed (between consecutive waypoints, looping back)
   const transitionCount = readyWaypoints.length >= 2 ? readyWaypoints.length : 0;
 
-  // Calculate cost estimate
+  // Total video duration for all transitions
   const totalSeconds = transitionCount * duration;
-  const totalSpark = totalSeconds * SPARK_PER_SECOND;
-  const totalUsd = totalSpark * USD_PER_SPARK;
+
+  // Get cost estimate from Sogni API
+  const { loading: costLoading, formattedCost, formattedUSD } = useVideoCostEstimation({
+    imageWidth: currentProject?.sourceImageDimensions?.width,
+    imageHeight: currentProject?.sourceImageDimensions?.height,
+    resolution,
+    quality,
+    duration,
+    jobCount: transitionCount,
+    tokenType: currentProject?.settings.tokenType || 'spark',
+    enabled: transitionCount > 0
+  });
 
   // Duration options
   const durationOptions = useMemo(() => {
@@ -79,17 +91,20 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     return options;
   }, []);
 
-  // Handle sound toggle
-  const handleSoundToggle = useCallback(() => {
-    const newValue = !soundEnabled;
-    setSoundEnabledState(newValue);
-    setSoundEnabled(newValue);
-  }, [soundEnabled]);
-
   // Execute the actual generation (called after confirmation)
   const executeStartGeneration = useCallback(() => {
     // Warm up audio on user interaction for iOS compatibility
     warmUpAudio();
+
+    // Capture current settings BEFORE dispatch to avoid race condition
+    const settings: TransitionGenerationSettings = {
+      resolution,
+      quality,
+      duration,
+      transitionPrompt,
+      musicSelection: musicSelection || undefined
+    };
+
     // Save settings to project (including music selection)
     dispatch({
       type: 'UPDATE_SETTINGS',
@@ -120,8 +135,8 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     // Set segments in project
     dispatch({ type: 'SET_SEGMENTS', payload: newSegments });
 
-    // Trigger generation with the segments directly (avoids async state timing issue)
-    onStartGeneration(newSegments);
+    // Pass settings directly to avoid async state timing issues
+    onStartGeneration(newSegments, settings);
   }, [readyWaypoints, transitionPrompt, resolution, duration, quality, musicSelection, dispatch, onStartGeneration]);
 
   // Handle start generation button click - confirms if work would be lost
@@ -225,21 +240,6 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           </div>
         </div>
 
-        {/* Sound Effects Toggle */}
-        <div className="config-setting-row" style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
-          <label className="config-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={soundEnabled}
-              onChange={handleSoundToggle}
-              style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
-            />
-            <span style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-              Sound effects when generation completes
-            </span>
-          </label>
-        </div>
-
         {/* Music Section */}
         <MusicConfigSection
           musicSelection={musicSelection}
@@ -254,8 +254,14 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
             <span className="config-cost-videos">{transitionCount} videos × {duration}s each</span>
           </div>
           <div className="config-cost-right">
-            <span className="config-cost-spark">{totalSpark.toFixed(2)} Spark</span>
-            <span className="config-cost-usd">≈ ${totalUsd.toFixed(2)}</span>
+            {costLoading ? (
+              <span className="config-cost-loading">Calculating...</span>
+            ) : (
+              <>
+                <span className="config-cost-spark">{formattedCost} Spark</span>
+                <span className="config-cost-usd">≈ {formattedUSD}</span>
+              </>
+            )}
           </div>
         </div>
 

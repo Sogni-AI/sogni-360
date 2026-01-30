@@ -17,9 +17,7 @@ import CameraAngle3DControl from './shared/CameraAngle3DControl';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import AngleReviewPanel from './AngleReviewPanel';
 import { warmUpAudio, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
-
-const SPARK_PER_ANGLE = 2.59;
-const USD_PER_SPARK = 0.005;
+import { useImageCostEstimation } from '../hooks/useImageCostEstimation';
 
 interface WaypointEditorProps {
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
@@ -63,8 +61,13 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
   }, []);
 
   const anglesToGenerate = waypoints.filter(wp => !wp.isOriginal).length;
-  const totalSpark = anglesToGenerate * SPARK_PER_ANGLE;
-  const totalUsd = totalSpark * USD_PER_SPARK;
+
+  // Get cost estimate from API
+  const { loading: costLoading, formattedCost, formattedUSD } = useImageCostEstimation({
+    imageCount: anglesToGenerate,
+    tokenType: currentProject?.settings.tokenType || 'spark',
+    enabled: anglesToGenerate > 0
+  });
 
   const handleLoadPreset = useCallback((preset: MultiAnglePreset) => {
     const anglesToAdd = preset.angles.slice(0, MAX_WAYPOINTS);
@@ -399,7 +402,11 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
             {anglesToGenerate} angle{anglesToGenerate !== 1 ? 's' : ''} to generate
           </div>
           <div className="cost-total">
-            {totalSpark.toFixed(2)} spark ≈ ${totalUsd.toFixed(2)}
+            {costLoading ? (
+              <span className="cost-loading">Calculating...</span>
+            ) : (
+              <>{formattedCost} spark ≈ {formattedUSD}</>
+            )}
           </div>
         </div>
         <div className="footer-actions">

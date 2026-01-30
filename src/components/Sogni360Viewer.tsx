@@ -255,7 +255,7 @@ const Sogni360Viewer: React.FC = () => {
           }}
         />
       ) : (
-        <div className="relative max-w-full max-h-full flex items-center justify-center">
+        <div className="video-container">
           {/* Source image shown while video loads - prevents black flash */}
           {(content.sourceImageUrl || content.destinationImageUrl) && (
             <img
@@ -277,18 +277,14 @@ const Sogni360Viewer: React.FC = () => {
             ref={videoRef}
             key={content.url + (playReverse ? '-reverse' : '')}
             src={content.url}
-            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-150 ${
+            className={`video-overlay transition-opacity duration-150 ${
               isVideoElementReady ? 'opacity-100' : 'opacity-0'
             }`}
             style={imageDisplaySize ? {
               width: `${imageDisplaySize.width}px`,
               height: `${imageDisplaySize.height}px`,
               objectFit: 'cover'
-            } : {
-              maxWidth: '100%',
-              maxHeight: '100%',
-              objectFit: 'contain'
-            }}
+            } : undefined}
             muted
             playsInline
             onCanPlayThrough={() => {
