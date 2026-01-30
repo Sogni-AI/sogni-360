@@ -8,9 +8,11 @@ import {
   getDistanceConfig
 } from '../constants/cameraAngleSettings';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
+import { enhanceImage } from '../services/ImageEnhancer';
 import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
+import EnhancePromptPopup from './shared/EnhancePromptPopup';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
@@ -32,6 +34,14 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<string | null>(null);
+  const [enhancingId, setEnhancingId] = useState<string | null>(null);
+  const [isEnhancingAll, setIsEnhancingAll] = useState(false);
+  const [enhanceAllProgress, setEnhanceAllProgress] = useState<{ current: number; total: number } | null>(null);
+
+  // Popup state
+  const [showEnhancePopup, setShowEnhancePopup] = useState(false);
+  const [pendingEnhanceWaypoint, setPendingEnhanceWaypoint] = useState<Waypoint | null>(null);
+  const [isEnhanceAllMode, setIsEnhanceAllMode] = useState(false);
 
   const waypoints = currentProject?.waypoints || [];
 
@@ -82,7 +92,22 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             });
             dispatch({
               type: 'UPDATE_WAYPOINT',
-              payload: { id: waypointId, updates: { status: 'ready', progress: 100, error: undefined } }
+              payload: {
+                id: waypointId,
+                updates: {
+                  status: 'ready',
+                  progress: 100,
+                  error: undefined,
+                  // Reset enhancement state on regenerate
+                  enhanced: false,
+                  enhancing: false,
+                  enhancementProgress: 0,
+                  originalImageUrl: undefined,
+                  enhancedImageUrl: undefined,
+                  canUndoEnhance: false,
+                  canRedoEnhance: false
+                }
+              }
             });
             showToast({ message: 'Angle regenerated', type: 'success' });
             // Play sound when single angle completes
@@ -221,6 +246,194 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     }
   }, [waypoints, showToast]);
 
+  // Show enhance popup for single image
+  const handleEnhanceClick = useCallback((waypoint: Waypoint) => {
+    if (!waypoint.imageUrl || !currentProject) return;
+    setPendingEnhanceWaypoint(waypoint);
+    setIsEnhanceAllMode(false);
+    setShowEnhancePopup(true);
+  }, [currentProject]);
+
+  // Show enhance popup for all images
+  const handleEnhanceAllClick = useCallback(() => {
+    setIsEnhanceAllMode(true);
+    setPendingEnhanceWaypoint(null);
+    setShowEnhancePopup(true);
+  }, []);
+
+  // Execute enhancement with custom prompt
+  const executeEnhance = useCallback(async (waypoint: Waypoint, prompt: string) => {
+    if (!waypoint.imageUrl || !currentProject) return;
+
+    setEnhancingId(waypoint.id);
+
+    // Store original image for undo functionality
+    dispatch({
+      type: 'UPDATE_WAYPOINT',
+      payload: {
+        id: waypoint.id,
+        updates: {
+          enhancing: true,
+          enhancementProgress: 0,
+          originalImageUrl: waypoint.originalImageUrl || waypoint.imageUrl
+        }
+      }
+    });
+
+    try {
+      const enhancedUrl = await enhanceImage({
+        imageUrl: waypoint.imageUrl,
+        width: currentProject.sourceImageDimensions.width,
+        height: currentProject.sourceImageDimensions.height,
+        tokenType: currentProject.settings.tokenType,
+        prompt,
+        onProgress: (progress) => {
+          dispatch({
+            type: 'UPDATE_WAYPOINT',
+            payload: { id: waypoint.id, updates: { enhancementProgress: progress } }
+          });
+        },
+        onComplete: (imageUrl) => {
+          dispatch({
+            type: 'ADD_WAYPOINT_VERSION',
+            payload: { waypointId: waypoint.id, imageUrl }
+          });
+          dispatch({
+            type: 'UPDATE_WAYPOINT',
+            payload: {
+              id: waypoint.id,
+              updates: {
+                enhancing: false,
+                enhanced: true,
+                enhancementProgress: 100,
+                enhancedImageUrl: imageUrl,
+                canUndoEnhance: true,
+                canRedoEnhance: false
+              }
+            }
+          });
+        },
+        onError: (error) => {
+          dispatch({
+            type: 'UPDATE_WAYPOINT',
+            payload: {
+              id: waypoint.id,
+              updates: {
+                enhancing: false,
+                enhancementProgress: 0,
+                error: error.message
+              }
+            }
+          });
+        }
+      });
+
+      if (!enhancedUrl) {
+        dispatch({
+          type: 'UPDATE_WAYPOINT',
+          payload: {
+            id: waypoint.id,
+            updates: { enhancing: false, enhancementProgress: 0 }
+          }
+        });
+      }
+      return !!enhancedUrl;
+    } catch {
+      dispatch({
+        type: 'UPDATE_WAYPOINT',
+        payload: {
+          id: waypoint.id,
+          updates: { enhancing: false, enhancementProgress: 0 }
+        }
+      });
+      return false;
+    } finally {
+      setEnhancingId(null);
+    }
+  }, [currentProject, dispatch]);
+
+  // Handle enhance popup confirmation
+  const handleEnhanceConfirm = useCallback(async (prompt: string) => {
+    if (isEnhanceAllMode) {
+      // Enhance all ready waypoints
+      const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl && !wp.enhancing);
+      if (readyWaypoints.length === 0) {
+        showToast({ message: 'No images to enhance', type: 'error' });
+        return;
+      }
+
+      setIsEnhancingAll(true);
+      setEnhanceAllProgress({ current: 0, total: readyWaypoints.length });
+
+      let successCount = 0;
+      for (let i = 0; i < readyWaypoints.length; i++) {
+        const wp = readyWaypoints[i];
+        setEnhanceAllProgress({ current: i + 1, total: readyWaypoints.length });
+        const success = await executeEnhance(wp, prompt);
+        if (success) successCount++;
+      }
+
+      setIsEnhancingAll(false);
+      setEnhanceAllProgress(null);
+
+      if (successCount === readyWaypoints.length) {
+        showToast({ message: `All ${successCount} images enhanced`, type: 'success' });
+      } else if (successCount > 0) {
+        showToast({ message: `${successCount} of ${readyWaypoints.length} images enhanced`, type: 'warning' });
+      } else {
+        showToast({ message: 'Enhancement failed', type: 'error' });
+      }
+      playVideoCompleteIfEnabled();
+    } else if (pendingEnhanceWaypoint) {
+      // Enhance single waypoint
+      const success = await executeEnhance(pendingEnhanceWaypoint, prompt);
+      if (success) {
+        showToast({ message: 'Image enhanced', type: 'success' });
+        playVideoCompleteIfEnabled();
+      } else {
+        showToast({ message: 'Enhancement failed', type: 'error' });
+      }
+    }
+  }, [isEnhanceAllMode, pendingEnhanceWaypoint, waypoints, executeEnhance, showToast]);
+
+  // Handle undo enhance
+  const handleUndoEnhance = useCallback((waypoint: Waypoint) => {
+    if (!waypoint.originalImageUrl) return;
+
+    dispatch({
+      type: 'UPDATE_WAYPOINT',
+      payload: {
+        id: waypoint.id,
+        updates: {
+          imageUrl: waypoint.originalImageUrl,
+          enhanced: false,
+          canUndoEnhance: false,
+          canRedoEnhance: true
+        }
+      }
+    });
+    showToast({ message: 'Enhancement undone', type: 'info' });
+  }, [dispatch, showToast]);
+
+  // Handle redo enhance
+  const handleRedoEnhance = useCallback((waypoint: Waypoint) => {
+    if (!waypoint.enhancedImageUrl) return;
+
+    dispatch({
+      type: 'UPDATE_WAYPOINT',
+      payload: {
+        id: waypoint.id,
+        updates: {
+          imageUrl: waypoint.enhancedImageUrl,
+          enhanced: true,
+          canUndoEnhance: true,
+          canRedoEnhance: false
+        }
+      }
+    });
+    showToast({ message: 'Enhancement restored', type: 'info' });
+  }, [dispatch, showToast]);
+
   const canProceed = readyCount >= 2 && generatingCount === 0 && failedCount === 0;
   const totalComplete = readyCount;
   const totalAngles = waypoints.length;
@@ -356,6 +569,52 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                     Download
                   </button>
 
+                  {/* Enhance Button - Upgrade image quality with Z-Image Turbo */}
+                  <button
+                    className={`review-card-btn enhance ${waypoint.status !== 'ready' || !waypoint.imageUrl ? 'invisible' : ''} ${waypoint.enhancing || enhancingId === waypoint.id ? 'loading' : ''}`}
+                    onClick={() => {
+                      if (waypoint.canRedoEnhance && waypoint.enhancedImageUrl) {
+                        handleRedoEnhance(waypoint);
+                      } else if (waypoint.canUndoEnhance && waypoint.enhanced) {
+                        handleUndoEnhance(waypoint);
+                      } else {
+                        handleEnhanceClick(waypoint);
+                      }
+                    }}
+                    disabled={waypoint.status !== 'ready' || !waypoint.imageUrl || waypoint.enhancing || enhancingId === waypoint.id || isEnhancingAll}
+                    title={waypoint.enhanced ? 'Click to undo enhancement' : waypoint.canRedoEnhance ? 'Click to redo enhancement' : 'Enhance with Z-Image Turbo'}
+                  >
+                    {waypoint.enhancing || enhancingId === waypoint.id ? (
+                      <>
+                        <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {Math.round(waypoint.enhancementProgress || 0)}%
+                      </>
+                    ) : waypoint.enhanced ? (
+                      <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        Undo
+                      </>
+                    ) : waypoint.canRedoEnhance ? (
+                      <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                        </svg>
+                        Redo
+                      </>
+                    ) : (
+                      <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Enhance
+                      </>
+                    )}
+                  </button>
+
                   {/* Regenerate Button - Always same position */}
                   <button
                     className={`review-card-btn regen ${waypoint.isOriginal ? 'invisible' : ''} ${waypoint.status === 'generating' ? 'loading' : ''}`}
@@ -429,6 +688,29 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             )}
           </button>
 
+          {/* Enhance All Button */}
+          <button
+            className={`btn btn-enhance ${readyCount === 0 || isEnhancingAll ? 'btn-disabled' : ''}`}
+            onClick={handleEnhanceAllClick}
+            disabled={readyCount === 0 || isEnhancingAll || generatingCount > 0}
+          >
+            {isEnhancingAll ? (
+              <>
+                <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {enhanceAllProgress ? `${enhanceAllProgress.current}/${enhanceAllProgress.total}` : 'Enhancing...'}
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Enhance All
+              </>
+            )}
+          </button>
+
           <button
             className={`btn ${canProceed ? 'btn-primary' : 'btn-disabled'}`}
             onClick={onApply}
@@ -441,6 +723,25 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Enhance Prompt Popup */}
+      <EnhancePromptPopup
+        isOpen={showEnhancePopup}
+        onClose={() => {
+          setShowEnhancePopup(false);
+          setPendingEnhanceWaypoint(null);
+          setIsEnhanceAllMode(false);
+        }}
+        onConfirm={handleEnhanceConfirm}
+        title={isEnhanceAllMode ? 'Enhance All Images' : 'Enhance Image'}
+        description={isEnhanceAllMode
+          ? 'Customize the enhancement prompt. This will be applied to all ready images.'
+          : 'Customize the enhancement prompt to control how your image is enhanced.'}
+        imageCount={isEnhanceAllMode
+          ? waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl && !wp.enhancing).length
+          : 1}
+        tokenType={currentProject?.settings.tokenType || 'spark'}
+      />
     </div>
   );
 };

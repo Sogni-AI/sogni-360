@@ -181,6 +181,39 @@ class ApiClient {
   }
 
   /**
+   * Enhance an image with Z-Image Turbo
+   */
+  async enhanceImage(params: {
+    sourceImage: string; // Base64 or data URL
+    width: number;
+    height: number;
+    tokenType?: 'spark' | 'sogni';
+    prompt?: string; // Custom enhancement prompt
+  }): Promise<{ projectId: string; clientAppId: string }> {
+    const response = await this.fetch<{
+      success: boolean;
+      projectId: string;
+      clientAppId: string;
+      message: string;
+    }>('/api/sogni/enhance-image', {
+      method: 'POST',
+      body: JSON.stringify({
+        sourceImage: params.sourceImage,
+        width: params.width,
+        height: params.height,
+        tokenType: params.tokenType || 'spark',
+        prompt: params.prompt || '(Extra detailed and contrasty portrait) Portrait masterpiece',
+        clientAppId: this.clientAppId,
+      }),
+    });
+
+    return {
+      projectId: response.projectId,
+      clientAppId: response.clientAppId,
+    };
+  }
+
+  /**
    * Estimate generation cost
    */
   async estimateCost(params: {
@@ -188,6 +221,9 @@ class ApiClient {
     imageCount?: number;
     stepCount?: number;
     tokenType?: 'spark' | 'sogni';
+    guideImage?: boolean; // For enhancement (img2img)
+    denoiseStrength?: number; // For enhancement
+    contextImages?: number;
   }): Promise<{ token: number; usd: number }> {
     return this.fetch('/api/sogni/estimate-cost', {
       method: 'POST',
@@ -197,9 +233,11 @@ class ApiClient {
         previewCount: 5,
         stepCount: params.stepCount || 5,
         scheduler: 'simple',
-        guidance: 1,
-        contextImages: 1,
+        guidance: params.guideImage ? 3.5 : 1, // Z-Image Turbo uses 3.5
+        contextImages: params.contextImages ?? 1,
         tokenType: params.tokenType || 'spark',
+        guideImage: params.guideImage || false,
+        denoiseStrength: params.denoiseStrength,
       }),
     });
   }

@@ -398,6 +398,110 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
   }
 });
 
+// Enhance image with Z-Image Turbo
+router.post('/enhance-image', ensureSessionId, async (req, res) => {
+  const localProjectId = `enhance-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  console.log(`[${localProjectId}] Starting image enhancement`);
+
+  try {
+    let clientAppId = req.headers['x-client-app-id'] || req.body.clientAppId || req.query.clientAppId;
+    if (!clientAppId) {
+      clientAppId = `user-${req.sessionId}-${Date.now()}`;
+    }
+
+    const {
+      sourceImage,  // Base64 or data URL of image to enhance
+      width,
+      height,
+      tokenType = 'spark',
+      prompt = '(Extra detailed and contrasty portrait) Portrait masterpiece'
+    } = req.body;
+
+    if (!sourceImage) {
+      return res.status(400).json({
+        error: 'Missing required parameter: sourceImage'
+      });
+    }
+
+    console.log(`[${localProjectId}] Enhancing image at ${width}x${height}`);
+    console.log(`[${localProjectId}] Prompt: ${prompt}`);
+
+    // Progress handler
+    const progressHandler = (eventData) => {
+      const sseEvent = {
+        ...eventData,
+        projectId: localProjectId
+      };
+      forwardEventToSSE(localProjectId, clientAppId, sseEvent);
+    };
+
+    // Get client
+    const client = await getSessionClient(req.sessionId, clientAppId);
+
+    // Prepare source image
+    let sourceImageBuffer;
+    if (sourceImage.startsWith('data:')) {
+      const base64Data = sourceImage.split(',')[1];
+      sourceImageBuffer = Buffer.from(base64Data, 'base64');
+    } else if (sourceImage.startsWith('http')) {
+      const response = await fetch(sourceImage);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch source image: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      sourceImageBuffer = new Uint8Array(arrayBuffer);
+    } else {
+      sourceImageBuffer = Buffer.from(sourceImage, 'base64');
+    }
+
+    // Build project parameters for Z-Image Turbo enhancement
+    // Key: startingImage + startingImageStrength for img2img enhancement
+    const projectParams = {
+      selectedModel: 'z_image_turbo_bf16',
+      positivePrompt: prompt,
+      negativePrompt: '',
+      startingImage: sourceImageBuffer,
+      startingImageStrength: 0.75, // 0.75 preserves 75% of original
+      width: width || 1024,
+      height: height || 1024,
+      numberImages: 1,
+      inferenceSteps: 6, // Z-Image Turbo uses fewer steps
+      promptGuidance: 3.5, // Z-Image Turbo default guidance
+      tokenType: tokenType,
+      outputFormat: 'jpg',
+      sampler: 'euler',
+      scheduler: 'simple',
+      clientAppId
+    };
+
+    // Start generation (async)
+    generateImage(client, projectParams, progressHandler, localProjectId)
+      .catch(error => {
+        console.error(`[${localProjectId}] Enhancement error:`, error);
+        forwardEventToSSE(localProjectId, clientAppId, {
+          type: 'error',
+          projectId: localProjectId,
+          message: error.message || 'Enhancement failed'
+        });
+      });
+
+    // Return immediately
+    res.json({
+      success: true,
+      projectId: localProjectId,
+      message: 'Image enhancement started',
+      clientAppId: clientAppId
+    });
+
+  } catch (error) {
+    console.error(`[${localProjectId}] Error:`, error);
+    res.status(500).json({
+      error: 'Failed to initiate enhancement',
+      message: error.message
+    });
+  }
+});
+
 // Cost estimation
 router.post('/estimate-cost', ensureSessionId, async (req, res) => {
   try {
@@ -410,7 +514,9 @@ router.post('/estimate-cost', ensureSessionId, async (req, res) => {
       scheduler = 'simple',
       guidance = 1,
       contextImages = 1,
-      tokenType = 'spark'
+      tokenType = 'spark',
+      guideImage = false,
+      denoiseStrength
     } = req.body;
 
     if (!model) {
@@ -420,7 +526,7 @@ router.post('/estimate-cost', ensureSessionId, async (req, res) => {
     const clientAppId = req.headers['x-client-app-id'] || req.body.clientAppId;
     const client = await getSessionClient(req.sessionId, clientAppId);
 
-    const result = await client.projects.estimateCost({
+    const estimateParams = {
       network,
       model,
       imageCount,
@@ -429,8 +535,16 @@ router.post('/estimate-cost', ensureSessionId, async (req, res) => {
       scheduler,
       guidance,
       contextImages,
-      tokenType
-    });
+      tokenType,
+      guideImage
+    };
+
+    // Add denoiseStrength only if guideImage is true
+    if (guideImage && denoiseStrength !== undefined) {
+      estimateParams.denoiseStrength = denoiseStrength;
+    }
+
+    const result = await client.projects.estimateCost(estimateParams);
 
     res.json(result);
   } catch (error) {

@@ -24,6 +24,14 @@ export interface Waypoint {
   isOriginal?: boolean; // If true, use source image directly (no generation needed)
   imageHistory?: string[]; // History of all generated versions (for redo navigation)
   currentImageIndex?: number; // Index of currently displayed version in imageHistory
+  // Enhancement state
+  enhancing?: boolean; // Currently enhancing this waypoint
+  enhanced?: boolean; // Has been enhanced at least once
+  enhancementProgress?: number; // 0-1 progress value during enhancement
+  originalImageUrl?: string; // Original image before enhancement (for undo)
+  enhancedImageUrl?: string; // Latest enhanced image (for redo)
+  canUndoEnhance?: boolean; // Can undo enhancement
+  canRedoEnhance?: boolean; // Can redo enhancement
 }
 
 // Single version of a generated transition video

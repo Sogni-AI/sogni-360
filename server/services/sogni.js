@@ -215,6 +215,15 @@ export async function generateImage(client, params, progressCallback, localProje
     projectOptions.loraStrengths = params.loraStrengths;
   }
 
+  // Add starting image for enhancement (img2img)
+  if (params.startingImage) {
+    const startImg = params.startingImage instanceof Uint8Array
+      ? params.startingImage
+      : new Uint8Array(params.startingImage);
+    projectOptions.startingImage = startImg;
+    projectOptions.startingImageStrength = params.startingImageStrength || 0.75;
+  }
+
   // Create project
   const project = await client.projects.create(projectOptions);
   console.log('[IMAGE] Project created:', project.id);
