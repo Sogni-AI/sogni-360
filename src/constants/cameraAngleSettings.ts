@@ -23,7 +23,7 @@ export const CAMERA_ANGLE_LORA = {
 
 // Default generation parameters
 export const CAMERA_ANGLE_DEFAULTS = {
-  steps: 5,
+  steps: 8,
   guidance: 1,
   sampler: 'euler',
   scheduler: 'simple'

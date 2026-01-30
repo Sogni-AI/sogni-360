@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import sogniRoutes from './routes/sogni.js';
+import audioRoutes from './routes/audio.js';
 import process from 'process';
 
 // Load environment variables
@@ -67,6 +68,7 @@ app.use((req, res, next) => {
 // API routes
 app.use('/sogni', sogniRoutes);
 app.use('/api/sogni', sogniRoutes);
+app.use('/api/audio', audioRoutes);
 
 // Health check endpoints
 app.get('/health', (req, res) => {

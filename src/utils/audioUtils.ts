@@ -2,6 +2,26 @@
  * Audio utilities for waveform generation and format handling
  */
 
+// Hosts that need to be proxied due to CORS restrictions
+const CORS_PROXY_HOSTS = [
+  'pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev'
+];
+
+/**
+ * Get a fetchable URL, using the proxy for CORS-restricted hosts
+ */
+function getProxiedUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (CORS_PROXY_HOSTS.includes(parsed.hostname)) {
+      return `/api/audio/proxy?url=${encodeURIComponent(url)}`;
+    }
+  } catch {
+    // Invalid URL, return as-is
+  }
+  return url;
+}
+
 /**
  * Generate a normalized waveform array from an audio URL
  * @param audioUrl - URL of the audio file (blob: or https:)
@@ -11,7 +31,7 @@ export async function generateWaveform(audioUrl: string): Promise<number[]> {
   const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
 
   try {
-    const response = await fetch(audioUrl);
+    const response = await fetch(getProxiedUrl(audioUrl));
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
@@ -44,7 +64,7 @@ export async function getAudioDuration(audioUrl: string): Promise<number> {
   const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
 
   try {
-    const response = await fetch(audioUrl);
+    const response = await fetch(getProxiedUrl(audioUrl));
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     return audioBuffer.duration;
@@ -102,7 +122,7 @@ export function validateAudioFile(file: File): string | null {
  * Load audio as ArrayBuffer for video concatenation
  */
 export async function loadAudioAsBuffer(audioUrl: string): Promise<ArrayBuffer> {
-  const response = await fetch(audioUrl);
+  const response = await fetch(getProxiedUrl(audioUrl));
   if (!response.ok) {
     throw new Error(`Failed to load audio: ${response.status}`);
   }
