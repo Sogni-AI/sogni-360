@@ -68,8 +68,18 @@ const EnhancePromptPopup: React.FC<EnhancePromptPopupProps> = ({
   const formatCost = () => {
     if (loadingCost) return 'Estimating...';
     if (!costEstimate) return '—';
-    const tokenCost = costEstimate.token.toFixed(2);
-    const usdCost = costEstimate.usd ? ` (~$${costEstimate.usd.toFixed(2)})` : '';
+    // Handle both string and number values from API
+    const tokenValue = typeof costEstimate.token === 'string'
+      ? parseFloat(costEstimate.token)
+      : costEstimate.token;
+    const usdValue = typeof costEstimate.usd === 'string'
+      ? parseFloat(costEstimate.usd)
+      : costEstimate.usd;
+
+    if (isNaN(tokenValue)) return '—';
+
+    const tokenCost = tokenValue.toFixed(2);
+    const usdCost = usdValue && !isNaN(usdValue) ? ` (~$${usdValue.toFixed(2)})` : '';
     return `${tokenCost} ${tokenType}${usdCost}`;
   };
 
