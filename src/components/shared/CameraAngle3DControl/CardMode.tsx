@@ -40,8 +40,10 @@ const CardMode: React.FC<CardModeProps> = ({
   onAzimuthChange,
   onElevationChange,
   onDistanceChange,
-  orbitalSize
+  orbitalSize: baseOrbitalSize
 }) => {
+  // Use smaller orbital in card mode - base of 80px fits within mobile card width
+  const orbitalSize = Math.min(baseOrbitalSize, 80);
   const currentAzimuth = getAzimuthConfig(azimuth);
   const currentElevation = getElevationConfig(elevation);
 
@@ -59,23 +61,26 @@ const CardMode: React.FC<CardModeProps> = ({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '8px',
-      padding: '10px',
+      gap: '6px',
+      padding: '8px',
       background: COLORS.darkGray,
       borderRadius: '12px',
       border: `1px solid ${COLORS.border}`,
-      width: '100%'
+      width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden'
     }}>
       {/* Main row: Height | Orbital */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
         {/* Vertical Height buttons on LEFT */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           background: COLORS.surfaceLight,
-          borderRadius: '8px',
-          padding: '3px',
-          gap: '2px'
+          borderRadius: '6px',
+          padding: '2px',
+          gap: '1px',
+          flexShrink: 0
         }}>
           {elevationsReversed.map((el) => {
             const isSelected = el.key === elevation;
@@ -87,8 +92,8 @@ const CardMode: React.FC<CardModeProps> = ({
                 key={el.key}
                 onClick={() => onElevationChange(el.key)}
                 style={{
-                  padding: '6px 8px',
-                  borderRadius: '6px',
+                  padding: '3px 5px',
+                  borderRadius: '4px',
                   border: 'none',
                   background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                   color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
@@ -96,8 +101,8 @@ const CardMode: React.FC<CardModeProps> = ({
                   fontSize: '11px',
                   fontWeight: isSelected ? '600' : '500',
                   transition: 'all 0.15s ease',
-                  minWidth: '40px',
-                  minHeight: '28px'
+                  minWidth: '32px',
+                  minHeight: '22px'
                 }}
               >
                 {label}
@@ -107,12 +112,12 @@ const CardMode: React.FC<CardModeProps> = ({
         </div>
 
         {/* Orbital with rotate buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, justifyContent: 'center', minWidth: 0, overflow: 'hidden' }}>
           <button
             onClick={() => rotateCamera('ccw')}
             style={{
-              width: '28px',
-              height: '28px',
+              width: '22px',
+              height: '22px',
               borderRadius: '50%',
               border: `1px solid ${COLORS.border}`,
               background: 'rgba(30, 30, 30, 0.9)',
@@ -121,7 +126,7 @@ const CardMode: React.FC<CardModeProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '14px',
+              fontSize: '11px',
               padding: 0,
               flexShrink: 0
             }}
@@ -251,10 +256,10 @@ const CardMode: React.FC<CardModeProps> = ({
             {/* Azimuth label */}
             <div style={{
               position: 'absolute',
-              bottom: '-2px',
+              bottom: '-4px',
               left: '50%',
               transform: 'translateX(-50%)',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: '600',
               color: COLORS.textPrimary,
               textTransform: 'lowercase',
@@ -268,8 +273,8 @@ const CardMode: React.FC<CardModeProps> = ({
           <button
             onClick={() => rotateCamera('cw')}
             style={{
-              width: '28px',
-              height: '28px',
+              width: '22px',
+              height: '22px',
               borderRadius: '50%',
               border: `1px solid ${COLORS.border}`,
               background: 'rgba(30, 30, 30, 0.9)',
@@ -278,7 +283,7 @@ const CardMode: React.FC<CardModeProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '14px',
+              fontSize: '11px',
               padding: 0,
               flexShrink: 0
             }}
@@ -293,9 +298,9 @@ const CardMode: React.FC<CardModeProps> = ({
       <div style={{
         display: 'flex',
         background: COLORS.surfaceLight,
-        borderRadius: '8px',
-        padding: '3px',
-        gap: '3px'
+        borderRadius: '6px',
+        padding: '2px',
+        gap: '2px'
       }}>
         {DISTANCES.map((d) => {
           const isSelected = d.key === distance;
@@ -307,16 +312,16 @@ const CardMode: React.FC<CardModeProps> = ({
               onClick={() => onDistanceChange(d.key)}
               style={{
                 flex: 1,
-                padding: '6px 4px',
-                borderRadius: '6px',
+                padding: '4px 2px',
+                borderRadius: '4px',
                 border: 'none',
                 background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                 color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
                 cursor: 'pointer',
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: isSelected ? '600' : '500',
                 transition: 'all 0.15s ease',
-                minHeight: '28px'
+                minHeight: '24px'
               }}
             >
               {label}

@@ -664,7 +664,14 @@ html, body {
   display: flex;
   justify-content: center;
   margin-top: 0.5rem;
-  min-height: 190px;
+  min-height: 170px;
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .step-3d-control {
+    min-height: 150px;
+  }
 }
 
 /* Original image preview in step card */
@@ -694,9 +701,8 @@ html, body {
   .step-original-preview img {
     max-height: 100px;
   }
-  .step-3d-control,
   .step-original-preview {
-    min-height: 160px;
+    min-height: 140px;
   }
 }
 
@@ -779,9 +785,17 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  gap: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .timeline-footer {
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
 }
 
 /* Preset tabs - horizontal scrolling */
@@ -1153,17 +1167,30 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .cost-estimate {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
 }
 
 .cost-breakdown {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
 }
 
 .cost-total {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .cost-loading {
@@ -1173,7 +1200,15 @@ html, body {
 
 .footer-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .footer-actions .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
 }
 
 .btn-disabled {
@@ -1859,12 +1894,22 @@ html, body {
   flex: 1;
   display: flex;
   gap: 1.5rem;
-  padding: 1rem 2rem;
+  padding: 1rem 2rem 1.5rem;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   align-items: stretch; /* Cards fill vertical space */
   justify-content: flex-start; /* Start from left edge for proper scrolling */
   min-height: 0; /* Allow flex shrink */
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 2rem;
+}
+
+@media (max-width: 767px) {
+  .review-carousel-wrap {
+    padding: 0.75rem 1rem 1rem;
+    gap: 1rem;
+    scroll-padding: 0 1rem;
+  }
 }
 
 .review-carousel-wrap::-webkit-scrollbar {
@@ -1892,6 +1937,7 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   overflow: hidden;
+  scroll-snap-align: center;
 }
 
 @media (max-width: 767px) {
@@ -2803,16 +2849,28 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.75rem;
+  gap: 0.375rem;
+  padding: 0.5rem 0.5rem;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 768px) {
+  .review-card-btn {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+    gap: 0.5rem;
+  }
 }
 
 .review-card-btn svg {
