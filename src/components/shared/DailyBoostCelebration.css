@@ -1,0 +1,689 @@
+/* Daily Boost Celebration - Professional Sleek Design */
+
+/* Backdrop with blur */
+.daily-boost-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: backdropFadeIn 0.3s ease-out forwards;
+  padding: 20px;
+}
+
+.daily-boost-backdrop.closing {
+  animation: backdropFadeOut 0.3s ease-out forwards;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes backdropFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Modal container - dark glass morphism */
+.daily-boost-modal {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(20, 20, 30, 0.95) 0%,
+    rgba(15, 23, 42, 0.98) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 0 100px rgba(20, 184, 166, 0.1);
+  padding: 48px 40px;
+  text-align: center;
+  max-width: 380px;
+  width: 100%;
+  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+.daily-boost-modal.closing {
+  animation: modalSlideOut 0.3s ease-in forwards;
+}
+
+.daily-boost-modal.success {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.2),
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 0 100px rgba(16, 185, 129, 0.15);
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+}
+
+/* Ambient glow effects */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.glow-1 {
+  top: -50%;
+  left: -20%;
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+.glow-2 {
+  bottom: -30%;
+  right: -20%;
+  width: 180px;
+  height: 180px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  animation: glowPulse 4s ease-in-out infinite 2s;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+/* Free badge */
+.free-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  animation: badgeFadeIn 0.4s 0.2s ease-out both;
+}
+
+@keyframes badgeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.daily-boost-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+  animation: headerFadeIn 0.4s 0.1s ease-out both;
+}
+
+@keyframes headerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.spark-icon {
+  width: 24px;
+  height: 24px;
+  animation: sparkRotate 3s ease-in-out infinite;
+}
+
+.spark-icon:last-of-type {
+  animation-delay: 1.5s;
+  animation-direction: reverse;
+}
+
+@keyframes sparkRotate {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(15deg) scale(1.1); }
+}
+
+.header-text {
+  font-size: 28px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 2px;
+  text-transform: lowercase;
+}
+
+/* Subheader */
+.subheader {
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 24px;
+  letter-spacing: 0.5px;
+  animation: subheaderFadeIn 0.4s 0.15s ease-out both;
+}
+
+@keyframes subheaderFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Icon container */
+.icon-container {
+  position: relative;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 24px 0;
+  z-index: 1;
+  animation: iconFadeIn 0.5s 0.2s ease-out both;
+}
+
+@keyframes iconFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Gift wrapper */
+.gift-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gift-icon {
+  width: 100px;
+  height: 100px;
+  transition: transform 0.3s ease;
+}
+
+.gift-wrapper:hover .gift-icon {
+  transform: translateY(-4px);
+}
+
+.gift-wrapper.pulsing .gift-icon {
+  animation: giftPulse 0.6s ease-in-out infinite;
+}
+
+@keyframes giftPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.gift-glow {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: giftGlowPulse 2s ease-in-out infinite;
+}
+
+@keyframes giftGlowPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+/* Success icon */
+.success-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-icon {
+  width: 80px;
+  height: 80px;
+  animation: checkBounce 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes checkBounce {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.success-rings {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(16, 185, 129, 0.4);
+  animation: ringExpand 1s ease-out forwards;
+}
+
+.ring-1 { width: 80px; height: 80px; animation-delay: 0s; }
+.ring-2 { width: 100px; height: 100px; animation-delay: 0.15s; }
+.ring-3 { width: 120px; height: 120px; animation-delay: 0.3s; }
+
+@keyframes ringExpand {
+  0% {
+    opacity: 1;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Credit display */
+.credit-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0;
+  position: relative;
+  z-index: 1;
+  animation: creditFadeIn 0.4s 0.25s ease-out both;
+}
+
+@keyframes creditFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.plus-sign {
+  font-size: 36px;
+  font-weight: 600;
+  color: #14b8a6;
+}
+
+.credit-amount {
+  font-size: 64px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.success .credit-amount {
+  animation: creditCountUp 0.5s ease-out forwards;
+}
+
+@keyframes creditCountUp {
+  0% { transform: scale(0.8); opacity: 0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.credit-label {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+  text-transform: lowercase;
+}
+
+/* Claim button */
+.claim-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: lowercase;
+  color: #ffffff;
+  background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+  animation: buttonFadeIn 0.4s 0.3s ease-out both;
+  overflow: hidden;
+}
+
+.claim-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #0d9488 0%, #0e7490 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.claim-button:hover::before {
+  opacity: 1;
+}
+
+.claim-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.3);
+}
+
+.claim-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.2);
+}
+
+@keyframes buttonFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Turnstile container */
+.turnstile-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: turnstileFadeIn 0.3s ease-out both;
+}
+
+@keyframes turnstileFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.turnstile-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.5px;
+}
+
+/* Turnstile error state */
+.turnstile-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.turnstile-error-message {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.turnstile-retry-button {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.turnstile-retry-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Claiming indicator */
+.claiming-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  position: relative;
+  z-index: 1;
+  padding: 16px;
+  animation: claimingFadeIn 0.3s ease-out both;
+}
+
+@keyframes claimingFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(20, 184, 166, 0.2);
+  border-top-color: #14b8a6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Success message */
+.success-message {
+  font-size: 15px;
+  font-weight: 500;
+  color: #10b981;
+  letter-spacing: 0.5px;
+  animation: successFadeIn 0.4s ease-out forwards;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes successFadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Dismiss link */
+.dismiss-link {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+  animation: dismissFadeIn 0.3s 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes dismissFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dismiss-link:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Mobile styles */
+@media (max-width: 480px) {
+  .daily-boost-backdrop {
+    padding: 16px;
+  }
+
+  .daily-boost-modal {
+    padding: 40px 28px 32px;
+    border-radius: 20px;
+  }
+
+  .free-badge {
+    top: 12px;
+    right: 12px;
+    font-size: 10px;
+    padding: 5px 12px;
+  }
+
+  .header-text {
+    font-size: 24px;
+    letter-spacing: 1px;
+  }
+
+  .spark-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .icon-container {
+    height: 100px;
+  }
+
+  .gift-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .check-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .credit-amount {
+    font-size: 52px;
+  }
+
+  .plus-sign {
+    font-size: 28px;
+  }
+
+  .credit-label {
+    font-size: 16px;
+  }
+
+  .claim-button {
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+}
+
+/* Very small mobile */
+@media (max-width: 360px) {
+  .daily-boost-modal {
+    padding: 36px 20px 28px;
+  }
+
+  .header-text {
+    font-size: 22px;
+  }
+
+  .credit-amount {
+    font-size: 44px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .daily-boost-backdrop,
+  .daily-boost-modal,
+  .free-badge,
+  .daily-boost-header,
+  .subheader,
+  .icon-container,
+  .credit-display,
+  .claim-button,
+  .turnstile-container,
+  .claiming-indicator,
+  .success-message,
+  .dismiss-link {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .daily-boost-backdrop.closing,
+  .daily-boost-modal.closing {
+    animation: none;
+    opacity: 0;
+  }
+
+  .spark-icon,
+  .gift-wrapper.pulsing .gift-icon,
+  .ambient-glow,
+  .gift-glow,
+  .check-icon,
+  .ring {
+    animation: none;
+  }
+
+  .spinner {
+    animation: spin 1s linear infinite;
+  }
+}

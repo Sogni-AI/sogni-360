@@ -1,24 +1,29 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import MusicSelector from './shared/MusicSelector';
 import { useFinalVideoActions } from '../hooks/useFinalVideoActions';
+import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import type { MusicSelection } from '../types';
 
 interface FinalVideoPanelProps {
+  projectId: string;
   videoUrls: string[];
   stitchedVideoUrl?: string;
   onClose: () => void;
   onBackToEditor: () => void;
-  onStitchComplete?: (url: string) => void;
+  onStitchComplete?: (url: string, blob?: Blob) => void;
   initialMusicSelection?: MusicSelection | null;
+  onWorkflowStepClick?: (step: WorkflowStep) => void;
 }
 
 const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
+  projectId,
   videoUrls,
   stitchedVideoUrl,
   onClose,
   onBackToEditor,
   onStitchComplete,
-  initialMusicSelection
+  initialMusicSelection,
+  onWorkflowStepClick
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
@@ -38,7 +43,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     handleDownload,
     handleShare,
     setCurrentSegmentIndex
-  } = useFinalVideoActions({ videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection });
+  } = useFinalVideoActions({ projectId, videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection });
 
   // Auto-play when stitched video is ready
   useEffect(() => {
@@ -75,8 +80,20 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     await handleMusicConfirm(selection);
   }, [handleMusicConfirm]);
 
+  // All steps completed up to export
+  const completedSteps: WorkflowStep[] = ['upload', 'define-angles', 'render-angles', 'render-videos'];
+
   return (
     <div className="final-video-panel">
+      {/* Workflow Progress */}
+      <div className="review-wizard-wrap">
+        <WorkflowWizard
+          currentStep="export"
+          completedSteps={completedSteps}
+          onStepClick={onWorkflowStepClick}
+        />
+      </div>
+
       {/* Video container */}
       <div className="final-video-container">
         {isStitching ? (
@@ -164,6 +181,8 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
         visible={showMusicSelector}
         onConfirm={onMusicConfirm}
         onClose={() => setShowMusicSelector(false)}
+        onRemove={handleRemoveMusic}
+        currentSelection={musicSelection}
         videoDuration={videoDuration}
       />
     </div>

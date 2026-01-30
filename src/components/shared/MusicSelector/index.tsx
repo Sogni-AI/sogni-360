@@ -22,6 +22,8 @@ const MusicSelector: React.FC<MusicSelectorProps> = ({
   visible,
   onConfirm,
   onClose,
+  onRemove,
+  currentSelection,
   videoDuration
 }) => {
   const [sourceType, setSourceType] = useState<AudioSourceType>('presets');
@@ -290,11 +292,51 @@ const MusicSelector: React.FC<MusicSelectorProps> = ({
           />
         )}
 
+        {/* Remove music button (only show if there's existing music) */}
+        {currentSelection && onRemove && (
+          <button
+            onClick={() => {
+              onRemove();
+              onClose();
+            }}
+            style={{
+              width: '100%',
+              padding: '12px 20px',
+              marginTop: '20px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            Remove Current Music
+          </button>
+        )}
+
         {/* Action buttons */}
         <div style={{
           display: 'flex',
           gap: '12px',
-          marginTop: '20px'
+          marginTop: currentSelection && onRemove ? '12px' : '20px'
         }}>
           <button
             onClick={onClose}

@@ -18,9 +18,11 @@ import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import AngleReviewPanel from './AngleReviewPanel';
 import { warmUpAudio, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
 import { useImageCostEstimation } from '../hooks/useImageCostEstimation';
+import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 
 interface WaypointEditorProps {
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
+  onWorkflowStepClick?: (step: WorkflowStep) => void;
 }
 
 /**
@@ -34,7 +36,7 @@ function getAngleLabel(waypoint: Waypoint): string {
   return `${az.label} · ${el.label} · ${dist.label}`;
 }
 
-const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAction }) => {
+const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAction, onWorkflowStepClick }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject, showAngleReview } = state;
@@ -85,6 +87,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
     });
     dispatch({ type: 'SET_WAYPOINTS', payload: newWaypoints });
     setSelectedPresetKey(preset.key);
+    trackPresetSelection(preset.key);
   }, [dispatch, currentProject?.sourceImageUrl]);
 
   const handleAddWaypoint = useCallback(() => {
@@ -162,6 +165,13 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
         payload: { id: wp.id, updates: { status: 'generating', progress: 0, error: undefined } }
       });
     }
+
+    // Track angle generation
+    trackAngleGeneration({
+      angle_count: waypointsToGenerate.length,
+      preset_name: selectedPresetKey,
+      source: 'upload'
+    });
 
     try {
       await generateMultipleAngles(
@@ -265,6 +275,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
         onApply={handleReviewApply}
         isGenerating={isGenerating}
         onConfirmDestructiveAction={onConfirmDestructiveAction}
+        onWorkflowStepClick={onWorkflowStepClick}
       />
     );
   }

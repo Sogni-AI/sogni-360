@@ -15,12 +15,19 @@ import ProjectManagerModal from './ProjectManagerModal';
 import WorkflowNavigationModal from './WorkflowNavigationModal';
 import NewProjectConfirmModal from './NewProjectConfirmModal';
 import ProjectNameModal, { generateProjectName } from './ProjectNameModal';
+import AuthStatus, { AuthStatusRef } from './auth/AuthStatus';
+import StripePurchase from './stripe/StripePurchase';
+import PWAInstallPrompt from './shared/PWAInstallPrompt';
+import { ApiProvider } from '../hooks/useSogniApi';
+import { useWallet } from '../hooks/useWallet';
 import useAutoHideUI from '../hooks/useAutoHideUI';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
 import { duplicateProject, getProjectCount } from '../utils/localProjectsDB';
 import { playVideoCompleteIfEnabled, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
 import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
+import { getAzimuthConfig, getElevationConfig, getDistanceConfig } from '../constants/cameraAngleSettings';
+import '../services/pwaInstaller'; // Initialize PWA installer service
 
 // Type for pending destructive action that needs confirmation
 interface PendingDestructiveAction {
@@ -34,14 +41,21 @@ const Sogni360Container: React.FC = () => {
   const { nextWaypoint, previousWaypoint, isTransitionPlaying, targetWaypointIndex } = useTransitionNavigation();
   const { currentProject, showWaypointEditor, showAngleReview, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager } = state;
   const hasAutoOpenedEditor = useRef(false);
+  const authStatusRef = useRef<AuthStatusRef>(null);
   const [isTransitionGenerating, setIsTransitionGenerating] = useState(false);
   const [pendingDestructiveAction, setPendingDestructiveAction] = useState<PendingDestructiveAction | null>(null);
   const [showNewProjectConfirm, setShowNewProjectConfirm] = useState(false);
   const [showProjectNameModal, setShowProjectNameModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [projectCount, setProjectCount] = useState(0);
 
   // Auth state
-  const { isAuthenticated, isLoading: authLoading } = useSogniAuth();
+  const { isAuthenticated, isLoading: authLoading, getSogniClient } = useSogniAuth();
+  const sogniClient = getSogniClient();
+
+  // Wallet state for balance display
+  const { balances, tokenType } = useWallet();
+  const currentBalance = balances?.[tokenType]?.net ? parseFloat(balances[tokenType].net) : undefined;
 
   // Auto-hide UI after inactivity
   const isUIAutoVisible = useAutoHideUI(3000);
@@ -107,7 +121,7 @@ const Sogni360Container: React.FC = () => {
   // Update auth state in context
   useEffect(() => {
     dispatch({ type: 'SET_AUTHENTICATED', payload: isAuthenticated });
-  }, [isAuthenticated, dispatch]);
+  }, [isAuthenticated]); // dispatch is stable from useReducer
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -157,7 +171,8 @@ const Sogni360Container: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasGeneratedImages, state.isPlaying, state.showWaypointEditor, state.showExportPanel, showWaypointEditor, dispatch, nextWaypoint, previousWaypoint, isTransitionPlaying]);
+    // dispatch, nextWaypoint, previousWaypoint are stable functions
+  }, [hasGeneratedImages, state.isPlaying, state.showWaypointEditor, state.showExportPanel, showWaypointEditor, isTransitionPlaying]);
 
   // Handle starting transition generation
   // Settings are passed directly to avoid React state timing issues
@@ -653,19 +668,26 @@ const Sogni360Container: React.FC = () => {
             onStepClick={handleWorkflowStepClick}
           />
           <div className="project-actions-bar">
-            <button className="project-action-btn" onClick={handleNewProject} title="New Project">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>New</span>
-            </button>
-            <button className="project-action-btn" onClick={handleOpenProjectManager} title="My Projects">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-              <span>Projects</span>
-            </button>
+            <AuthStatus
+              ref={authStatusRef}
+              onPurchaseClick={() => setShowPurchaseModal(true)}
+              textColor="#ffffff"
+            />
+            <div className="project-action-buttons">
+              <button className="project-action-btn" onClick={handleNewProject} title="New Project">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New</span>
+              </button>
+              <button className="project-action-btn" onClick={handleOpenProjectManager} title="My Projects">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                <span>Projects</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -676,20 +698,6 @@ const Sogni360Container: React.FC = () => {
       {/* 3D Camera Angle Indicator with Navigation - shows current angle position */}
       {currentWaypoint && !showWaypointEditor && (
         <div className="camera-angle-indicator-with-nav">
-          {/* Previous button */}
-          {hasGeneratedImages && (
-            <button
-              className="nav-arrow nav-arrow-left"
-              onClick={previousWaypoint}
-              disabled={isTransitionPlaying}
-              title="Previous (A / Left Arrow)"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
-
           {/* 3D Control */}
           <div className="camera-angle-indicator-inner">
             <CameraAngle3DControl
@@ -707,27 +715,47 @@ const Sogni360Container: React.FC = () => {
               animationDuration={videoDuration}
               isAnimating={isTransitionPlaying && !!targetWaypoint}
             />
-            {/* Waypoint counter */}
+            {/* Angle label */}
+            <div className="angle-label">
+              {currentWaypoint.isOriginal ? (
+                'Original Photo'
+              ) : (
+                <>
+                  {getAzimuthConfig(currentWaypoint.azimuth).label} · {getElevationConfig(currentWaypoint.elevation).label}
+                  <br />
+                  {getDistanceConfig(currentWaypoint.distance).label}
+                </>
+              )}
+            </div>
+            {/* Waypoint counter with inline navigation */}
             {hasGeneratedImages && (
-              <div className="waypoint-counter">
-                {currentWaypointIndex + 1} / {waypoints.length}
+              <div className="waypoint-nav-row">
+                <button
+                  className="nav-arrow-inline"
+                  onClick={previousWaypoint}
+                  disabled={isTransitionPlaying}
+                  title="Previous (A / Left Arrow)"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="waypoint-counter">
+                  {currentWaypointIndex + 1} / {waypoints.length}
+                </div>
+                <button
+                  className="nav-arrow-inline"
+                  onClick={nextWaypoint}
+                  disabled={isTransitionPlaying}
+                  title="Next (D / Right Arrow)"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               </div>
             )}
           </div>
-
-          {/* Next button */}
-          {hasGeneratedImages && (
-            <button
-              className="nav-arrow nav-arrow-right"
-              onClick={nextWaypoint}
-              disabled={isTransitionPlaying}
-              title="Next (D / Right Arrow)"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
         </div>
       )}
 
@@ -765,7 +793,7 @@ const Sogni360Container: React.FC = () => {
             </button>
           </div>
           <div className="waypoint-editor-panel-content">
-            <WaypointEditor onConfirmDestructiveAction={confirmDestructiveAction} />
+            <WaypointEditor onConfirmDestructiveAction={confirmDestructiveAction} onWorkflowStepClick={handleWorkflowStepClick} />
           </div>
         </div>
       )}
@@ -778,6 +806,7 @@ const Sogni360Container: React.FC = () => {
             onApply={handleStandaloneAngleReviewApply}
             isGenerating={false}
             onConfirmDestructiveAction={confirmDestructiveAction}
+            onWorkflowStepClick={handleWorkflowStepClick}
           />
         </div>
       )}
@@ -806,12 +835,14 @@ const Sogni360Container: React.FC = () => {
           onRedoSegment={handleRedoSegment}
           onConfirmDestructiveAction={confirmDestructiveAction}
           isGenerating={isTransitionGenerating}
+          onWorkflowStepClick={handleWorkflowStepClick}
         />
       )}
 
       {/* Final Video Preview Panel - plays stitched video with gapless playback */}
       {showFinalVideoPreview && currentProject?.segments && (
         <FinalVideoPanel
+          projectId={currentProject.id}
           videoUrls={currentProject.segments.map(s => s.videoUrl).filter(Boolean) as string[]}
           stitchedVideoUrl={currentProject.finalLoopUrl}
           onClose={handleCloseFinalVideo}
@@ -820,6 +851,7 @@ const Sogni360Container: React.FC = () => {
             dispatch({ type: 'SET_FINAL_LOOP_URL', payload: url });
           }}
           initialMusicSelection={currentProject.settings.musicSelection}
+          onWorkflowStepClick={handleWorkflowStepClick}
         />
       )}
 
@@ -862,6 +894,19 @@ const Sogni360Container: React.FC = () => {
           onCancel={handleProjectNameCancel}
         />
       )}
+
+      {/* Stripe Purchase Modal */}
+      {showPurchaseModal && sogniClient && (
+        <ApiProvider value={sogniClient}>
+          <StripePurchase
+            onClose={() => setShowPurchaseModal(false)}
+            currentBalance={currentBalance}
+          />
+        </ApiProvider>
+      )}
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 };

@@ -1,0 +1,456 @@
+/* AuthStatus Component Styles */
+
+/* Daily Boost Glow Animation */
+@keyframes dailyBoostGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px 4px rgba(16, 185, 129, 0.7), 0 0 40px 8px rgba(16, 185, 129, 0.4);
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 35px 8px rgba(16, 185, 129, 1), 0 0 70px 16px rgba(16, 185, 129, 0.7);
+    transform: translate(-2px, -2px) scale(1.05);
+  }
+}
+
+/* Sparkler Effect for Spark Points Logo */
+@keyframes sparklerBurst {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1.2);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(calc(var(--sparkler-x) * 0.3), calc(var(--sparkler-y) * 0.3)) scale(1);
+  }
+  70% {
+    opacity: 0.8;
+    transform: translate(calc(var(--sparkler-x) * 0.7), calc(var(--sparkler-y) * 0.7)) scale(0.8);
+  }
+  100% {
+    transform: translate(var(--sparkler-x), var(--sparkler-y)) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes sparklerFlicker {
+  0%, 100% {
+    opacity: 0;
+  }
+  10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90% {
+    opacity: 1;
+  }
+  15%, 25%, 35%, 45%, 55%, 65%, 75%, 85%, 95% {
+    opacity: 0.3;
+  }
+}
+
+.spark-logo-container {
+  position: relative;
+}
+
+.sparkler-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  margin-left: -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle, #14b8a6 0%, #14b8a6 40%, rgba(20, 184, 166, 0.8) 60%, transparent 100%);
+  box-shadow:
+    0 0 3px rgba(20, 184, 166, 0.6),
+    0 0 6px rgba(20, 184, 166, 0.4);
+}
+
+.sparkler-particle-1 {
+  --sparkler-x: 18px;
+  --sparkler-y: -12px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 0s, 0s;
+}
+
+.sparkler-particle-2 {
+  --sparkler-x: 15px;
+  --sparkler-y: 15px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 0.6s, 0.05s;
+}
+
+.sparkler-particle-3 {
+  --sparkler-x: -15px;
+  --sparkler-y: 15px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 1.2s, 0.1s;
+}
+
+.sparkler-particle-4 {
+  --sparkler-x: -18px;
+  --sparkler-y: -12px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 1.8s, 0.15s;
+}
+
+.sparkler-particle-5 {
+  --sparkler-x: 0px;
+  --sparkler-y: -20px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 2.4s, 0.2s;
+}
+
+.sparkler-particle-6 {
+  --sparkler-x: 20px;
+  --sparkler-y: 0px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 3s, 0.25s;
+}
+
+.sparkler-particle-7 {
+  --sparkler-x: 0px;
+  --sparkler-y: 20px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 3.6s, 0.3s;
+}
+
+.sparkler-particle-8 {
+  --sparkler-x: -20px;
+  --sparkler-y: 0px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 4.2s, 0.35s;
+}
+
+.sparkler-particle-9 {
+  --sparkler-x: 12px;
+  --sparkler-y: -16px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 4.8s, 0.4s;
+}
+
+.sparkler-particle-10 {
+  --sparkler-x: 16px;
+  --sparkler-y: 12px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 5.4s, 0.45s;
+}
+
+.sparkler-particle-11 {
+  --sparkler-x: -12px;
+  --sparkler-y: 16px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 6s, 0.5s;
+}
+
+.sparkler-particle-12 {
+  --sparkler-x: -16px;
+  --sparkler-y: -16px;
+  animation: sparklerBurst 2s ease-out infinite, sparklerFlicker 0.15s ease-in-out infinite;
+  animation-delay: 6.6s, 0.55s;
+}
+
+/* SOGNI Token Particle Effect */
+@keyframes sogniParticle {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1.2);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(calc(var(--sogni-x) * 0.3), calc(var(--sogni-y) * 0.3)) scale(1);
+  }
+  70% {
+    opacity: 0.8;
+    transform: translate(calc(var(--sogni-x) * 0.7), calc(var(--sogni-y) * 0.7)) scale(0.8);
+  }
+  100% {
+    transform: translate(var(--sogni-x), var(--sogni-y)) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes sogniFlicker {
+  0%, 100% {
+    opacity: 0;
+  }
+  10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90% {
+    opacity: 1;
+  }
+  15%, 25%, 35%, 45%, 55%, 65%, 75%, 85%, 95% {
+    opacity: 0.3;
+  }
+}
+
+.sogni-logo-container {
+  position: relative;
+}
+
+.sogni-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  margin-left: -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle, #ff3366 0%, #ff3366 40%, rgba(255, 51, 102, 0.8) 60%, transparent 100%);
+  box-shadow:
+    0 0 3px rgba(255, 51, 102, 0.6),
+    0 0 6px rgba(255, 51, 102, 0.4);
+}
+
+.sogni-particle-1 {
+  --sogni-x: 20px;
+  --sogni-y: -16px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 0s, 0s;
+}
+
+.sogni-particle-2 {
+  --sogni-x: 18px;
+  --sogni-y: 18px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 0.6s, 0.05s;
+}
+
+.sogni-particle-3 {
+  --sogni-x: -18px;
+  --sogni-y: 18px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 1.2s, 0.1s;
+}
+
+.sogni-particle-4 {
+  --sogni-x: -20px;
+  --sogni-y: -16px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 1.8s, 0.15s;
+}
+
+.sogni-particle-5 {
+  --sogni-x: 0px;
+  --sogni-y: -24px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 2.4s, 0.2s;
+}
+
+.sogni-particle-6 {
+  --sogni-x: 24px;
+  --sogni-y: 0px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 3s, 0.25s;
+}
+
+.sogni-particle-7 {
+  --sogni-x: 0px;
+  --sogni-y: 24px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 3.6s, 0.3s;
+}
+
+.sogni-particle-8 {
+  --sogni-x: -24px;
+  --sogni-y: 0px;
+  animation: sogniParticle 2s ease-out infinite, sogniFlicker 0.15s ease-in-out infinite;
+  animation-delay: 4.2s, 0.35s;
+}
+
+/* Auth status wrapper */
+.auth-status-wrapper {
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+/* Wallet Container */
+.auth-wallet-container {
+  position: relative;
+  overflow: hidden;
+  background: rgba(30, 30, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.auth-wallet-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile portrait - compact layout */
+@media (max-width: 576px) and (orientation: portrait) {
+  .auth-status-container {
+    max-width: 130px;
+  }
+
+  .auth-status-content {
+    font-size: 11px !important;
+    gap: 3px !important;
+    line-height: 1.2;
+  }
+
+  .auth-status-content span {
+    font-size: 11px !important;
+  }
+
+  .auth-separator {
+    display: none !important;
+  }
+
+  .auth-balance {
+    flex-basis: 100%;
+    font-size: 10px !important;
+  }
+}
+
+/* Mobile tablet */
+@media (max-width: 768px) and (min-width: 577px) {
+  .auth-status-content {
+    font-size: 13px !important;
+    gap: 6px !important;
+  }
+
+  .auth-status-content span {
+    font-size: 13px !important;
+  }
+}
+
+/* Token toggle buttons */
+.auth-token-toggle {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50px;
+  margin-bottom: 16px;
+}
+
+.auth-token-button {
+  flex: 1;
+  padding: 12px 16px 12px 36px;
+  border-radius: 50px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  text-transform: lowercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+}
+
+.auth-token-button:hover:not(.active) svg {
+  transform: scale(1.1);
+  opacity: 0.7;
+}
+
+.auth-token-button.active svg {
+  opacity: 1;
+}
+
+.auth-token-button.active {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.auth-token-button.active.sogni {
+  background: linear-gradient(135deg, #ff3366 0%, #ff6b9d 50%, #ffa5c8 100%);
+}
+
+.auth-token-button.active.spark {
+  background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 50%, #5eead4 100%);
+}
+
+.auth-token-button:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+}
+
+/* Daily boost button */
+.auth-daily-boost-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: lowercase;
+}
+
+.auth-daily-boost-button.available {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.auth-daily-boost-button.available:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.auth-daily-boost-button.claimed {
+  background: rgba(255, 255, 255, 0.05);
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Buy spark button */
+.auth-buy-spark-button {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: 2px solid #14b8a6;
+  background: transparent;
+  color: #14b8a6;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: lowercase;
+}
+
+.auth-buy-spark-button:hover {
+  background: #14b8a6;
+  color: white;
+}
+
+/* Logout button */
+.auth-logout-button {
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgba(156, 163, 175, 0.3);
+  transition: all 0.2s ease;
+  text-transform: lowercase;
+}
+
+.auth-logout-button:hover {
+  color: #e0e0e0;
+  text-decoration-color: rgba(224, 224, 224, 0.5);
+}

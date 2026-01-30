@@ -287,6 +287,8 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           setShowMusicSelector(false);
         }}
         onClose={() => setShowMusicSelector(false)}
+        onRemove={() => setMusicSelection(null)}
+        currentSelection={musicSelection}
         videoDuration={totalSeconds}
       />
     </div>

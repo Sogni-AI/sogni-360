@@ -45,24 +45,30 @@ const CompactMode: React.FC<CompactModeProps> = ({
 
   useEffect(() => {
     if (isAnimating && targetAzimuthConfig) {
-      // Start animation
+      // Start animation after a delay to let video start playing
       setAnimProgress(0);
-      const startTime = performance.now();
-      const duration = animationDuration * 1000;
+      const ANIMATION_DELAY_MS = 1000; // 1 second delay before animation starts
 
-      const animate = (currentTime: number) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        // Ease-out cubic for smooth deceleration
-        const eased = 1 - Math.pow(1 - progress, 3);
-        setAnimProgress(eased);
+      const timeoutId = setTimeout(() => {
+        const startTime = performance.now();
+        const duration = animationDuration * 1000;
 
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        }
-      };
+        const animate = (currentTime: number) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          // Ease-out cubic for smooth deceleration
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setAnimProgress(eased);
 
-      requestAnimationFrame(animate);
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          }
+        };
+
+        requestAnimationFrame(animate);
+      }, ANIMATION_DELAY_MS);
+
+      return () => clearTimeout(timeoutId);
     } else {
       setAnimProgress(0);
     }
@@ -170,7 +176,7 @@ const CompactMode: React.FC<CompactModeProps> = ({
         transition: isAnimating ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         pointerEvents: 'none',
         zIndex: isBehindSphere ? 2 : 10,
-        opacity: isBehindSphere ? 0.6 : 1
+        opacity: 1
       }}>
         {/* Lens cone - visibility based on angle */}
         <svg
@@ -185,7 +191,7 @@ const CompactMode: React.FC<CompactModeProps> = ({
             transformOrigin: '30px 35px',
             pointerEvents: 'none',
             zIndex: 5,
-            opacity: coneVisibility * (isBehindSphere ? 0.6 : 0.9),
+            opacity: coneVisibility * 0.9,
             transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
@@ -211,7 +217,6 @@ const CompactMode: React.FC<CompactModeProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           boxShadow: `0 2px 8px ${COLORS.accentGlow}`,
-          filter: isBehindSphere ? 'brightness(0.8)' : 'none',
           position: 'relative',
           zIndex: 10
         }}>

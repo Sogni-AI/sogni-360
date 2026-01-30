@@ -4,6 +4,8 @@ export interface MusicSelectorProps {
   visible: boolean;
   onConfirm: (selection: MusicSelection) => void;
   onClose: () => void;
+  onRemove?: () => void; // Called when user removes existing music
+  currentSelection?: MusicSelection | null; // Existing music selection, if any
   videoDuration: number; // Total transition video duration in seconds
 }
 

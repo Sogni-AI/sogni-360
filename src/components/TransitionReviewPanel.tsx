@@ -16,6 +16,7 @@ interface TransitionReviewPanelProps {
   onRedoSegment: (segmentId: string) => void;
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   isGenerating: boolean;
+  onWorkflowStepClick?: (step: WorkflowStep) => void;
 }
 
 const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
@@ -23,7 +24,8 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   onStitch,
   onRedoSegment,
   onConfirmDestructiveAction,
-  isGenerating
+  isGenerating,
+  onWorkflowStepClick
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
@@ -185,6 +187,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
         <WorkflowWizard
           currentStep="render-videos"
           completedSteps={completedSteps}
+          onStepClick={onWorkflowStepClick}
         />
       </div>
 

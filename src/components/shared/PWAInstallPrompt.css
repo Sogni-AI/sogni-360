@@ -1,0 +1,444 @@
+/* PWA Install Prompt Styles for Sogni 360 */
+.pwa-install-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.pwa-install-overlay.closing {
+  animation: fadeOut 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.pwa-install-prompt {
+  background: rgba(17, 24, 39, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  width: 90%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  color: white;
+  transform: translateY(0) scale(1);
+  opacity: 0;
+}
+
+.pwa-install-prompt.slide-in {
+  animation: slideIn 0.4s ease-out forwards;
+}
+
+.pwa-install-prompt.slide-out {
+  animation: slideOut 0.3s ease-in forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(30px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(30px) scale(0.95);
+    opacity: 0;
+  }
+}
+
+.pwa-install-header {
+  padding: 24px 24px 16px 24px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.pwa-install-mascot {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pwa-install-icon {
+  width: 100px;
+  height: auto;
+  max-width: 100%;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+  animation: appIconBounce 3s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+.pwa-install-icon:hover {
+  transform: scale(1.05) rotate(-2deg);
+}
+
+@keyframes appIconBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.02);
+  }
+}
+
+/* Native Install Button Styles */
+.pwa-install-native {
+  padding: 20px 0;
+  text-align: center;
+}
+
+.pwa-install-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 16px 32px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px auto 0;
+  min-width: 200px;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+  transform: translateY(0);
+}
+
+.pwa-install-button:hover {
+  background: #2563eb;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.pwa-install-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pwa-install-button-icon {
+  font-size: 20px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Fallback message styles */
+.pwa-install-fallback {
+  padding: 20px 0;
+  text-align: center;
+}
+
+.pwa-install-fallback p {
+  margin: 8px 0;
+  opacity: 0.9;
+}
+
+.pwa-install-fallback .pwa-steps-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.pwa-install-title h3 {
+  font-size: 22px;
+  margin: 0;
+  font-weight: 600;
+  color: white;
+}
+
+.pwa-install-title p {
+  margin: 8px 0 0 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pwa-install-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 1;
+  transition: all 0.2s ease;
+}
+
+.pwa-install-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.pwa-install-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.pwa-install-benefits {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.pwa-benefit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pwa-benefit:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.pwa-benefit-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.pwa-install-steps {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pwa-steps-title {
+  margin: 0 0 16px 0;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+}
+
+.pwa-step {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pwa-step:last-child {
+  margin-bottom: 0;
+}
+
+.pwa-step-number {
+  background: #3b82f6;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.pwa-share-icon {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+}
+
+.pwa-install-actions {
+  padding: 20px 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pwa-install-dismiss {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pwa-install-dismiss:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.pwa-install-dismiss:active {
+  transform: scale(0.98);
+}
+
+.pwa-install-later {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pwa-install-later:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .pwa-install-prompt {
+    width: 95%;
+    max-width: none;
+    margin: 0 16px;
+  }
+
+  .pwa-install-header {
+    padding: 20px 20px 12px 20px;
+  }
+
+  .pwa-install-title h3 {
+    font-size: 22px;
+  }
+
+  .pwa-install-content {
+    padding: 20px;
+  }
+
+  .pwa-install-benefits {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .pwa-benefit {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .pwa-install-actions {
+    padding: 16px 20px 20px 20px;
+  }
+
+  .pwa-install-dismiss {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .pwa-install-icon {
+    width: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pwa-install-prompt {
+    width: 100%;
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+    position: fixed;
+    bottom: 0;
+    max-height: 85vh;
+  }
+
+  .pwa-install-close {
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+
+  .pwa-install-icon {
+    width: 70px;
+  }
+
+  .pwa-install-title h3 {
+    font-size: 20px;
+  }
+
+  .pwa-install-title p {
+    font-size: 14px;
+  }
+
+  .pwa-steps-title {
+    font-size: 15px;
+  }
+
+  .pwa-step {
+    font-size: 13px;
+  }
+}
+
+/* Animation for better UX */
+.pwa-install-prompt * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pwa-install-prompt button:active {
+  transform: scale(0.98);
+}
+
+.pwa-install-dismiss:active {
+  transform: translateY(-1px) scale(0.98);
+}

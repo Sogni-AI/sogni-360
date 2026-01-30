@@ -2,16 +2,20 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import { concatenateVideos } from '../utils/video-concatenation';
 import { loadAudioAsBuffer } from '../utils/audioUtils';
+import { trackDownload, trackShare, trackVideoExport } from '../utils/analytics';
+import { saveStitchedVideo, loadStitchedVideo } from '../utils/videoCache';
 import type { MusicSelection } from '../types';
 
 interface UseFinalVideoActionsProps {
+  projectId: string;
   videoUrls: string[];
   stitchedVideoUrl?: string;
-  onStitchComplete?: (url: string) => void;
+  onStitchComplete?: (url: string, blob?: Blob) => void;
   initialMusicSelection?: MusicSelection | null;
 }
 
 export function useFinalVideoActions({
+  projectId,
   videoUrls,
   stitchedVideoUrl,
   onStitchComplete,
@@ -27,10 +31,25 @@ export function useFinalVideoActions({
   const [videoDuration, setVideoDuration] = useState(0);
   const segmentDuration = useRef<number>(0);
 
+  // Guard refs to prevent double-stitching
+  const isStitchingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
+
+  // Keep callback ref up to date to avoid stale closures in async operations
+  const onStitchCompleteRef = useRef(onStitchComplete);
+  onStitchCompleteRef.current = onStitchComplete;
+
   // Stitch videos function
   const stitchVideos = useCallback(async (withMusic: MusicSelection | null = null) => {
     if (videoUrls.length === 0) return;
 
+    // Guard against concurrent stitching
+    if (isStitchingRef.current) {
+      console.log('[useFinalVideoActions] Already stitching, skipping...');
+      return;
+    }
+
+    isStitchingRef.current = true;
     setIsStitching(true);
     setStitchProgress('Preparing videos...');
 
@@ -72,52 +91,64 @@ export function useFinalVideoActions({
 
       const url = URL.createObjectURL(blob);
       setLocalStitchedUrl(url);
-      onStitchComplete?.(url);
-      showToast({
-        message: withMusic ? 'Video with music created!' : 'Video stitched successfully!',
-        type: 'success'
-      });
+
+      // Cache the stitched video (only if no music - music versions are ephemeral)
+      if (!withMusic && projectId) {
+        saveStitchedVideo(projectId, blob).catch(err => {
+          console.warn('[useFinalVideoActions] Failed to cache video:', err);
+        });
+      }
+
+      // Use ref to ensure we call the latest callback
+      onStitchCompleteRef.current?.(url, blob);
     } catch (error) {
       console.error('Stitch error:', error);
       showToast({ message: 'Failed to stitch videos', type: 'error' });
     } finally {
+      isStitchingRef.current = false;
       setIsStitching(false);
       setStitchProgress('');
     }
-  }, [videoUrls, onStitchComplete, showToast]);
+  }, [videoUrls, showToast, projectId]);
 
-  // Validate that a blob URL is still accessible
-  const validateBlobUrl = useCallback(async (url: string): Promise<boolean> => {
-    if (!url.startsWith('blob:')) return true;
-    try {
-      const response = await fetch(url, { method: 'HEAD' });
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  // Auto-stitch on mount if no valid stitched URL (with initial music if set)
+  // Load cached video or stitch on mount
   useEffect(() => {
     if (videoUrls.length === 0) return;
+    if (hasInitializedRef.current) return;
 
-    const checkAndStitch = async () => {
-      // If we have a stitched URL, validate it
-      if (localStitchedUrl) {
-        const isValid = await validateBlobUrl(localStitchedUrl);
-        if (isValid) return; // URL is valid, no need to re-stitch
+    hasInitializedRef.current = true;
 
-        // URL is stale (blob expired), clear it and re-stitch
-        console.log('[useFinalVideoActions] Stitched URL is stale, re-stitching...');
-        setLocalStitchedUrl(null);
+    const initializeVideo = async () => {
+      // If we already have a valid URL, we're done
+      if (localStitchedUrl && !localStitchedUrl.startsWith('blob:')) {
+        return;
       }
 
-      // No valid stitched URL, stitch now
+      // Try to load from cache first
+      if (projectId) {
+        try {
+          const cachedBlob = await loadStitchedVideo(projectId);
+          if (cachedBlob) {
+            console.log('[useFinalVideoActions] Loaded video from cache');
+            const url = URL.createObjectURL(cachedBlob);
+            setLocalStitchedUrl(url);
+            // Use ref to ensure we call the latest callback
+            onStitchCompleteRef.current?.(url, cachedBlob);
+            return;
+          }
+        } catch (err) {
+          console.warn('[useFinalVideoActions] Failed to load cached video:', err);
+        }
+      }
+
+      // No cached video, stitch now
       stitchVideos(initialMusicSelection || null);
     };
 
-    checkAndStitch();
-  }, [videoUrls, localStitchedUrl, stitchVideos, initialMusicSelection, validateBlobUrl]);
+    initializeVideo();
+    // Only run on mount - dependencies are intentionally limited
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, videoUrls.length]);
 
   // Handle music selection confirmation
   const handleMusicConfirm = useCallback(async (selection: MusicSelection) => {
@@ -215,6 +246,8 @@ export function useFinalVideoActions({
       if (isMobile()) {
         const shared = await tryNativeShare(blob, filename);
         if (shared) {
+          trackDownload(1, 'video', 'mp4');
+          trackVideoExport('mp4', videoDuration);
           return;
         }
         // Fall through to traditional download if share not supported
@@ -229,13 +262,15 @@ export function useFinalVideoActions({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
+      trackDownload(1, 'video', 'mp4');
+      trackVideoExport('mp4', videoDuration);
     } catch (error) {
       console.error('Download error:', error);
       showToast({ message: 'Download failed', type: 'error' });
     } finally {
       setIsDownloading(false);
     }
-  }, [localStitchedUrl, showToast, isDownloading, isMobile, tryNativeShare]);
+  }, [localStitchedUrl, showToast, isDownloading, isMobile, tryNativeShare, videoDuration]);
 
   // Share video
   const handleShare = useCallback(async () => {
@@ -253,12 +288,14 @@ export function useFinalVideoActions({
             title: 'My Sogni 360 Creation',
             text: 'Check out this 360° orbital portrait I created!'
           });
+          trackShare('native', 'video');
           return;
         }
       }
 
       // Fallback: copy URL to clipboard
       await navigator.clipboard.writeText(localStitchedUrl);
+      trackShare('clipboard', 'video');
       showToast({ message: 'Video URL copied to clipboard!', type: 'success' });
     } catch (error) {
       if ((error as Error).name === 'AbortError') return;

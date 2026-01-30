@@ -303,7 +303,92 @@ npm run build:staging       # Staging build
 npm test                    # Jest unit tests
 npm run test:watch          # Jest watch mode
 npm run lint                # ESLint (must pass with 0 warnings)
+npm run validate:useeffect  # CRITICAL: Validate useEffect patterns before committing
 ```
+
+## 🚨 useEffect Rules (MANDATORY)
+
+Every useEffect must pass `npm run validate:useeffect` before committing.
+
+**Golden Rule**: Each effect has ONE responsibility.
+
+### 🚫 NEVER Add to Dependency Arrays
+
+These cause infinite re-render loops or unnecessary re-runs:
+
+1. **Functions** - `initializeSogni`, `handleClick`, `fetchData`, `updateSetting`
+2. **Context functions** - `dispatch`, `showToast`, `clearCache`
+3. **Hook-returned functions** - `getSogniClient`, `ensureClient`, `logout`
+4. **Whole objects** - `settings`, `authState`, `config`, `project`
+5. **Anything unstable** - Functions created with `.bind()`, inline callbacks
+
+### ✅ ONLY Add Primitives That Should Trigger the Effect
+
+```typescript
+// CORRECT - separate effects for separate concerns
+useEffect(() => {
+  if (authState.isAuthenticated) initializeSogni();
+}, [authState.isAuthenticated]);
+
+useEffect(() => {
+  if (settings.watermark) updateWatermark();
+}, [settings.watermark]);
+```
+
+### 🔧 How to Fix Common Violations
+
+**Problem:** Need to call a function from a hook inside useEffect
+```typescript
+// ❌ WRONG - getSogniClient creates new reference each render
+const { getSogniClient } = useSogniAuth();
+useEffect(() => {
+  const client = getSogniClient();
+  // ...
+}, [getSogniClient]); // INFINITE LOOP!
+
+// ✅ RIGHT - Access singleton directly
+import { sogniAuth } from '../services/sogniAuth';
+useEffect(() => {
+  const client = sogniAuth.getSogniClient();
+  // ...
+}, [isAuthenticated]); // Only primitive trigger
+```
+
+**Problem:** ESLint wants me to add a function to dependencies
+```typescript
+// ❌ WRONG - Adding function causes re-runs
+}, [fetchData, isAuthenticated]);
+
+// ✅ RIGHT - Ignore ESLint, call function directly
+}, [isAuthenticated]); // fetchData is stable, doesn't need to be a dependency
+```
+
+**Problem:** Effect needs to respond to multiple unrelated changes
+```typescript
+// ❌ WRONG - Mixed concerns
+useEffect(() => {
+  if (isAuthenticated) initClient();
+  if (settings.watermark) updateWatermark();
+}, [isAuthenticated, settings.watermark]); // TOO MANY CONCERNS!
+
+// ✅ RIGHT - Split into separate effects
+useEffect(() => {
+  if (isAuthenticated) initClient();
+}, [isAuthenticated]);
+
+useEffect(() => {
+  if (settings.watermark) updateWatermark();
+}, [settings.watermark]);
+```
+
+### 📊 Enforcement Checklist
+
+Before committing any useEffect changes:
+- [ ] Effect has ONE clear purpose (can be stated in one sentence)
+- [ ] Dependency array has ≤ 3 items (if more, split into multiple effects)
+- [ ] ZERO functions in dependency array
+- [ ] ZERO objects in dependency array (extract primitives instead)
+- [ ] Run `npm run validate:useeffect` - must pass with 0 errors
 
 ## Local Development URLs
 

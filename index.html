@@ -22,6 +22,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sogni 360" />
     <meta name="application-name" content="Sogni 360" />
+    <link rel="manifest" href="/manifest.json" />
 
     <!-- Additional meta tags -->
     <meta name="format-detection" content="telephone=no" />
@@ -154,5 +155,53 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
+    <script>
+      // Service Worker Registration
+      if ('serviceWorker' in navigator) {
+        const isLocalDev = location.hostname === 'localhost' ||
+                           location.hostname === '127.0.0.1' ||
+                           location.hostname.includes('local');
+
+        if (!isLocalDev) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('Service Worker registered:', registration.scope);
+
+                const hasCheckedUpdates = sessionStorage.getItem('sw-update-checked');
+                if (!hasCheckedUpdates) {
+                  sessionStorage.setItem('sw-update-checked', 'true');
+
+                  registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    if (newWorker) {
+                      newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                          console.log('New service worker available, reloading...');
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1000);
+                        }
+                      });
+                    }
+                  });
+
+                  registration.update();
+                }
+              })
+              .catch((error) => {
+                console.log('Service Worker registration failed:', error);
+              });
+          });
+        } else {
+          console.log('Service Worker disabled in local development');
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            registrations.forEach((registration) => {
+              registration.unregister();
+            });
+          });
+        }
+      }
+    </script>
   </body>
 </html>

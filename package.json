@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "build:staging": "tsc && vite build --mode staging",
     "lint": "eslint \"src/**/*.{ts,tsx,js,jsx}\" --report-unused-disable-directives --max-warnings 0",
+    "validate:useeffect": "node scripts/validate-useeffect.js",
     "deploy:production": "bash scripts/deploy-production.sh",
     "preview": "vite preview",
     "test": "jest",
@@ -25,6 +26,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^2.0.5",
+    "react-turnstile": "^1.1.4",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

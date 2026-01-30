@@ -299,30 +299,60 @@ const Sogni360Viewer: React.FC = () => {
                 setIsVideoElementReady(true);
                 handleVideoCanPlay();
                 // Start playing now that video is fully buffered
-                videoRef.current?.play();
+                videoRef.current?.play().catch((err) => {
+                  console.error('[Sogni360Viewer] Video play failed:', err);
+                  // Clear stuck transition state so UI remains usable
+                  handleTransitionEnd();
+                });
               }
             }}
             onEnded={playReverse ? undefined : handleTransitionEnd}
+            onError={(e) => {
+              console.error('[Sogni360Viewer] Video error:', e);
+              // Clear stuck transition state so UI remains usable
+              handleTransitionEnd();
+            }}
           />
         </div>
       )}
 
-      {/* Click zones (desktop) */}
+      {/* Click zones with hover buttons (desktop) */}
       <div
         className="click-zone click-zone-left hidden md:block"
         onClick={handleLeftClick}
-        title="Previous"
-      />
+      >
+        <button className="click-zone-btn" aria-label="Previous">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+          </svg>
+        </button>
+      </div>
       <div
         className="click-zone click-zone-center hidden md:block"
         onClick={handleCenterClick}
-        title="Play/Pause"
-      />
+      >
+        <button className="click-zone-btn" aria-label={isPlaying ? 'Pause' : 'Play'}>
+          {isPlaying ? (
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          )}
+        </button>
+      </div>
       <div
         className="click-zone click-zone-right hidden md:block"
         onClick={handleRightClick}
-        title="Next"
-      />
+      >
+        <button className="click-zone-btn" aria-label="Next">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Waypoint indicator */}
       {currentProject && currentProject.waypoints.length > 0 && (
@@ -352,23 +382,25 @@ const Sogni360Viewer: React.FC = () => {
       {/* Playback and download controls - shown when sequence is complete */}
       {hasPlayableSequence && (
         <div className="viewer-controls">
-          {/* Auto-play toggle button */}
-          <button
-            className={`viewer-control-btn ${isPlaying ? 'active' : ''}`}
-            onClick={togglePlayback}
-            disabled={isTransitionPlaying}
-            title={isPlaying ? 'Pause auto-play (Space)' : 'Start auto-play (Space)'}
-          >
-            {isPlaying ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              </svg>
-            )}
-          </button>
+          {/* Auto-play toggle button with label */}
+          <div className="autoplay-control">
+            <button
+              className={`viewer-control-btn ${isPlaying ? 'active' : ''}`}
+              onClick={togglePlayback}
+              title={isPlaying ? 'Pause auto-play (Space)' : 'Start auto-play (Space)'}
+            >
+              {isPlaying ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                </svg>
+              )}
+            </button>
+            <span className="autoplay-label">Auto-play</span>
+          </div>
 
           {/* Open final video panel button */}
           {hasFinalVideo && (

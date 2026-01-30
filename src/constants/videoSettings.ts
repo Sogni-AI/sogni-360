@@ -70,26 +70,26 @@ export type VideoResolution = keyof typeof VIDEO_RESOLUTIONS;
 export const DEFAULT_VIDEO_SETTINGS = {
   resolution: '720p' as VideoResolution,
   quality: 'fast' as VideoQualityPreset,
-  frames: 49, // ~3 seconds at 16fps for smooth transitions
-  fps: 16,
+  frames: 49, // 3 seconds at 16fps base generation rate (32fps playback for smoothness)
+  fps: 32,
   duration: 3 // 3 seconds per transition
 };
 
 // Video generation config
 export const VIDEO_CONFIG = {
-  // Default frames for 3-second transition at 16fps
+  // Default frames for 3-second transition at 16fps base generation rate
   defaultFrames: 49,
-  // Frames per second options
+  // Frames per second options (affects playback smoothness, not frame count)
   fpsOptions: [16, 32] as const,
-  defaultFps: 16,
+  defaultFps: 32,
   // Duration range in seconds for 360 transitions
   minDuration: 1,
-  maxDuration: 5,
+  maxDuration: 8,
   durationStep: 0.5,
   defaultDuration: 3,
-  // Frame range limits
+  // Frame range limits (1s = 17 frames, 8s = 129 frames at BASE_FPS 16)
   minFrames: 17,
-  maxFrames: 81,
+  maxFrames: 129,
   // Dimension must be divisible by this value
   dimensionDivisor: 16
 };
@@ -135,9 +135,12 @@ export function calculateVideoDuration(frames: number = VIDEO_CONFIG.defaultFram
 }
 
 /**
- * Calculate frames based on duration
+ * Calculate frames based on duration (fps is NOT used - it's for playback interpolation only)
+ * Formula: 16 * duration + 1 (16fps is the base generation rate)
+ * The fps parameter passed to the API only affects playback smoothness, not frame count
  */
 export function calculateVideoFrames(duration: number = VIDEO_CONFIG.defaultDuration): number {
+  // Use constant 16fps base for frame calculation regardless of playback fps setting
   const BASE_FPS = 16;
   return BASE_FPS * duration + 1;
 }

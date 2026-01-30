@@ -76,15 +76,12 @@ html, body {
   transform: translate(-50%, -50%);
 }
 
-/* Camera angle indicator with navigation arrows */
+/* Camera angle indicator */
 .camera-angle-indicator-with-nav {
   position: absolute;
   top: 1rem;
   left: 1rem;
   z-index: 15;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 @media (max-width: 767px) {
@@ -112,47 +109,71 @@ html, body {
   transform-origin: center center;
 }
 
-.waypoint-counter {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
-  margin-top: 0.25rem;
+/* Angle label - tiny text showing current camera angle */
+.angle-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  line-height: 1.3;
+  margin-top: -2px;
 }
 
-.nav-arrow {
-  width: 36px;
-  height: 36px;
+/* Waypoint counter with inline navigation */
+.waypoint-nav-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.waypoint-counter {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+/* Inline nav buttons - smaller, inside the tile */
+.nav-arrow-inline {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  color: white;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  padding: 0;
 }
 
-.nav-arrow:hover {
+.nav-arrow-inline:hover {
   background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
+  color: white;
 }
 
-.nav-arrow:active {
-  transform: scale(0.95);
+.nav-arrow-inline:active {
+  transform: scale(0.9);
 }
 
-.nav-arrow svg {
-  width: 20px;
-  height: 20px;
+.nav-arrow-inline:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-arrow-inline svg {
+  width: 14px;
+  height: 14px;
 }
 
 @media (max-width: 767px) {
   .camera-angle-indicator-with-nav {
     top: 0.5rem;
     left: 0.5rem;
-    gap: 0.25rem;
   }
   .camera-angle-indicator-inner {
     padding: 0.75rem;
@@ -160,16 +181,20 @@ html, body {
   .camera-angle-indicator-inner > div:first-child {
     transform: scale(1.25);
   }
-  .nav-arrow {
-    width: 32px;
-    height: 32px;
-  }
-  .nav-arrow svg {
-    width: 16px;
-    height: 16px;
+  .waypoint-nav-row {
+    gap: 0.375rem;
   }
   .waypoint-counter {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
+    min-width: 2rem;
+  }
+  .nav-arrow-inline {
+    width: 20px;
+    height: 20px;
+  }
+  .nav-arrow-inline svg {
+    width: 12px;
+    height: 12px;
   }
 }
 
@@ -177,14 +202,9 @@ html, body {
 .click-zone {
   position: absolute;
   top: 0;
-  height: 100%;
+  bottom: 0;
   cursor: pointer;
   z-index: 10;
-  transition: background 0.2s ease;
-}
-
-.click-zone:hover {
-  background: linear-gradient(to right, rgba(255,255,255,0.05), transparent);
 }
 
 .click-zone-left {
@@ -192,17 +212,9 @@ html, body {
   width: 33.33%;
 }
 
-.click-zone-left:hover {
-  background: linear-gradient(to right, rgba(255,255,255,0.08), transparent);
-}
-
 .click-zone-center {
   left: 33.33%;
   width: 33.33%;
-}
-
-.click-zone-center:hover {
-  background: radial-gradient(circle at center, rgba(255,255,255,0.05), transparent);
 }
 
 .click-zone-right {
@@ -210,17 +222,51 @@ html, body {
   width: 33.33%;
 }
 
-.click-zone-right:hover {
-  background: linear-gradient(to left, rgba(255,255,255,0.08), transparent);
+/* Hover button inside click zones */
+.click-zone-btn {
+  position: absolute;
+  bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  pointer-events: none;
+}
+
+.click-zone-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.click-zone:hover .click-zone-btn {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.click-zone-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Viewer playback and download controls */
 .viewer-controls {
   position: absolute;
-  bottom: 8rem;
-  right: 1rem;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.5rem + env(safe-area-inset-right, 0px));
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
   z-index: 25;
 }
@@ -256,15 +302,56 @@ html, body {
   cursor: not-allowed;
 }
 
+/* Auto-play button with label */
+.autoplay-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.autoplay-control .viewer-control-btn {
+  width: 52px;
+  height: 52px;
+}
+
+.autoplay-label {
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
 @media (max-width: 768px) {
   .viewer-controls {
-    bottom: 7rem;
-    right: 0.75rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    right: calc(1rem + env(safe-area-inset-right, 0px));
   }
 
   .viewer-control-btn {
     width: 44px;
     height: 44px;
+  }
+
+  .autoplay-control .viewer-control-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .autoplay-label {
+    font-size: 0.625rem;
+  }
+
+  .click-zone-btn {
+    bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    width: 40px;
+    height: 40px;
+  }
+
+  .click-zone-btn svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -583,9 +670,9 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 1rem;
-  width: 290px;
-  min-width: 290px;
+  padding: 1.25rem;
+  width: 400px;
+  min-width: 400px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
@@ -604,6 +691,16 @@ html, body {
     min-width: 200px;
     padding: 0.5rem;
     gap: 0.5rem;
+  }
+}
+
+/* Tablet - larger cards for iPad/tablet viewports */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .step-card {
+    width: 440px;
+    min-width: 440px;
+    padding: 1.5rem;
+    gap: 1rem;
   }
 }
 
@@ -699,13 +796,20 @@ html, body {
   display: flex;
   justify-content: center;
   margin-top: 0.5rem;
-  min-height: 140px;
+  min-height: 200px;
   overflow: visible;
 }
 
 @media (max-width: 767px) {
   .step-3d-control {
     min-height: 120px;
+  }
+}
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .step-3d-control {
+    min-height: 260px;
   }
 }
 
@@ -716,16 +820,16 @@ html, body {
   justify-content: center;
   align-items: center;
   margin-top: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.75rem;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 0.5rem;
   overflow: hidden;
-  min-height: 190px;
+  min-height: 260px;
 }
 
 .step-original-preview img {
   max-width: 100%;
-  max-height: 140px;
+  max-height: 220px;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -738,6 +842,16 @@ html, body {
   }
   .step-original-preview {
     min-height: 140px;
+  }
+}
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .step-original-preview {
+    min-height: 320px;
+  }
+  .step-original-preview img {
+    max-height: 280px;
   }
 }
 
@@ -772,7 +886,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  min-height: 300px;
   cursor: pointer;
   border-style: dashed;
   border-color: rgba(255, 255, 255, 0.2);
@@ -813,6 +927,19 @@ html, body {
 .add-step-count {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.3);
+}
+
+/* Tablet - larger add step card */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .step-card.add-step {
+    min-height: 400px;
+  }
+  .add-step-icon {
+    font-size: 3rem;
+  }
+  .add-step-label {
+    font-size: 1.125rem;
+  }
 }
 
 /* Timeline footer */
@@ -1847,6 +1974,181 @@ html, body {
   .workflow-wizard-line { width: 20px; }
 }
 
+/* =============================================
+   Workflow Wizard - Collapsible Tray (tablet/small screens)
+   ============================================= */
+
+/* Collapsed tab - pull-down tab centered at top */
+.workflow-wizard-collapsed-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.625rem 1rem;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.workflow-wizard-collapsed-tab:hover {
+  background: rgba(0, 0, 0, 0.95);
+  border-color: rgba(255, 255, 255, 0.25);
+  padding-bottom: 0.75rem;
+}
+
+.workflow-wizard-collapsed-dot {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.workflow-wizard-collapsed-dot svg {
+  width: 12px;
+  height: 12px;
+}
+
+.workflow-wizard-collapsed-dot.complete,
+.workflow-wizard-collapsed-tab.complete .workflow-wizard-collapsed-dot {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: white;
+}
+
+.workflow-wizard-collapsed-dot.active,
+.workflow-wizard-collapsed-tab.active .workflow-wizard-collapsed-dot {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.workflow-wizard-collapsed-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+.workflow-wizard-collapsed-prefix {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.workflow-wizard-collapsed-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.workflow-wizard-collapsed-tab.complete .workflow-wizard-collapsed-label {
+  color: #4ade80;
+}
+
+.workflow-wizard-collapsed-tab.active .workflow-wizard-collapsed-label {
+  color: #60a5fa;
+}
+
+.workflow-wizard-collapsed-chevron {
+  width: 16px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: 0.25rem;
+}
+
+/* Expanded overlay - full-width panel that slides down */
+.workflow-wizard-expanded-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workflow-wizard-expanded-container {
+  background: rgba(0, 0, 0, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.workflow-wizard-expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.workflow-wizard-expanded-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.workflow-wizard-expanded-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+}
+
+.workflow-wizard-expanded-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.workflow-wizard-expanded-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Wizard in overlay - horizontal scroll if needed */
+.workflow-wizard-in-overlay {
+  overflow-x: auto;
+  padding: 0.25rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.workflow-wizard-in-overlay .workflow-wizard-label {
+  display: block !important;
+}
+
 /* Global Wizard Bar - takes up space at top */
 .global-wizard-bar {
   display: flex;
@@ -1859,7 +2161,28 @@ html, body {
   flex-shrink: 0;
 }
 
-/* Hide workflow wizard on mobile - camera control provides navigation */
+/* Tablet screens (768px - 1023px): Show collapsible tab centered at top */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .global-wizard-bar {
+    background: transparent;
+    border-bottom: none;
+    padding: 0;
+    height: 0;
+    overflow: visible;
+    justify-content: center;
+    position: relative;
+  }
+
+  .global-wizard-bar .workflow-wizard-collapsed-tab {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+  }
+}
+
+/* Mobile screens (<768px): Collapsible tab centered at top */
 @media (max-width: 767px) {
   .global-wizard-bar {
     background: transparent;
@@ -1872,6 +2195,25 @@ html, body {
   .global-wizard-bar .workflow-wizard {
     display: none;
   }
+
+  .global-wizard-bar .workflow-wizard-collapsed-tab {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    padding: 0.375rem 0.75rem 0.5rem 0.75rem;
+  }
+
+  .global-wizard-bar .workflow-wizard-collapsed-dot {
+    width: 20px;
+    height: 20px;
+    font-size: 0.625rem;
+  }
+
+  .global-wizard-bar .workflow-wizard-collapsed-label {
+    font-size: 0.75rem;
+  }
 }
 
 /* Left spacer - hidden, not needed */
@@ -1882,9 +2224,10 @@ html, body {
 /* Project actions fixed to top right corner of screen */
 .global-wizard-bar .project-actions-bar {
   position: fixed;
-  top: 0.75rem;
+  top: 1rem;
   right: 1rem;
   z-index: 100;
+  gap: 0.5rem;
 }
 
 @media (max-width: 767px) {
@@ -1899,6 +2242,35 @@ html, body {
   padding: 1rem 1.5rem;
   background: rgba(0, 0, 0, 0.4);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: center;
+}
+
+/* On tablet/mobile, adjust review wizard wrap for pull-tab */
+@media (max-width: 1023px) {
+  .review-wizard-wrap {
+    padding: 0;
+    background: transparent;
+    border-bottom: none;
+    position: relative;
+    min-height: 48px;
+  }
+
+  .review-wizard-wrap .workflow-wizard-collapsed-tab {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+  }
+
+  .review-wizard-wrap .workflow-wizard-expanded-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+  }
 }
 
 /* Header */
@@ -3613,14 +3985,20 @@ html, body {
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   background: rgba(0, 0, 0, 0.95);
   z-index: 50;
 }
 
+.final-video-panel > .review-wizard-wrap {
+  width: 100%;
+  flex-shrink: 0;
+}
+
 .final-video-container {
   position: relative;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4089,6 +4467,13 @@ html, body {
 
 /* Project Actions in Header */
 .project-actions-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+}
+
+.project-action-buttons {
   display: flex;
   align-items: center;
   gap: 0.5rem;

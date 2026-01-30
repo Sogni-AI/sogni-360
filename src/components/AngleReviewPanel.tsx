@@ -13,19 +13,22 @@ import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 import EnhancePromptPopup from './shared/EnhancePromptPopup';
+import { trackDownload } from '../utils/analytics';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
   onApply: () => void;
   isGenerating: boolean;
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
+  onWorkflowStepClick?: (step: WorkflowStep) => void;
 }
 
 const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   onClose,
   onApply,
   isGenerating,
-  onConfirmDestructiveAction
+  onConfirmDestructiveAction,
+  onWorkflowStepClick
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
@@ -190,7 +193,9 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       const filename = `sogni-360-step${index + 1}-${angleLabel}.jpg`;
 
       const success = await downloadSingleImage(waypoint.imageUrl, filename);
-      if (!success) {
+      if (success) {
+        trackDownload(1, 'image', 'jpg');
+      } else {
         showToast({ message: 'Download failed', type: 'error' });
       }
     } catch {
@@ -233,6 +238,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       );
 
       if (success) {
+        trackDownload(images.length, 'image', 'zip');
         showToast({ message: 'ZIP download complete', type: 'success' });
       } else {
         showToast({ message: 'ZIP download failed', type: 'error' });
@@ -415,6 +421,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         <WorkflowWizard
           currentStep="render-angles"
           completedSteps={completedSteps}
+          onStepClick={onWorkflowStepClick}
         />
       </div>
 

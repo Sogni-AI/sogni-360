@@ -1,0 +1,37 @@
+{
+  "name": "Sogni 360",
+  "short_name": "Sogni 360",
+  "description": "Create immersive 360° orbital portraits with AI - Generate multiple camera angles from a single image",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "scope": "/",
+  "version": "1.0.0",
+  "id": "/",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/mstile-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "prefer_related_applications": false,
+  "categories": ["graphics", "multimedia", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}
