@@ -1,15 +1,15 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { listProjects, deleteProject } from '../utils/localProjectsDB';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { listProjects, deleteProject, renameProject } from '../utils/localProjectsDB';
 import type { LocalProject } from '../types';
 
-interface ProjectManagerModalProps {
+interface ProjectManagerModalProperties {
   onClose: () => void;
   onLoadProject: (projectId: string) => void;
   onNewProject: () => void;
   currentProjectId?: string;
 }
 
-const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
+const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
   onClose,
   onLoadProject,
   onNewProject,
@@ -18,6 +18,9 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
   const [projects, setProjects] = useState<LocalProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const editInputReference = useRef<HTMLInputElement>(null);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -34,18 +37,66 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
     loadProjects();
   }, [loadProjects]);
 
-  const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteProject = async (projectId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     if (deletingId) return;
 
     setDeletingId(projectId);
     try {
       await deleteProject(projectId);
-      setProjects(prev => prev.filter(p => p.id !== projectId));
+      setProjects(previous => previous.filter(p => p.id !== projectId));
     } catch (error) {
       console.error('Failed to delete project:', error);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const startEditing = (project: LocalProject, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setEditingId(project.id);
+    setEditingName(project.name);
+  };
+
+  useEffect(() => {
+    if (editingId && editInputReference.current) {
+      editInputReference.current.focus();
+      editInputReference.current.select();
+    }
+  }, [editingId]);
+
+  const saveRename = async () => {
+    if (!editingId || !editingName.trim()) {
+      setEditingId(null);
+      return;
+    }
+
+    try {
+      await renameProject(editingId, editingName.trim());
+      setProjects(previous => previous.map(p =>
+        p.id === editingId
+          ? { ...p, name: editingName.trim(), project: { ...p.project, name: editingName.trim() } }
+          : p
+      ));
+    } catch (error) {
+      console.error('Failed to rename project:', error);
+    } finally {
+      setEditingId(null);
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const handleEditKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveRename();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelEditing();
     }
   };
 
@@ -65,7 +116,7 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
 
   return (
     <div className="project-manager-overlay" onClick={onClose}>
-      <div className="project-manager-modal" onClick={e => e.stopPropagation()}>
+      <div className="project-manager-modal" onClick={event => event.stopPropagation()}>
         <div className="project-manager-header">
           <div className="project-manager-title-group">
             <h2 className="project-manager-title">My Projects</h2>
@@ -118,7 +169,20 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
                     )}
                   </div>
                   <div className="project-info">
-                    <div className="project-name">{project.name}</div>
+                    {editingId === project.id ? (
+                      <input
+                        ref={editInputReference}
+                        type="text"
+                        className="project-name-input"
+                        value={editingName}
+                        onChange={event => setEditingName(event.target.value)}
+                        onBlur={saveRename}
+                        onKeyDown={handleEditKeyDown}
+                        onClick={event => event.stopPropagation()}
+                      />
+                    ) : (
+                      <div className="project-name">{project.name}</div>
+                    )}
                     <div className="project-meta">
                       <span>{formatDate(project.updatedAt)}</span>
                       <span className="meta-separator">•</span>
@@ -134,21 +198,34 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProps> = ({
                       )}
                     </div>
                   </div>
-                  <button
-                    className="project-delete"
-                    onClick={(e) => handleDeleteProject(project.id, e)}
-                    disabled={deletingId === project.id}
-                    title="Delete project"
-                  >
-                    {deletingId === project.id ? (
-                      <div className="spinner-small" />
-                    ) : (
+                  <div className="project-actions">
+                    <button
+                      className="project-edit"
+                      onClick={event => startEditing(project, event)}
+                      disabled={editingId === project.id}
+                      title="Rename project"
+                    >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                    )}
-                  </button>
+                    </button>
+                    <button
+                      className="project-delete"
+                      onClick={event => handleDeleteProject(project.id, event)}
+                      disabled={deletingId === project.id}
+                      title="Delete project"
+                    >
+                      {deletingId === project.id ? (
+                        <div className="spinner-small" />
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

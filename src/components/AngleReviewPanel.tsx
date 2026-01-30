@@ -396,44 +396,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     }
   }, [isEnhanceAllMode, pendingEnhanceWaypoint, waypoints, executeEnhance, showToast]);
 
-  // Handle undo enhance
-  const handleUndoEnhance = useCallback((waypoint: Waypoint) => {
-    if (!waypoint.originalImageUrl) return;
-
-    dispatch({
-      type: 'UPDATE_WAYPOINT',
-      payload: {
-        id: waypoint.id,
-        updates: {
-          imageUrl: waypoint.originalImageUrl,
-          enhanced: false,
-          canUndoEnhance: false,
-          canRedoEnhance: true
-        }
-      }
-    });
-    showToast({ message: 'Enhancement undone', type: 'info' });
-  }, [dispatch, showToast]);
-
-  // Handle redo enhance
-  const handleRedoEnhance = useCallback((waypoint: Waypoint) => {
-    if (!waypoint.enhancedImageUrl) return;
-
-    dispatch({
-      type: 'UPDATE_WAYPOINT',
-      payload: {
-        id: waypoint.id,
-        updates: {
-          imageUrl: waypoint.enhancedImageUrl,
-          enhanced: true,
-          canUndoEnhance: true,
-          canRedoEnhance: false
-        }
-      }
-    });
-    showToast({ message: 'Enhancement restored', type: 'info' });
-  }, [dispatch, showToast]);
-
   const canProceed = readyCount >= 2 && generatingCount === 0 && failedCount === 0;
   const totalComplete = readyCount;
   const totalAngles = waypoints.length;
@@ -569,20 +531,12 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                     Download
                   </button>
 
-                  {/* Enhance Button - Upgrade image quality with Z-Image Turbo */}
+                  {/* Enhance Button - Always allows enhancing, versions are tracked */}
                   <button
                     className={`review-card-btn enhance ${waypoint.status !== 'ready' || !waypoint.imageUrl ? 'invisible' : ''} ${waypoint.enhancing || enhancingId === waypoint.id ? 'loading' : ''}`}
-                    onClick={() => {
-                      if (waypoint.canRedoEnhance && waypoint.enhancedImageUrl) {
-                        handleRedoEnhance(waypoint);
-                      } else if (waypoint.canUndoEnhance && waypoint.enhanced) {
-                        handleUndoEnhance(waypoint);
-                      } else {
-                        handleEnhanceClick(waypoint);
-                      }
-                    }}
+                    onClick={() => handleEnhanceClick(waypoint)}
                     disabled={waypoint.status !== 'ready' || !waypoint.imageUrl || waypoint.enhancing || enhancingId === waypoint.id || isEnhancingAll}
-                    title={waypoint.enhanced ? 'Click to undo enhancement' : waypoint.canRedoEnhance ? 'Click to redo enhancement' : 'Enhance with Z-Image Turbo'}
+                    title="Enhance image quality"
                   >
                     {waypoint.enhancing || enhancingId === waypoint.id ? (
                       <>
@@ -590,20 +544,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         {Math.round(waypoint.enhancementProgress || 0)}%
-                      </>
-                    ) : waypoint.enhanced ? (
-                      <>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                        </svg>
-                        Undo
-                      </>
-                    ) : waypoint.canRedoEnhance ? (
-                      <>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
-                        </svg>
-                        Redo
                       </>
                     ) : (
                       <>

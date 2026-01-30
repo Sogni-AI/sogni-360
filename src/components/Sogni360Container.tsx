@@ -625,21 +625,21 @@ const Sogni360Container: React.FC = () => {
               completedSteps={completedSteps}
               onStepClick={handleWorkflowStepClick}
             />
-            <div className="project-actions-bar">
-              <button className="project-action-btn" onClick={handleNewProject} title="New Project">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>New</span>
-              </button>
-              <button className="project-action-btn" onClick={handleOpenProjectManager} title="My Projects">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-                <span>Projects</span>
-              </button>
-            </div>
+          </div>
+          <div className="project-actions-bar">
+            <button className="project-action-btn" onClick={handleNewProject} title="New Project">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>New</span>
+            </button>
+            <button className="project-action-btn" onClick={handleOpenProjectManager} title="My Projects">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <span>Projects</span>
+            </button>
           </div>
         </div>
       )}

@@ -108,6 +108,47 @@ export async function loadProject(id: string): Promise<Sogni360Project | null> {
 }
 
 /**
+ * Rename a project in IndexedDB
+ */
+export async function renameProject(id: string, newName: string): Promise<void> {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const getRequest = store.get(id);
+
+    getRequest.onerror = () => {
+      console.error('Failed to get project for rename:', getRequest.error);
+      reject(getRequest.error);
+    };
+
+    getRequest.onsuccess = () => {
+      const localProject = getRequest.result as LocalProject | undefined;
+      if (!localProject) {
+        reject(new Error('Project not found'));
+        return;
+      }
+
+      // Update the name in both LocalProject and nested Sogni360Project
+      localProject.name = newName;
+      localProject.project.name = newName;
+      localProject.updatedAt = Date.now();
+
+      const putRequest = store.put(localProject);
+      putRequest.onerror = () => {
+        console.error('Failed to save renamed project:', putRequest.error);
+        reject(putRequest.error);
+      };
+      putRequest.onsuccess = () => {
+        console.log('[LocalDB] Renamed project:', id, '→', newName);
+        resolve();
+      };
+    };
+  });
+}
+
+/**
  * Delete a project from IndexedDB
  */
 export async function deleteProject(id: string): Promise<void> {
@@ -362,6 +403,7 @@ export default {
   saveProject,
   loadProject,
   deleteProject,
+  renameProject,
   listProjects,
   getProjectCount,
   clearAllProjects,

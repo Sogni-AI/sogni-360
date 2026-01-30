@@ -1802,7 +1802,7 @@ html, body {
   min-width: 0;
 }
 
-.global-wizard-bar-inner .project-actions-bar {
+.global-wizard-bar .project-actions-bar {
   position: absolute;
   right: 1rem;
   top: 50%;
@@ -3889,6 +3889,62 @@ html, body {
 .project-delete svg {
   width: 18px;
   height: 18px;
+}
+
+.project-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.project-edit {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.project-edit:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+}
+
+.project-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.project-edit svg {
+  width: 16px;
+  height: 16px;
+}
+
+.project-name-input {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 0.375rem;
+  outline: none;
+  font-family: inherit;
+}
+
+.project-name-input:focus {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .spinner-small {
