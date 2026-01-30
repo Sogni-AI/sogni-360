@@ -135,6 +135,43 @@ export function useFinalVideoActions({
     }
   }, [videoUrls.length, currentSegmentIndex]);
 
+  // Check if on mobile device
+  const isMobile = useCallback(() => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+  }, []);
+
+  // Try native share sheet (better UX on mobile)
+  const tryNativeShare = useCallback(async (blob: Blob, filename: string): Promise<boolean> => {
+    if (!navigator.share || !navigator.canShare) {
+      return false;
+    }
+
+    try {
+      const file = new File([blob], filename, { type: 'video/mp4' });
+
+      if (!navigator.canShare({ files: [file] })) {
+        return false;
+      }
+
+      await navigator.share({
+        files: [file],
+        title: 'My Sogni 360 Creation',
+        text: 'Check out this 360° orbital portrait I created!'
+      });
+
+      return true;
+    } catch (error) {
+      // AbortError means user cancelled - that's not a failure
+      if ((error as Error).name === 'AbortError') {
+        return true;
+      }
+      console.warn('Native share failed:', error);
+      return false;
+    }
+  }, []);
+
   // Download the stitched video
   const handleDownload = useCallback(async () => {
     if (isDownloading || !localStitchedUrl) return;
@@ -145,9 +182,19 @@ export function useFinalVideoActions({
       if (!response.ok) throw new Error('Download failed');
 
       const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
       const filename = `sogni-360-loop-${Date.now()}.mp4`;
 
+      // On mobile, use native share sheet (better UX - save to photos, share, etc.)
+      if (isMobile()) {
+        const shared = await tryNativeShare(blob, filename);
+        if (shared) {
+          return;
+        }
+        // Fall through to traditional download if share not supported
+      }
+
+      // Traditional download approach (desktop or share fallback)
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
       a.download = filename;
@@ -161,7 +208,7 @@ export function useFinalVideoActions({
     } finally {
       setIsDownloading(false);
     }
-  }, [localStitchedUrl, showToast, isDownloading]);
+  }, [localStitchedUrl, showToast, isDownloading, isMobile, tryNativeShare]);
 
   // Share video
   const handleShare = useCallback(async () => {
