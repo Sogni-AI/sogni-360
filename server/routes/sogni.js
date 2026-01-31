@@ -190,7 +190,11 @@ router.post('/generate-angle', ensureSessionId, async (req, res) => {
       width,
       height,
       tokenType = 'spark',
-      loraStrength = 0.9
+      loraStrength = 0.9,
+      // Image quality settings (from advanced settings)
+      imageModel = 'qwen_image_edit_2511_fp8_lightning',
+      imageSteps = 8,
+      imageGuidance = 1
     } = req.body;
 
     if (!contextImage || !azimuthPrompt || !elevationPrompt || !distancePrompt) {
@@ -231,17 +235,18 @@ router.post('/generate-angle', ensureSessionId, async (req, res) => {
       contextImageBuffer = Buffer.from(contextImage, 'base64');
     }
 
-    // Build project parameters
+    // Build project parameters using user's quality settings
+    console.log(`[${localProjectId}] Using settings: model=${imageModel}, steps=${imageSteps}, guidance=${imageGuidance}`);
     const projectParams = {
-      selectedModel: 'qwen_image_edit_2511_fp8_lightning',
+      selectedModel: imageModel,
       positivePrompt: fullPrompt,
       negativePrompt: '',
       contextImages: [contextImageBuffer],
       width: width || 1024,
       height: height || 1024,
       numberImages: 1,
-      inferenceSteps: 5,
-      promptGuidance: 1,
+      inferenceSteps: imageSteps,
+      promptGuidance: imageGuidance,
       tokenType: tokenType,
       outputFormat: 'jpg',
       sampler: 'euler',

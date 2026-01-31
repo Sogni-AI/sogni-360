@@ -96,6 +96,10 @@ class ApiClient {
     height: number;
     tokenType?: 'spark' | 'sogni';
     loraStrength?: number;
+    // Image quality settings
+    imageModel?: string;
+    imageSteps?: number;
+    imageGuidance?: number;
   }): Promise<{ projectId: string; clientAppId: string }> {
     const response = await this.fetch<{
       success: boolean;
@@ -114,6 +118,10 @@ class ApiClient {
         tokenType: params.tokenType || 'spark',
         loraStrength: params.loraStrength || 0.9,
         clientAppId: this.clientAppId,
+        // Pass image quality settings to backend
+        imageModel: params.imageModel,
+        imageSteps: params.imageSteps,
+        imageGuidance: params.imageGuidance,
       }),
     });
 

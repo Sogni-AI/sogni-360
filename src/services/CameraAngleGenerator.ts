@@ -8,6 +8,7 @@
 import { api } from './api';
 import type { Waypoint, GenerationProgressEvent } from '../types';
 import { CAMERA_ANGLE_LORA } from '../constants/cameraAngleSettings';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 // Retry configuration
 // No delay needed between retries - each request goes to a different worker in the dePIN network
@@ -74,6 +75,10 @@ export async function generateCameraAngle(options: GenerateAngleOptions): Promis
   } = options;
 
   try {
+    // Get current image quality settings
+    const advancedSettings = getAdvancedSettings();
+    console.log(`[Generator] Using image settings: model=${advancedSettings.imageModel}, steps=${advancedSettings.imageSteps}, guidance=${advancedSettings.imageGuidance}`);
+
     // Start generation
     const { projectId } = await api.generateAngle({
       contextImage: sourceImageUrl,
@@ -83,7 +88,11 @@ export async function generateCameraAngle(options: GenerateAngleOptions): Promis
       width: imageWidth,
       height: imageHeight,
       tokenType,
-      loraStrength
+      loraStrength,
+      // Pass image quality settings
+      imageModel: advancedSettings.imageModel,
+      imageSteps: advancedSettings.imageSteps,
+      imageGuidance: advancedSettings.imageGuidance
     });
 
     // Subscribe to progress events
@@ -154,9 +163,11 @@ export async function generateCameraAngle(options: GenerateAngleOptions): Promis
               break;
 
             case 'error':
-              console.error(`[Generator] Error for waypoint ${waypoint.id}:`, event.error);
+              // Backend sends error message in 'message' field, not 'error'
+              const errorMessage = event.message || event.error || 'Generation failed';
+              console.error(`[Generator] Error for waypoint ${waypoint.id}:`, errorMessage);
               unsubscribe();
-              const error = new Error(event.error || 'Generation failed');
+              const error = new Error(errorMessage);
               onError?.(error);
               resolve(null);
               break;

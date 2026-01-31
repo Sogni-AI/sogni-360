@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { saveCurrentProject, getMostRecentProject, setCurrentProjectId, loadProject } from '../utils/localProjectsDB';
 import { loadStitchedVideo } from '../utils/videoCache';
 import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 // Key for persisting free generation usage in localStorage
 const FREE_GENERATION_KEY = 'sogni360_has_used_free_generation';
@@ -58,12 +59,22 @@ const initialState: Sogni360State = {
   hasUsedFreeGeneration: getHasUsedFreeGeneration()
 };
 
-// Default project settings
-const defaultSettings: Sogni360Settings = {
-  videoQuality: 'fast',
-  videoResolution: DEFAULT_VIDEO_SETTINGS.resolution,
-  videoDuration: 3,
-  tokenType: 'spark'
+// Get default project settings (reads from advanced settings for quality tiers)
+const getDefaultSettings = (): Sogni360Settings => {
+  const advancedSettings = getAdvancedSettings();
+  return {
+    videoQuality: advancedSettings.videoQuality,
+    videoResolution: DEFAULT_VIDEO_SETTINGS.resolution,
+    videoDuration: 3,
+    tokenType: 'spark',
+    // Transition settings - use video quality from advanced settings
+    transitionQuality: advancedSettings.videoQuality,
+    transitionDuration: DEFAULT_VIDEO_SETTINGS.duration,
+    // Image generation settings
+    imageModel: advancedSettings.imageModel,
+    imageSteps: advancedSettings.imageSteps,
+    imageGuidance: advancedSettings.imageGuidance
+  };
 };
 
 // Reducer
@@ -95,7 +106,7 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
             waypoints: [],
             segments: [],
             status: 'draft',
-            settings: defaultSettings
+            settings: getDefaultSettings()
           };
       return { ...state, currentProject: newProject };
     }

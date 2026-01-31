@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAdvancedSettings } from '../hooks/useAdvancedSettings';
+import { PHOTO_QUALITY_PRESETS, type PhotoQualityTier } from '../constants/cameraAngleSettings';
+import { VIDEO_QUALITY_PRESETS, type VideoQualityPreset } from '../constants/videoSettings';
 
 interface ProjectNameModalProps {
   suggestedName: string;
@@ -13,6 +16,7 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
 }) => {
   const [name, setName] = useState(suggestedName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { settings, setPhotoQuality, setVideoQuality } = useAdvancedSettings();
 
   useEffect(() => {
     // Focus and select the input on mount
@@ -26,6 +30,21 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
     e.preventDefault();
     const trimmedName = name.trim();
     if (trimmedName) {
+      const videoPreset = VIDEO_QUALITY_PRESETS[settings.videoQuality];
+      console.log('[ProjectNameModal] Creating project with settings:', {
+        projectName: trimmedName,
+        photo: {
+          quality: settings.photoQuality,
+          model: settings.imageModel,
+          steps: settings.imageSteps,
+          guidance: settings.imageGuidance
+        },
+        video: {
+          quality: settings.videoQuality,
+          model: videoPreset.model,
+          steps: videoPreset.steps
+        }
+      });
       onConfirm(trimmedName);
     }
   };
@@ -35,6 +54,14 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
       onCancel();
     }
   };
+
+  const handlePhotoQualityChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPhotoQuality(e.target.value as PhotoQualityTier);
+  }, [setPhotoQuality]);
+
+  const handleVideoQualityChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setVideoQuality(e.target.value as VideoQualityPreset);
+  }, [setVideoQuality]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -58,6 +85,57 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-base"
             maxLength={100}
           />
+
+          {/* Quality Settings */}
+          <div className="mt-5 pt-5 border-t border-white/10">
+            <p className="text-gray-400 text-sm mb-4">
+              Quality settings for this project
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Photo Quality */}
+              <div>
+                <label className="block text-white text-sm font-medium mb-2">
+                  Photo Quality
+                </label>
+                <select
+                  value={settings.photoQuality}
+                  onChange={handlePhotoQualityChange}
+                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer min-h-[44px]"
+                >
+                  {(Object.keys(PHOTO_QUALITY_PRESETS) as PhotoQualityTier[]).map((key) => (
+                    <option key={key} value={key} className="bg-gray-900">
+                      {PHOTO_QUALITY_PRESETS[key].label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-gray-500 text-xs mt-1.5">
+                  {PHOTO_QUALITY_PRESETS[settings.photoQuality].description}
+                </p>
+              </div>
+
+              {/* Video Quality */}
+              <div>
+                <label className="block text-white text-sm font-medium mb-2">
+                  Video Quality
+                </label>
+                <select
+                  value={settings.videoQuality}
+                  onChange={handleVideoQualityChange}
+                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer min-h-[44px]"
+                >
+                  {(Object.keys(VIDEO_QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => (
+                    <option key={key} value={key} className="bg-gray-900">
+                      {VIDEO_QUALITY_PRESETS[key].label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-gray-500 text-xs mt-1.5">
+                  {VIDEO_QUALITY_PRESETS[settings.videoQuality].description}
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="flex gap-3 justify-end mt-6">
             <button

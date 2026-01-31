@@ -60,6 +60,66 @@ export const IMAGE_MODELS: Record<ImageModelId, ModelConfig> = {
   }
 } as const;
 
+// Photo quality tier presets
+export type PhotoQualityTier = 'fast' | 'balanced' | 'quality' | 'pro';
+
+export interface PhotoQualityPreset {
+  model: ImageModelId;
+  steps: number;
+  guidance: number;
+  label: string;
+  description: string;
+}
+
+export const PHOTO_QUALITY_PRESETS: Record<PhotoQualityTier, PhotoQualityPreset> = {
+  fast: {
+    model: 'qwen_image_edit_2511_fp8_lightning',
+    steps: 4,
+    guidance: 1.0,
+    label: 'Fast',
+    description: 'Quick generation'
+  },
+  balanced: {
+    model: 'qwen_image_edit_2511_fp8_lightning',
+    steps: 8,
+    guidance: 1.0,
+    label: 'Balanced',
+    description: 'Good balance of speed and quality'
+  },
+  quality: {
+    model: 'qwen_image_edit_2511_fp8',
+    steps: 20,
+    guidance: 4.0,
+    label: 'High Quality',
+    description: 'Higher quality output'
+  },
+  pro: {
+    model: 'qwen_image_edit_2511_fp8',
+    steps: 40,
+    guidance: 4.0,
+    label: 'Pro',
+    description: 'Maximum quality'
+  }
+} as const;
+
+/**
+ * Determine which quality tier matches the current settings
+ */
+export function getPhotoQualityTier(
+  model: ImageModelId,
+  steps: number
+): PhotoQualityTier | null {
+  // Check each preset for a match
+  if (model === 'qwen_image_edit_2511_fp8_lightning') {
+    if (steps <= 4) return 'fast';
+    if (steps <= 8) return 'balanced';
+  } else if (model === 'qwen_image_edit_2511_fp8') {
+    if (steps <= 20) return 'quality';
+    return 'pro';
+  }
+  return null;
+}
+
 // Get default model config
 export function getDefaultModelConfig(): ModelConfig {
   return IMAGE_MODELS[CAMERA_ANGLE_MODEL];

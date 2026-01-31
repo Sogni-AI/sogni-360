@@ -6,11 +6,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { ImageModelId } from '../types';
+import type { ImageModelId, VideoQualityPreset } from '../types';
 import {
-  CAMERA_ANGLE_MODEL,
   IMAGE_MODELS,
-  getModelConfig
+  getModelConfig,
+  PHOTO_QUALITY_PRESETS,
+  getPhotoQualityTier,
+  type PhotoQualityTier
 } from '../constants/cameraAngleSettings';
 
 const STORAGE_KEY = 'sogni360_advanced_settings';
@@ -19,14 +21,19 @@ export interface AdvancedSettings {
   imageModel: ImageModelId;
   imageSteps: number;
   imageGuidance: number;
+  photoQuality: PhotoQualityTier;
+  videoQuality: VideoQualityPreset;
 }
 
 const getDefaultSettings = (): AdvancedSettings => {
-  const defaultModel = getModelConfig(CAMERA_ANGLE_MODEL as ImageModelId);
+  // Default to 'balanced' quality tier (Lightning model, 8 steps)
+  const balancedPreset = PHOTO_QUALITY_PRESETS.balanced;
   return {
-    imageModel: CAMERA_ANGLE_MODEL as ImageModelId,
-    imageSteps: defaultModel.steps.default,
-    imageGuidance: defaultModel.guidance.default
+    imageModel: balancedPreset.model,
+    imageSteps: balancedPreset.steps,
+    imageGuidance: balancedPreset.guidance,
+    photoQuality: 'balanced',
+    videoQuality: 'balanced'
   };
 };
 
@@ -52,7 +59,16 @@ const loadSettings = (): AdvancedSettings => {
       let guidance = parsed.imageGuidance ?? defaults.imageGuidance;
       guidance = Math.max(modelConfig.guidance.min, Math.min(modelConfig.guidance.max, guidance));
 
-      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance };
+      // Validate quality tiers
+      const photoQuality = parsed.photoQuality && PHOTO_QUALITY_PRESETS[parsed.photoQuality]
+        ? parsed.photoQuality
+        : getPhotoQualityTier(modelId, steps) || defaults.photoQuality;
+
+      const videoQuality = parsed.videoQuality && ['fast', 'balanced', 'quality', 'pro'].includes(parsed.videoQuality)
+        ? parsed.videoQuality
+        : defaults.videoQuality;
+
+      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance, photoQuality, videoQuality };
     }
   } catch {
     // Ignore parse errors
@@ -101,10 +117,36 @@ export function useAdvancedSettings() {
   const setModel = useCallback((modelId: ImageModelId) => {
     const modelConfig = getModelConfig(modelId);
     // Reset steps and guidance to model defaults when switching models
+    const newSteps = modelConfig.steps.default;
+    const photoQuality = getPhotoQualityTier(modelId, newSteps) || globalSettings.photoQuality;
     globalSettings = {
+      ...globalSettings,
       imageModel: modelId,
-      imageSteps: modelConfig.steps.default,
-      imageGuidance: modelConfig.guidance.default
+      imageSteps: newSteps,
+      imageGuidance: modelConfig.guidance.default,
+      photoQuality
+    };
+    saveSettings(globalSettings);
+    notifyListeners();
+  }, []);
+
+  const setPhotoQuality = useCallback((quality: PhotoQualityTier) => {
+    const preset = PHOTO_QUALITY_PRESETS[quality];
+    globalSettings = {
+      ...globalSettings,
+      imageModel: preset.model,
+      imageSteps: preset.steps,
+      imageGuidance: preset.guidance,
+      photoQuality: quality
+    };
+    saveSettings(globalSettings);
+    notifyListeners();
+  }, []);
+
+  const setVideoQuality = useCallback((quality: VideoQualityPreset) => {
+    globalSettings = {
+      ...globalSettings,
+      videoQuality: quality
     };
     saveSettings(globalSettings);
     notifyListeners();
@@ -116,7 +158,9 @@ export function useAdvancedSettings() {
       modelConfig.steps.min,
       Math.min(modelConfig.steps.max, steps)
     );
-    globalSettings = { ...globalSettings, imageSteps: clampedSteps };
+    // Update photoQuality tier based on new steps
+    const photoQuality = getPhotoQualityTier(globalSettings.imageModel, clampedSteps) || globalSettings.photoQuality;
+    globalSettings = { ...globalSettings, imageSteps: clampedSteps, photoQuality };
     saveSettings(globalSettings);
     notifyListeners();
   }, []);
@@ -151,9 +195,12 @@ export function useAdvancedSettings() {
     setModel,
     setSteps,
     setGuidance,
+    setPhotoQuality,
+    setVideoQuality,
     resetToDefaults,
     getCurrentModelConfig,
-    modelConfigs: IMAGE_MODELS
+    modelConfigs: IMAGE_MODELS,
+    photoQualityPresets: PHOTO_QUALITY_PRESETS
   };
 }
 

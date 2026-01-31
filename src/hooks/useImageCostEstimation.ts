@@ -2,14 +2,12 @@
  * Hook for estimating image generation costs
  *
  * Uses the backend API to get cost estimates via the Sogni SDK's estimateCost method.
+ * Reads current quality settings from advanced settings for accurate cost estimation.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
-import {
-  CAMERA_ANGLE_MODEL,
-  CAMERA_ANGLE_DEFAULTS
-} from '../constants/cameraAngleSettings';
+import { getAdvancedSettings } from './useAdvancedSettings';
 
 interface ImageCostEstimationParams {
   /** Number of images to generate (default: 1) */
@@ -57,11 +55,15 @@ export function useImageCostEstimation(params: ImageCostEstimationParams): Image
       return;
     }
 
+    // Get current image quality settings for accurate cost estimation
+    const advancedSettings = getAdvancedSettings();
+    const { imageModel, imageSteps } = advancedSettings;
+
     const paramsHash = JSON.stringify({
       tokenType,
-      model: CAMERA_ANGLE_MODEL,
+      model: imageModel,
       imageCount,
-      stepCount: CAMERA_ANGLE_DEFAULTS.steps,
+      stepCount: imageSteps,
       enabled
     });
 
@@ -75,9 +77,9 @@ export function useImageCostEstimation(params: ImageCostEstimationParams): Image
 
     try {
       const result = await api.estimateCost({
-        model: CAMERA_ANGLE_MODEL,
+        model: imageModel,
         imageCount,
-        stepCount: CAMERA_ANGLE_DEFAULTS.steps,
+        stepCount: imageSteps,
         tokenType
       });
 

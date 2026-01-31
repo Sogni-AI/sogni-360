@@ -2,13 +2,17 @@
  * Advanced Settings Popup
  *
  * Allows users to configure:
- * - Primary image model (Lightning vs Standard Qwen)
- * - Inference steps (within model-specific ranges)
- * - Guidance scale (within model-specific ranges)
+ * - Photo quality tier (Fast, Balanced, High Quality, Pro)
+ * - Video quality tier (Fast, Balanced, High Quality, Pro)
+ * - Advanced: Primary image model (Lightning vs Standard Qwen)
+ * - Advanced: Inference steps (within model-specific ranges)
+ * - Advanced: Guidance scale (within model-specific ranges)
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useAdvancedSettings } from '../../hooks/useAdvancedSettings';
+import { PHOTO_QUALITY_PRESETS, type PhotoQualityTier } from '../../constants/cameraAngleSettings';
+import { VIDEO_QUALITY_PRESETS, type VideoQualityPreset } from '../../constants/videoSettings';
 import type { ImageModelId } from '../../types';
 import '../../styles/components/AdvancedSettingsPopup.css';
 
@@ -26,12 +30,23 @@ export default function AdvancedSettingsPopup({
     setModel,
     setSteps,
     setGuidance,
+    setPhotoQuality,
+    setVideoQuality,
     resetToDefaults,
     getCurrentModelConfig,
     modelConfigs
   } = useAdvancedSettings();
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const currentModelConfig = getCurrentModelConfig();
+
+  const handlePhotoQualityChange = useCallback((quality: PhotoQualityTier) => {
+    setPhotoQuality(quality);
+  }, [setPhotoQuality]);
+
+  const handleVideoQualityChange = useCallback((quality: VideoQualityPreset) => {
+    setVideoQuality(quality);
+  }, [setVideoQuality]);
 
   const handleModelChange = useCallback((modelId: ImageModelId) => {
     setModel(modelId);
@@ -70,86 +85,153 @@ export default function AdvancedSettingsPopup({
         </div>
 
         <div className="advanced-settings-content">
-          {/* Model Selection */}
+          {/* Photo Quality Tier */}
           <div className="settings-section">
-            <label className="settings-label">Primary Image Model</label>
+            <label className="settings-label">Photo Quality</label>
             <p className="settings-description">
-              Choose between fast generation or higher quality output
+              Quality level for camera angle image generation
             </p>
-            <div className="model-options">
-              {Object.values(modelConfigs).map((model) => (
+            <div className="quality-tier-options">
+              {(Object.keys(PHOTO_QUALITY_PRESETS) as PhotoQualityTier[]).map((key) => (
                 <button
-                  key={model.id}
-                  className={`model-option ${settings.imageModel === model.id ? 'active' : ''}`}
-                  onClick={() => handleModelChange(model.id)}
+                  key={key}
+                  className={`quality-tier-option ${settings.photoQuality === key ? 'active' : ''}`}
+                  onClick={() => handlePhotoQualityChange(key)}
                 >
-                  <div className="model-option-content">
-                    <span className="model-name">{model.label}</span>
-                    <span className="model-description">{model.description}</span>
-                  </div>
-                  {settings.imageModel === model.id && (
-                    <svg className="model-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
+                  <span className="quality-tier-label">{PHOTO_QUALITY_PRESETS[key].label}</span>
                 </button>
               ))}
             </div>
+            <p className="quality-tier-description">
+              {PHOTO_QUALITY_PRESETS[settings.photoQuality].description}
+            </p>
           </div>
 
-          {/* Inference Steps */}
+          {/* Video Quality Tier */}
           <div className="settings-section">
-            <label className="settings-label">
-              Inference Steps
-              <span className="settings-value">{settings.imageSteps}</span>
-            </label>
+            <label className="settings-label">Video Quality</label>
             <p className="settings-description">
-              More steps = higher quality but slower generation
-              ({currentModelConfig.steps.min}-{currentModelConfig.steps.max} for this model)
+              Quality level for transition video generation
             </p>
-            <div className="slider-container">
-              <input
-                type="range"
-                min={currentModelConfig.steps.min}
-                max={currentModelConfig.steps.max}
-                step={1}
-                value={settings.imageSteps}
-                onChange={handleStepsChange}
-                className="settings-slider"
-              />
-              <div className="slider-labels">
-                <span>{currentModelConfig.steps.min}</span>
-                <span>{currentModelConfig.steps.max}</span>
-              </div>
+            <div className="quality-tier-options">
+              {(Object.keys(VIDEO_QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => (
+                <button
+                  key={key}
+                  className={`quality-tier-option ${settings.videoQuality === key ? 'active' : ''}`}
+                  onClick={() => handleVideoQualityChange(key)}
+                >
+                  <span className="quality-tier-label">{VIDEO_QUALITY_PRESETS[key].label}</span>
+                </button>
+              ))}
             </div>
+            <p className="quality-tier-description">
+              {VIDEO_QUALITY_PRESETS[settings.videoQuality].description}
+            </p>
           </div>
 
-          {/* Guidance Scale */}
-          <div className="settings-section">
-            <label className="settings-label">
-              Guidance Scale
-              <span className="settings-value">{settings.imageGuidance.toFixed(1)}</span>
-            </label>
-            <p className="settings-description">
-              How closely to follow the prompt (higher = more literal)
-              ({currentModelConfig.guidance.min}-{currentModelConfig.guidance.max} for this model)
-            </p>
-            <div className="slider-container">
-              <input
-                type="range"
-                min={currentModelConfig.guidance.min}
-                max={currentModelConfig.guidance.max}
-                step={0.1}
-                value={settings.imageGuidance}
-                onChange={handleGuidanceChange}
-                className="settings-slider"
-              />
-              <div className="slider-labels">
-                <span>{currentModelConfig.guidance.min}</span>
-                <span>{currentModelConfig.guidance.max}</span>
+          {/* Advanced Toggle */}
+          <button
+            className="advanced-toggle"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
+            <span>Fine-tune settings</span>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              style={{ transform: showAdvanced ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {showAdvanced && (
+            <>
+              {/* Model Selection */}
+              <div className="settings-section">
+                <label className="settings-label">Image Model</label>
+                <p className="settings-description">
+                  Choose between fast generation or higher quality output
+                </p>
+                <div className="model-options">
+                  {Object.values(modelConfigs).map((model) => (
+                    <button
+                      key={model.id}
+                      className={`model-option ${settings.imageModel === model.id ? 'active' : ''}`}
+                      onClick={() => handleModelChange(model.id)}
+                    >
+                      <div className="model-option-content">
+                        <span className="model-name">{model.label}</span>
+                        <span className="model-description">{model.description}</span>
+                      </div>
+                      {settings.imageModel === model.id && (
+                        <svg className="model-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
+
+              {/* Inference Steps */}
+              <div className="settings-section">
+                <label className="settings-label">
+                  Inference Steps
+                  <span className="settings-value">{settings.imageSteps}</span>
+                </label>
+                <p className="settings-description">
+                  More steps = higher quality but slower generation
+                  ({currentModelConfig.steps.min}-{currentModelConfig.steps.max} for this model)
+                </p>
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min={currentModelConfig.steps.min}
+                    max={currentModelConfig.steps.max}
+                    step={1}
+                    value={settings.imageSteps}
+                    onChange={handleStepsChange}
+                    className="settings-slider"
+                  />
+                  <div className="slider-labels">
+                    <span>{currentModelConfig.steps.min}</span>
+                    <span>{currentModelConfig.steps.max}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guidance Scale */}
+              <div className="settings-section">
+                <label className="settings-label">
+                  Guidance Scale
+                  <span className="settings-value">{settings.imageGuidance.toFixed(1)}</span>
+                </label>
+                <p className="settings-description">
+                  How closely to follow the prompt (higher = more literal)
+                  ({currentModelConfig.guidance.min}-{currentModelConfig.guidance.max} for this model)
+                </p>
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min={currentModelConfig.guidance.min}
+                    max={currentModelConfig.guidance.max}
+                    step={0.1}
+                    value={settings.imageGuidance}
+                    onChange={handleGuidanceChange}
+                    className="settings-slider"
+                  />
+                  <div className="slider-labels">
+                    <span>{currentModelConfig.guidance.min}</span>
+                    <span>{currentModelConfig.guidance.max}</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Info Box */}
           <div className="settings-info">
@@ -158,8 +240,7 @@ export default function AdvancedSettingsPopup({
               <path d="M12 16v-4M12 8h.01" />
             </svg>
             <p>
-              These settings apply to all angle generations, including regenerations.
-              Higher steps with the standard model produces the best quality but takes longer.
+              These settings apply to all new generations. Higher quality takes longer but produces better results.
             </p>
           </div>
         </div>

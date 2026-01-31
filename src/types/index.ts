@@ -73,6 +73,9 @@ export type TransitionQuality = 'fast' | 'balanced' | 'quality' | 'pro';
 // Image model types
 export type ImageModelId = 'qwen_image_edit_2511_fp8_lightning' | 'qwen_image_edit_2511_fp8';
 
+// Photo quality tier type (re-export from constants for convenience)
+export type { PhotoQualityTier } from '../constants/cameraAngleSettings';
+
 // Project settings
 export interface Sogni360Settings {
   videoQuality: VideoQualityPreset;
@@ -211,6 +214,7 @@ export interface GenerationProgressEvent {
   previewUrl?: string;
   imageUrls?: string[]; // Array of result URLs (sent with 'completed' event)
   error?: string;
+  message?: string; // Backend sends error messages in this field
   errorCode?: string;
   workerName?: string;
   queuePosition?: number;

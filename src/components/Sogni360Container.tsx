@@ -428,10 +428,10 @@ const Sogni360Container: React.FC = () => {
     setProjectCount(prev => prev + 1);
   }, [dispatch]);
 
-  // Handle project name cancel (use default name and continue)
+  // Handle project name cancel - clear upload and go back to empty state
   const handleProjectNameCancel = useCallback(() => {
     setShowProjectNameModal(false);
-    dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: true });
+    dispatch({ type: 'SET_PROJECT', payload: null });
   }, [dispatch]);
 
   // Handle loading a project
