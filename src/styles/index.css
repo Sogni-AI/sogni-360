@@ -451,8 +451,8 @@ html, body {
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(16px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
   overflow: hidden;
   min-width: 280px;
 }
@@ -813,42 +813,74 @@ html, body {
 /* Mobile responsive adjustments for uploader */
 @media (max-width: 767px) {
   .uploader-title {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
 
   .uploader-subtitle {
-    font-size: 1rem;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
   }
 
   .uploader-frame {
-    padding: 2rem 1.5rem;
-  }
-
-  .uploader-frame::before,
-  .uploader-frame::after {
-    width: 40px;
-    height: 40px;
+    padding: 1rem 1rem;
   }
 
   .upload-area {
-    padding: 2rem;
-    min-width: 240px;
+    padding: 1.5rem 1.5rem;
+    min-width: 208px;
+    max-width: calc(100vw - 80px);
   }
 
+  /* Keep orbital icon properly circular on mobile */
   .upload-orbital-icon {
-    width: 56px;
-    height: 56px;
-    margin-bottom: 1rem;
+    width: 70px;
+    height: 70px;
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .upload-icon-circle {
+    width: 48px;
+    height: 48px;
+  }
+
+  .upload-icon-circle svg {
+    width: 22px;
+    height: 22px;
   }
 
   .orbital-ring {
-    width: 80px;
-    height: 80px;
-    margin: -40px 0 0 -40px;
+    width: 70px;
+    height: 70px;
+    margin: -35px 0 0 -35px;
   }
 
-  .upload-area-glow {
-    filter: blur(25px);
+  .orbital-ring::before {
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    bottom: 5px;
+  }
+
+  .upload-text {
+    font-size: 0.9rem;
+  }
+
+  .upload-text-secondary {
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+  }
+
+  .uploader-load-projects-btn {
+    margin-top: 1rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .uploader-badge {
+    margin-top: 1.5rem;
+    font-size: 0.65rem;
+    padding: 0.375rem 0.75rem;
   }
 }
 
