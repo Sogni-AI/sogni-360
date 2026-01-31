@@ -69,6 +69,68 @@ export async function generateSomething(options) {
 
 ---
 
+## 🚨 CRITICAL: S3 Image URLs and CORS with Concurrent Requests
+
+**AWS S3 signed URLs have a CORS issue when multiple requests are made simultaneously.**
+
+### The Problem
+
+- S3 image URLs (e.g., `complete-images-production.s3-accelerate.amazonaws.com`) work **100% of the time when requests are spaced apart**
+- When multiple S3 URLs are fetched **concurrently** (e.g., `Promise.all([fetch(url1), fetch(url2), ...])`), **some requests randomly fail with CORS errors**
+- The browser reports: `No 'Access-Control-Allow-Origin' header is present on the requested resource`
+- This is NOT a problem with the URLs themselves - they are valid and work individually
+
+### The Cause
+
+This appears to be an S3/CloudFront behavior where concurrent requests from the same origin sometimes receive inconsistent CORS headers. The exact cause is AWS infrastructure-related, not something we can fix on our end.
+
+### The Solution: Retry with Jitter, then Proxy Fallback
+
+**Use `src/utils/s3FetchWithFallback.ts`** - a shared utility that:
+
+1. **Tries direct fetch first** (faster, no backend load)
+2. **On CORS failure, retries with 1-3 second random jitter** (breaks lockstep retries)
+3. **After 2 direct failures, falls back to backend proxy** (100% reliable)
+
+```typescript
+import { fetchS3AsBlob, fetchS3WithFallback } from '../utils/s3FetchWithFallback';
+
+// For images - returns Blob
+const blob = await fetchS3AsBlob(s3Url);
+
+// For general fetch - returns Response
+const response = await fetchS3WithFallback(s3Url);
+```
+
+The utility handles:
+- Detecting S3 URLs automatically
+- Random jitter (1-3 seconds) between retries to prevent thundering herd
+- Automatic fallback to `/api/sogni/proxy-image` after CORS failures
+- Works for both images AND videos
+
+### Important Notes
+
+1. **`<img>` tags are NOT affected** - browsers handle CORS differently for image elements vs fetch()
+2. **Single requests usually work fine** - the issue mainly manifests with concurrent requests
+3. **Jitter helps break up lockstep retries** - concurrent failures won't all retry at the same moment
+4. **Proxy is the final fallback** - only used after direct attempts fail, minimizing backend load
+
+### Files That Use This Utility
+
+Any service that fetches S3 images/videos to convert to blobs for SDK submission:
+- `TransitionGenerator.ts` - fetches waypoint images for video generation
+- `CameraAngleGenerator.ts` - may fetch source images
+- `ImageEnhancer.ts` - fetches images for enhancement
+
+### Copying to Other Projects
+
+This solution can be copied to other projects (e.g., Photobooth):
+1. Copy `src/utils/s3FetchWithFallback.ts`
+2. Ensure backend has `/api/sogni/proxy-image` endpoint (see `server/routes/sogni.js`)
+3. Import and use `fetchS3AsBlob` or `fetchS3WithFallback` in place of direct `fetch()`
+
+---
+
 ## 🚨 FILE SIZE LIMIT: 300 LINES MAX
 
 **No code file should exceed 300 lines.** Break large files into smaller, focused modules.

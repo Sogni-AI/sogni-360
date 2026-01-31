@@ -94,7 +94,7 @@ export function useFinalVideoActions({
 
       // Cache the stitched video (only if no music - music versions are ephemeral)
       if (!withMusic && projectId) {
-        saveStitchedVideo(projectId, blob).catch(err => {
+        saveStitchedVideo(projectId, blob, videoUrls).catch(err => {
           console.warn('[useFinalVideoActions] Failed to cache video:', err);
         });
       }
@@ -124,10 +124,10 @@ export function useFinalVideoActions({
         return;
       }
 
-      // Try to load from cache first
+      // Try to load from cache first (validates video URLs match)
       if (projectId) {
         try {
-          const cachedBlob = await loadStitchedVideo(projectId);
+          const cachedBlob = await loadStitchedVideo(projectId, videoUrls);
           if (cachedBlob) {
             console.log('[useFinalVideoActions] Loaded video from cache');
             const url = URL.createObjectURL(cachedBlob);

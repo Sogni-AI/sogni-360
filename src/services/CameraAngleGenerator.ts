@@ -14,6 +14,7 @@ import { isFrontendMode, getSogniClient } from './frontend';
 import type { Waypoint, GenerationProgressEvent } from '../types';
 import { CAMERA_ANGLE_LORA, buildCameraAnglePrompt } from '../constants/cameraAngleSettings';
 import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
+import { fetchS3AsBlob } from '../utils/s3FetchWithFallback';
 
 // Retry configuration
 // No delay needed between retries - each request goes to a different worker in the dePIN network
@@ -65,6 +66,7 @@ export interface GenerateAngleOptions {
 
 /**
  * Convert image URL to Blob for SDK (InputMedia type)
+ * For S3 URLs, uses fetchS3AsBlob which handles CORS fallback automatically
  */
 async function imageUrlToBlob(url: string): Promise<Blob> {
   if (url.startsWith('data:')) {
@@ -78,13 +80,16 @@ async function imageUrlToBlob(url: string): Promise<Blob> {
       bytes[i] = binaryString.charCodeAt(i);
     }
     return new Blob([bytes], { type: mimeType });
-  } else if (url.startsWith('http') || url.startsWith('blob:')) {
-    // HTTP URL or blob - fetch and return as blob
+  } else if (url.startsWith('http')) {
+    // Use S3 fetch with automatic CORS fallback for HTTP URLs
+    return fetchS3AsBlob(url);
+  } else if (url.startsWith('blob:')) {
+    // Blob URLs can be fetched directly
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.statusText}`);
+      throw new Error(`Failed to fetch blob: ${response.statusText}`);
     }
-    return await response.blob();
+    return response.blob();
   } else {
     // Assume base64 string (default to jpeg)
     const binaryString = atob(url);

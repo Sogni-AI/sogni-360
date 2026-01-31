@@ -21,6 +21,7 @@ import {
   VideoResolution
 } from '../constants/videoSettings';
 import { v4 as uuidv4 } from 'uuid';
+import { fetchS3AsBlob } from '../utils/s3FetchWithFallback';
 
 // Retry configuration
 // No delay needed between retries - each request goes to a different worker in the dePIN network
@@ -77,6 +78,7 @@ export interface GenerateTransitionOptions {
 
 /**
  * Convert image URL to Blob for SDK (InputMedia type)
+ * For S3 URLs, uses fetchS3AsBlob which handles CORS fallback automatically
  */
 async function imageUrlToBlob(url: string): Promise<Blob> {
   if (url.startsWith('data:')) {
@@ -89,12 +91,16 @@ async function imageUrlToBlob(url: string): Promise<Blob> {
       bytes[i] = binaryString.charCodeAt(i);
     }
     return new Blob([bytes], { type: mimeType });
-  } else if (url.startsWith('http') || url.startsWith('blob:')) {
+  } else if (url.startsWith('http')) {
+    // Use S3 fetch with automatic CORS fallback for HTTP URLs
+    return fetchS3AsBlob(url);
+  } else if (url.startsWith('blob:')) {
+    // Blob URLs can be fetched directly
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.statusText}`);
+      throw new Error(`Failed to fetch blob: ${response.statusText}`);
     }
-    return await response.blob();
+    return response.blob();
   } else {
     const binaryString = atob(url);
     const bytes = new Uint8Array(binaryString.length);

@@ -57,25 +57,41 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
   const calculateCoverScale = useCallback(() => {
     if (!imageRef.current || !imageRef.current.naturalWidth) return 1;
 
-    const imageAspect = imageRef.current.naturalWidth / imageRef.current.naturalHeight;
+    const imgNatWidth = imageRef.current.naturalWidth;
+    const imgNatHeight = imageRef.current.naturalHeight;
+    const imageAspect = imgNatWidth / imgNatHeight;
     const targetAspect = targetDimensions.width / targetDimensions.height;
 
     // For "cover" mode, we want the image to fill the entire frame
-    // If image is wider than target, scale based on height
-    // If image is taller than target, scale based on width
+    // The image starts at object-fit: contain size, so we need to scale up
+    // so that the smaller dimension (after contain) fills the frame
+    let coverScale: number;
     if (imageAspect > targetAspect) {
-      // Image is wider - scale up so height fills frame
-      return imageAspect / targetAspect;
+      // Image is wider than target - at contain, it's fit by width
+      // We need to scale up so height fills frame
+      coverScale = imageAspect / targetAspect;
     } else {
-      // Image is taller - scale up so width fills frame
-      return targetAspect / imageAspect;
+      // Image is taller than target - at contain, it's fit by height
+      // We need to scale up so width fills frame
+      coverScale = targetAspect / imageAspect;
     }
+
+    console.log('[ImageAdjuster] calculateCoverScale:', {
+      imageNatural: `${imgNatWidth}x${imgNatHeight}`,
+      imageAspect: imageAspect.toFixed(3),
+      targetDimensions: `${targetDimensions.width}x${targetDimensions.height}`,
+      targetAspect: targetAspect.toFixed(3),
+      coverScale: coverScale.toFixed(3)
+    });
+
+    return coverScale;
   }, [targetDimensions]);
 
   const handleImageLoad = useCallback(() => {
     if (imageRef.current?.complete && imageRef.current.naturalWidth > 0) {
       // Set initial scale to cover (fill) the frame
       const coverScale = calculateCoverScale();
+      console.log('[ImageAdjuster] handleImageLoad: Setting scale to', coverScale.toFixed(3));
       setScale(coverScale);
       setImageLoaded(true);
     }

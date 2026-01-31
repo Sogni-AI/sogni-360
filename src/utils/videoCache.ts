@@ -48,12 +48,13 @@ interface CachedVideo {
   projectId: string;
   blob: Blob;
   createdAt: number;
+  videoUrls?: string[]; // URLs used to create this stitched video
 }
 
 /**
  * Save a stitched video blob to the cache
  */
-export async function saveStitchedVideo(projectId: string, blob: Blob): Promise<void> {
+export async function saveStitchedVideo(projectId: string, blob: Blob, videoUrls?: string[]): Promise<void> {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
@@ -63,7 +64,8 @@ export async function saveStitchedVideo(projectId: string, blob: Blob): Promise<
     const cachedVideo: CachedVideo = {
       projectId,
       blob,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      videoUrls
     };
 
     const request = store.put(cachedVideo);
@@ -81,9 +83,20 @@ export async function saveStitchedVideo(projectId: string, blob: Blob): Promise<
 }
 
 /**
- * Load a cached stitched video blob
+ * Check if two arrays of URLs are equal
  */
-export async function loadStitchedVideo(projectId: string): Promise<Blob | null> {
+function urlsMatch(urls1: string[] | undefined, urls2: string[] | undefined): boolean {
+  if (!urls1 || !urls2) return false;
+  if (urls1.length !== urls2.length) return false;
+  return urls1.every((url, i) => url === urls2[i]);
+}
+
+/**
+ * Load a cached stitched video blob
+ * @param projectId - The project ID
+ * @param currentVideoUrls - If provided, validates the cached video was created from these URLs
+ */
+export async function loadStitchedVideo(projectId: string, currentVideoUrls?: string[]): Promise<Blob | null> {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
@@ -98,7 +111,27 @@ export async function loadStitchedVideo(projectId: string): Promise<Blob | null>
 
     request.onsuccess = () => {
       const result = request.result as CachedVideo | undefined;
-      resolve(result?.blob || null);
+      if (!result?.blob) {
+        resolve(null);
+        return;
+      }
+
+      // If currentVideoUrls provided, validate they match
+      if (currentVideoUrls) {
+        // If cached video doesn't have videoUrls stored (old cache), invalidate it
+        if (!result.videoUrls) {
+          console.log('[VideoCache] Cache invalidated: old cache without URL tracking');
+          resolve(null);
+          return;
+        }
+        if (!urlsMatch(currentVideoUrls, result.videoUrls)) {
+          console.log('[VideoCache] Cache invalidated: video URLs have changed');
+          resolve(null);
+          return;
+        }
+      }
+
+      resolve(result.blob);
     };
   });
 }
