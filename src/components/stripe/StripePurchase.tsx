@@ -19,7 +19,8 @@ function StripePurchase({ onClose, currentBalance }: Props) {
   const modalStyle = useMemo<CSSProperties>(() => {
     const index = Math.floor(Math.random() * BACKGROUND_IMAGES.length);
     return {
-      backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)), url(${BACKGROUND_IMAGES[index]})`,
+      // Dark overlay with subtle background image for texture
+      backgroundImage: `linear-gradient(135deg, rgba(20, 20, 30, 0.97) 0%, rgba(15, 23, 42, 0.98) 100%), url(${BACKGROUND_IMAGES[index]})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     };

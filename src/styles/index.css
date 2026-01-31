@@ -2719,7 +2719,7 @@ html, body {
 .workflow-wizard-expanded-container {
   background: rgba(0, 0, 0, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1rem 1.5rem;
+  padding: 1rem 0;
   backdrop-filter: blur(10px);
 }
 
@@ -2728,6 +2728,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.75rem;
+  padding: 0 1rem;
 }
 
 .workflow-wizard-expanded-title {
@@ -2769,7 +2770,7 @@ html, body {
 
 .workflow-wizard-in-overlay .workflow-wizard {
   justify-content: flex-start;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0;
   min-width: max-content;
 }
 
@@ -2820,7 +2821,8 @@ html, body {
     overflow: visible;
   }
 
-  .global-wizard-bar .workflow-wizard {
+  /* Hide the inline wizard on mobile, but NOT the one in expanded overlay */
+  .global-wizard-bar > .workflow-wizard {
     display: none;
   }
 

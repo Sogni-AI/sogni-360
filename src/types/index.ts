@@ -104,6 +104,7 @@ export interface Sogni360Project {
   status: ProjectStatus;
   settings: Sogni360Settings;
   finalLoopUrl?: string;
+  exportCompleted?: boolean; // Persists export completion state (since blob URLs don't survive refresh)
 }
 
 // Video transition state (for playing transitions between waypoints)
@@ -180,6 +181,7 @@ export type Sogni360Action =
   | { type: 'SET_SHOW_FINAL_VIDEO_PREVIEW'; payload: boolean }
   | { type: 'SET_SHOW_PROJECT_MANAGER'; payload: boolean }
   | { type: 'SET_FINAL_LOOP_URL'; payload: string | undefined }
+  | { type: 'SET_EXPORT_COMPLETED'; payload: boolean }
   | { type: 'SET_AUTHENTICATED'; payload: boolean }
   | { type: 'SET_AUTH_MODE'; payload: 'frontend' | 'demo' | null }
   | { type: 'SET_WALLET_BALANCE'; payload: { spark: number; sogni: number } | null }

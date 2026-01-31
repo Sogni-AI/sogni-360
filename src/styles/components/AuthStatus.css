@@ -273,6 +273,24 @@
   align-items: center;
 }
 
+/* Auth status container - right align content */
+.auth-status-container {
+  display: flex;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+/* Auth status content - right align flex items */
+.auth-status-content {
+  justify-content: flex-end;
+}
+
+/* Ensure balance text aligns right when it wraps */
+.auth-balance {
+  text-align: right;
+  justify-content: flex-end;
+}
+
 /* Wallet Container */
 .auth-wallet-container {
   position: relative;

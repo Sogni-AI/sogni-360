@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { saveCurrentProject, getMostRecentProject, setCurrentProjectId, loadProject } from '../utils/localProjectsDB';
+import { loadStitchedVideo } from '../utils/videoCache';
 import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
 
 // Key for persisting free generation usage in localStorage
@@ -224,8 +225,9 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         currentProject: {
           ...state.currentProject,
           segments: state.currentProject.segments.filter(s => s.id !== action.payload),
-          // Clear final loop URL since segments changed
+          // Clear final loop URL and export state since segments changed
           finalLoopUrl: undefined,
+          exportCompleted: false,
           updatedAt: Date.now()
         }
       };
@@ -274,8 +276,9 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
               videoUrl: action.payload.version.videoUrl
             };
           }),
-          // Clear final loop URL since a segment changed - needs regeneration
+          // Clear final loop URL and export state since a segment changed - needs regeneration
           finalLoopUrl: undefined,
+          exportCompleted: false,
           updatedAt: Date.now()
         }
       };
@@ -300,8 +303,9 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
               videoUrl: selectedVersion?.videoUrl || s.videoUrl
             };
           }),
-          // Clear final loop URL since a segment version changed - needs regeneration
+          // Clear final loop URL and export state since a segment version changed - needs regeneration
           finalLoopUrl: undefined,
+          exportCompleted: false,
           updatedAt: Date.now()
         }
       };
@@ -371,6 +375,19 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         currentProject: {
           ...state.currentProject,
           finalLoopUrl: action.payload,
+          // Also set exportCompleted when setting a valid URL
+          exportCompleted: action.payload ? true : state.currentProject.exportCompleted,
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'SET_EXPORT_COMPLETED':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          exportCompleted: action.payload,
           updatedAt: Date.now()
         }
       };
@@ -475,6 +492,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const project = await getMostRecentProject();
         if (project) {
           console.log('[AppContext] Restored project:', project.id, project.name);
+
+          // Try to restore cached video if project has segments but no finalLoopUrl
+          const hasReadySegments = project.segments?.some(s => s.status === 'ready' && s.videoUrl);
+          if (hasReadySegments && !project.finalLoopUrl) {
+            try {
+              const cachedBlob = await loadStitchedVideo(project.id);
+              if (cachedBlob) {
+                console.log('[AppContext] Restoring cached final video');
+                const blobUrl = URL.createObjectURL(cachedBlob);
+                project.finalLoopUrl = blobUrl;
+              }
+            } catch (err) {
+              console.warn('[AppContext] Failed to restore cached video:', err);
+            }
+          }
+
           dispatch({ type: 'SET_PROJECT', payload: project });
           lastSavedProjectRef.current = JSON.stringify(project);
         } else {
@@ -593,6 +626,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const project = await loadProject(projectId);
       if (project) {
+        // Try to restore cached video if project has segments but no finalLoopUrl
+        const hasReadySegments = project.segments?.some(s => s.status === 'ready' && s.videoUrl);
+        if (hasReadySegments && !project.finalLoopUrl) {
+          try {
+            const cachedBlob = await loadStitchedVideo(project.id);
+            if (cachedBlob) {
+              console.log('[AppContext] Restoring cached final video for project:', projectId);
+              const blobUrl = URL.createObjectURL(cachedBlob);
+              project.finalLoopUrl = blobUrl;
+            }
+          } catch (err) {
+            console.warn('[AppContext] Failed to restore cached video:', err);
+          }
+        }
+
         dispatch({ type: 'SET_PROJECT', payload: project });
         setCurrentProjectId(projectId);
         lastSavedProjectRef.current = JSON.stringify(project);

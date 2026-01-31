@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export type WorkflowStep = 'upload' | 'define-angles' | 'render-angles' | 'render-videos' | 'export';
 
@@ -25,6 +25,7 @@ const WorkflowWizard: React.FC<WorkflowWizardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Check viewport width for collapsible behavior
   useEffect(() => {
@@ -61,6 +62,13 @@ const WorkflowWizard: React.FC<WorkflowWizardProps> = ({
       clearTimeout(timer);
       document.removeEventListener('click', handleClickOutside);
     };
+  }, [isExpanded]);
+
+  // Scroll to start when expanded overlay opens
+  useEffect(() => {
+    if (isExpanded && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+    }
   }, [isExpanded]);
 
   const getStepState = (step: WorkflowStep) => {
@@ -162,7 +170,7 @@ const WorkflowWizard: React.FC<WorkflowWizardProps> = ({
                   </svg>
                 </button>
               </div>
-              <div className="workflow-wizard workflow-wizard-in-overlay">
+              <div className="workflow-wizard workflow-wizard-in-overlay" ref={scrollContainerRef}>
                 {renderSteps()}
               </div>
             </div>
@@ -214,6 +222,7 @@ export function computeWorkflowStep(project: {
   segments: Array<{ status: string }>;
   status: string;
   finalLoopUrl?: string;
+  exportCompleted?: boolean;
 } | null): { currentStep: WorkflowStep; completedSteps: WorkflowStep[] } {
   if (!project || !project.sourceImageUrl) {
     return { currentStep: 'upload', completedSteps: [] };
@@ -245,8 +254,8 @@ export function computeWorkflowStep(project: {
     completedSteps.push('render-videos');
   }
 
-  // Check if final export is done
-  if (project.finalLoopUrl) {
+  // Check if final export is done (use exportCompleted flag since blob URLs don't persist)
+  if (project.exportCompleted || project.finalLoopUrl) {
     completedSteps.push('export');
   }
 
@@ -257,7 +266,7 @@ export function computeWorkflowStep(project: {
     currentStep = 'render-angles';
   } else if (project.status === 'generating-transitions') {
     currentStep = 'render-videos';
-  } else if (project.finalLoopUrl) {
+  } else if (project.exportCompleted || project.finalLoopUrl) {
     currentStep = 'export';
   } else if (allSegmentsReady) {
     currentStep = 'export';

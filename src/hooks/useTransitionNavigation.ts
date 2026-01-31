@@ -28,6 +28,9 @@ export function useTransitionNavigation() {
   } = state;
 
   const autoPlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to hold the latest nextWaypoint function for use in setTimeout
+  // This prevents the timer from being reset when nextWaypoint changes
+  const nextWaypointRef = useRef<() => void>(() => {});
 
   // Preload all segment videos when project changes or segments update
   useEffect(() => {
@@ -123,6 +126,10 @@ export function useTransitionNavigation() {
     navigateWithTransition(newIndex, 'forward');
   }, [currentProject, currentWaypointIndex, navigateWithTransition, videoTransition?.isPlaying]);
 
+  // Keep the ref updated with the latest nextWaypoint function
+  // This allows setTimeout to always call the latest version
+  nextWaypointRef.current = nextWaypoint;
+
   // Previous waypoint handler
   const previousWaypoint = useCallback(() => {
     if (!currentProject || videoTransition?.isPlaying) return;
@@ -150,6 +157,7 @@ export function useTransitionNavigation() {
   }, [videoTransition, dispatch]);
 
   // Auto-play handling - waits for video transitions to complete
+  // Uses nextWaypointRef to always call the latest function without resetting timer
   useEffect(() => {
     if (!isAutoPlaying || !currentProject || videoTransition?.isPlaying) {
       if (autoPlayTimerRef.current) {
@@ -160,7 +168,8 @@ export function useTransitionNavigation() {
     }
 
     autoPlayTimerRef.current = setTimeout(() => {
-      nextWaypoint();
+      // Use ref to get the latest nextWaypoint function
+      nextWaypointRef.current();
     }, 500 / playbackSpeed);
 
     return () => {
@@ -169,7 +178,9 @@ export function useTransitionNavigation() {
         autoPlayTimerRef.current = null;
       }
     };
-  }, [isAutoPlaying, playbackSpeed, currentProject, nextWaypoint, videoTransition?.isPlaying, currentWaypointIndex]);
+    // Note: nextWaypoint is not in deps - we use the ref to avoid timer reset on every navigation
+    // currentWaypointIndex is also removed - the ref always has the latest function
+  }, [isAutoPlaying, playbackSpeed, currentProject, videoTransition?.isPlaying]);
 
   // Toggle playback
   const togglePlayback = useCallback(() => {
