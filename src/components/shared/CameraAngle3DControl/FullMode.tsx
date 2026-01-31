@@ -54,7 +54,7 @@ const FullMode: React.FC<FullModeProps> = ({
   }, []);
 
   // Use smaller orbital on mobile portrait
-  const orbitalSize = isMobilePortrait ? Math.min(baseOrbitalSize, 150) : baseOrbitalSize;
+  const orbitalSize = isMobilePortrait ? Math.min(baseOrbitalSize, 180) : baseOrbitalSize;
 
   const currentAzimuth = getAzimuthConfig(azimuth);
   const currentElevation = getElevationConfig(elevation);
@@ -161,10 +161,10 @@ const FullMode: React.FC<FullModeProps> = ({
     <div className="camera-angle-3d-control" style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: isMobilePortrait ? '6px' : '12px',
-      padding: isMobilePortrait ? '8px' : '14px',
+      gap: isMobilePortrait ? '10px' : '12px',
+      padding: isMobilePortrait ? '12px' : '14px',
       background: COLORS.darkGray,
-      borderRadius: isMobilePortrait ? '12px' : '14px',
+      borderRadius: '14px',
       border: `1px solid ${COLORS.border}`,
       overflow: 'hidden',
       width: 'fit-content',
@@ -172,7 +172,7 @@ const FullMode: React.FC<FullModeProps> = ({
       margin: '0 auto'
     }}>
       {/* Main Control Area - Height buttons on left, Orbital on right */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobilePortrait ? '6px' : '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {/* Vertical Height Slider */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{
