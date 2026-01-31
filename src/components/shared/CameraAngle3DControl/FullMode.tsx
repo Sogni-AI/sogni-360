@@ -2,7 +2,7 @@
  * FullMode - Full-size interactive control with all features
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   COLORS,
   AZIMUTHS,
@@ -39,8 +39,23 @@ const FullMode: React.FC<FullModeProps> = ({
   onAzimuthChange,
   onElevationChange,
   onDistanceChange,
-  orbitalSize
+  orbitalSize: baseOrbitalSize
 }) => {
+  // Track mobile portrait mode for responsive sizing
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+
+  useEffect(() => {
+    const checkMobilePortrait = () => {
+      setIsMobilePortrait(window.innerWidth < 400);
+    };
+    checkMobilePortrait();
+    window.addEventListener('resize', checkMobilePortrait);
+    return () => window.removeEventListener('resize', checkMobilePortrait);
+  }, []);
+
+  // Use smaller orbital on mobile portrait
+  const orbitalSize = isMobilePortrait ? Math.min(baseOrbitalSize, 140) : baseOrbitalSize;
+
   const currentAzimuth = getAzimuthConfig(azimuth);
   const currentElevation = getElevationConfig(elevation);
 
@@ -146,25 +161,25 @@ const FullMode: React.FC<FullModeProps> = ({
     <div className="camera-angle-3d-control" style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '16px',
-      padding: '16px',
+      gap: isMobilePortrait ? '4px' : '12px',
+      padding: isMobilePortrait ? '6px' : '14px',
       background: COLORS.darkGray,
-      borderRadius: '16px',
+      borderRadius: '14px',
       border: `1px solid ${COLORS.border}`,
       overflow: 'hidden',
       width: 'fit-content',
       maxWidth: '100%',
       margin: '0 auto'
     }}>
-      {/* Main Control Area */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* Main Control Area - Height buttons on left, Orbital on right */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobilePortrait ? '6px' : '8px' }}>
         {/* Vertical Height Slider */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{
             fontSize: '10px',
             fontWeight: '600',
             color: COLORS.textSecondary,
-            marginBottom: '6px',
+            marginBottom: '4px',
             textTransform: 'lowercase',
             letterSpacing: '0.5px'
           }}>
@@ -174,8 +189,8 @@ const FullMode: React.FC<FullModeProps> = ({
             display: 'flex',
             flexDirection: 'column',
             background: COLORS.surfaceLight,
-            borderRadius: '10px',
-            padding: '4px',
+            borderRadius: '8px',
+            padding: '3px',
             gap: '2px'
           }}>
             {elevationsReversed.map((el) => {
@@ -188,8 +203,8 @@ const FullMode: React.FC<FullModeProps> = ({
                   key={el.key}
                   onClick={() => onElevationChange(el.key)}
                   style={{
-                    padding: '8px 10px',
-                    borderRadius: '8px',
+                    padding: isMobilePortrait ? '5px 8px' : '6px 10px',
+                    borderRadius: '6px',
                     border: 'none',
                     background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                     color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
@@ -197,7 +212,7 @@ const FullMode: React.FC<FullModeProps> = ({
                     fontSize: '11px',
                     fontWeight: isSelected ? '600' : '500',
                     transition: 'all 0.15s ease',
-                    minWidth: '44px',
+                    minWidth: isMobilePortrait ? '36px' : '40px',
                     textTransform: 'lowercase'
                   }}
                   title={el.label}
@@ -209,32 +224,8 @@ const FullMode: React.FC<FullModeProps> = ({
           </div>
         </div>
 
-        {/* Rotate Left */}
-        <button
-          onClick={(e) => { e.stopPropagation(); rotateCamera('ccw'); }}
-          style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            border: `1px solid ${COLORS.border}`,
-            background: 'rgba(30, 30, 30, 0.9)',
-            color: COLORS.textSecondary,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            transition: 'all 0.2s ease',
-            fontWeight: '500',
-            flexShrink: 0
-          }}
-          title="Rotate camera left"
-        >
-          ↻
-        </button>
-
-        {/* Orbital View */}
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+        {/* Orbital View with rotate buttons and label below */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
           <div
             ref={orbitRef}
             onClick={handleOrbitClick}
@@ -271,7 +262,7 @@ const FullMode: React.FC<FullModeProps> = ({
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              fontSize: '64px',
+              fontSize: isMobilePortrait ? '48px' : '56px',
               opacity: 0.6,
               pointerEvents: 'none',
               zIndex: 4
@@ -280,57 +271,75 @@ const FullMode: React.FC<FullModeProps> = ({
             </div>
 
             {renderCamera()}
-
-            {/* Angle label */}
-            <div style={{
-              position: 'absolute',
-              bottom: '-4px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontSize: '12px',
-              fontWeight: '600',
-              color: COLORS.textPrimary,
-              textShadow: '0 1px 4px rgba(0, 0, 0, 0.6)',
-              whiteSpace: 'nowrap',
-              textTransform: 'lowercase',
-              zIndex: 10
-            }}>
-              {currentAzimuth.label.toLowerCase()}
-            </div>
           </div>
-        </div>
 
-        {/* Rotate Right */}
-        <button
-          onClick={(e) => { e.stopPropagation(); rotateCamera('cw'); }}
-          style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            border: `1px solid ${COLORS.border}`,
-            background: 'rgba(30, 30, 30, 0.9)',
-            color: COLORS.textSecondary,
-            cursor: 'pointer',
+          {/* Rotate buttons flanking the azimuth label */}
+          <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            transition: 'all 0.2s ease',
-            fontWeight: '500',
-            flexShrink: 0
-          }}
-          title="Rotate camera right"
-        >
-          ↺
-        </button>
+            gap: '6px',
+            marginTop: isMobilePortrait ? '2px' : '4px'
+          }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); rotateCamera('ccw'); }}
+              style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                border: `1px solid ${COLORS.border}`,
+                background: 'rgba(30, 30, 30, 0.9)',
+                color: COLORS.textSecondary,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                transition: 'all 0.2s ease',
+                fontWeight: '500',
+                flexShrink: 0
+              }}
+              title="Rotate camera left"
+            >
+              ↻
+            </button>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '600',
+              color: COLORS.textPrimary,
+              whiteSpace: 'nowrap',
+              textTransform: 'lowercase'
+            }}>
+              {currentAzimuth.label.toLowerCase()}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); rotateCamera('cw'); }}
+              style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                border: `1px solid ${COLORS.border}`,
+                background: 'rgba(30, 30, 30, 0.9)',
+                color: COLORS.textSecondary,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                transition: 'all 0.2s ease',
+                fontWeight: '500',
+                flexShrink: 0
+              }}
+              title="Rotate camera right"
+            >
+              ↺
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Distance Slider */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-        <div style={{ fontSize: '10px', fontWeight: '600', color: COLORS.textSecondary, textTransform: 'lowercase', letterSpacing: '0.5px' }}>
-          distance
-        </div>
-        <div style={{ display: 'flex', background: COLORS.surfaceLight, borderRadius: '10px', padding: '4px', gap: '2px', width: 'fit-content' }}>
+      {/* Distance buttons - compact row */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', background: COLORS.surfaceLight, borderRadius: '8px', padding: '3px', gap: '2px' }}>
           {DISTANCES.map((dist) => {
             const isSelected = dist.key === distance;
             const label = dist.key === 'close-up' ? 'close' : dist.key === 'medium' ? 'medium' : 'wide';
@@ -339,8 +348,8 @@ const FullMode: React.FC<FullModeProps> = ({
                 key={dist.key}
                 onClick={() => onDistanceChange(dist.key)}
                 style={{
-                  padding: '8px 20px',
-                  borderRadius: '8px',
+                  padding: isMobilePortrait ? '5px 12px' : '6px 16px',
+                  borderRadius: '6px',
                   border: 'none',
                   background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                   color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
@@ -348,7 +357,6 @@ const FullMode: React.FC<FullModeProps> = ({
                   fontSize: '11px',
                   fontWeight: isSelected ? '600' : '500',
                   transition: 'all 0.15s ease',
-                  minWidth: '60px',
                   textTransform: 'lowercase'
                 }}
                 title={dist.label}
@@ -360,13 +368,13 @@ const FullMode: React.FC<FullModeProps> = ({
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary - more compact */}
       <div style={{
         textAlign: 'center',
-        padding: '10px 16px',
+        padding: isMobilePortrait ? '4px 10px' : '8px 14px',
         background: COLORS.surfaceLight,
-        borderRadius: '10px',
-        fontSize: '12px',
+        borderRadius: '8px',
+        fontSize: '11px',
         fontWeight: '500',
         color: COLORS.textSecondary,
         textTransform: 'lowercase',
