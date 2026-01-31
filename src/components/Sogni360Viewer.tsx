@@ -26,7 +26,6 @@ const Sogni360Viewer: React.FC = () => {
   } = useTransitionNavigation();
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const backgroundImageRef = useRef<HTMLImageElement>(null);
   const content = getCurrentContent();
 
   // Local state to track when DOM video element is actually ready to play
@@ -78,10 +77,10 @@ const Sogni360Viewer: React.FC = () => {
   const reverseAnimationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
-  // Track background image size for scaling video to match
+  // Track image size for scaling video to match
   useEffect(() => {
     const updateImageSize = () => {
-      const img = backgroundImageRef.current || imageRef.current;
+      const img = imageRef.current;
       if (img && img.complete && img.naturalWidth > 0) {
         setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
       }
@@ -253,73 +252,77 @@ const Sogni360Viewer: React.FC = () => {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Image or Video display */}
-      {content.type === 'image' ? (
+      {/* Base image layer - always visible, prevents flicker during transitions */}
+      {/* Shows source until video is playing, then swaps to destination */}
+      <img
+        ref={imageRef}
+        src={content.type === 'video'
+          ? (isVideoElementReady
+              ? (content.destinationImageUrl || content.sourceImageUrl || '')
+              : (content.sourceImageUrl || content.destinationImageUrl || ''))
+          : content.url}
+        alt="Current view"
+        className="max-w-full max-h-full object-contain select-none"
+        draggable={false}
+        onLoad={(e) => {
+          const img = e.currentTarget;
+          setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
+        }}
+      />
+      {/* Preload destination image during video so it's cached for the swap */}
+      {content.type === 'video' && content.destinationImageUrl && !isVideoElementReady && (
         <img
-          ref={imageRef}
+          src={content.destinationImageUrl}
+          alt=""
+          className="hidden"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Video overlay - only mounted during transitions */}
+      {content.type === 'video' && (
+        <video
+          ref={videoRef}
+          key={content.url + (playReverse ? '-reverse' : '')}
           src={content.url}
-          alt="Current view"
-          className="max-w-full max-h-full object-contain select-none"
-          draggable={false}
-          onLoad={(e) => {
-            const img = e.currentTarget;
-            setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
+          className={`video-overlay transition-opacity duration-100 ${
+            isVideoElementReady ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={imageDisplaySize ? {
+            width: `${imageDisplaySize.width}px`,
+            height: `${imageDisplaySize.height}px`,
+            objectFit: 'cover'
+          } : undefined}
+          muted
+          playsInline
+          preload="auto"
+          onCanPlayThrough={() => {
+            // Only handle forward playback here - reverse is handled in useEffect
+            if (!playReverse) {
+              handleVideoCanPlay();
+              // Start playing now that video is fully buffered
+              // Don't set isVideoElementReady yet - wait for onPlaying
+              videoRef.current?.play().catch((err) => {
+                console.error('[Sogni360Viewer] Video play failed:', err);
+                // Clear stuck transition state so UI remains usable
+                handleTransitionEnd();
+              });
+            }
+          }}
+          onPlaying={() => {
+            // Video is actually rendering frames now - safe to show
+            // This prevents flicker on iOS where canplaythrough fires before frames render
+            if (!playReverse) {
+              setIsVideoElementReady(true);
+            }
+          }}
+          onEnded={playReverse ? undefined : handleTransitionEnd}
+          onError={(e) => {
+            console.error('[Sogni360Viewer] Video error:', e);
+            // Clear stuck transition state so UI remains usable
+            handleTransitionEnd();
           }}
         />
-      ) : (
-        <div className="video-container">
-          {/* Source image shown while video loads - prevents black flash */}
-          {(content.sourceImageUrl || content.destinationImageUrl) && (
-            <img
-              ref={backgroundImageRef}
-              src={isVideoElementReady
-                ? (content.destinationImageUrl || content.sourceImageUrl!)
-                : (content.sourceImageUrl || content.destinationImageUrl!)}
-              alt={isVideoElementReady ? "Destination" : "Source"}
-              className="max-w-full max-h-full object-contain select-none"
-              draggable={false}
-              onLoad={(e) => {
-                const img = e.currentTarget;
-                setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
-              }}
-            />
-          )}
-          {/* Video element layered on top - only visible when fully loaded */}
-          <video
-            ref={videoRef}
-            key={content.url + (playReverse ? '-reverse' : '')}
-            src={content.url}
-            className={`video-overlay transition-opacity duration-150 ${
-              isVideoElementReady ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={imageDisplaySize ? {
-              width: `${imageDisplaySize.width}px`,
-              height: `${imageDisplaySize.height}px`,
-              objectFit: 'cover'
-            } : undefined}
-            muted
-            playsInline
-            onCanPlayThrough={() => {
-              // Only handle forward playback here - reverse is handled in useEffect
-              if (!playReverse) {
-                setIsVideoElementReady(true);
-                handleVideoCanPlay();
-                // Start playing now that video is fully buffered
-                videoRef.current?.play().catch((err) => {
-                  console.error('[Sogni360Viewer] Video play failed:', err);
-                  // Clear stuck transition state so UI remains usable
-                  handleTransitionEnd();
-                });
-              }
-            }}
-            onEnded={playReverse ? undefined : handleTransitionEnd}
-            onError={(e) => {
-              console.error('[Sogni360Viewer] Video error:', e);
-              // Clear stuck transition state so UI remains usable
-              handleTransitionEnd();
-            }}
-          />
-        </div>
       )}
 
       {/* Click zones with hover buttons (desktop) */}

@@ -4,6 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🚨 NEVER RUN PRODUCTION DEPLOYMENTS
+
+**Claude must NEVER run `npm run deploy:production` or any production deployment commands.** Always let the user run deployments themselves. You may prepare the build and verify it passes, but the actual deployment command must be executed by the user.
+
+---
+
 ## 🚨 FILE SIZE LIMIT: 300 LINES MAX
 
 **No code file should exceed 300 lines.** Break large files into smaller, focused modules.
