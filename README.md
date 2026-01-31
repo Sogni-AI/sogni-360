@@ -16,12 +16,9 @@ This is a demo "SuperApp" powered by the Sogni Client SDK, showcasing the [Sogni
 
 Live demo → **https://360.sogni.ai**
 
-<!--
 <div align="center">
-  <img alt="Sogni 360 screenshot – orbital view" src="docs/assets/360-demo-1.png" width="100%"/>
-  <img alt="Sogni 360 screenshot – angle editor" src="docs/assets/360-demo-2.png" width="100%"/>
+  <img alt="Sogni 360 – Create immersive 360° orbital portraits" src="docs/assets/sogni-360-hero.jpg" width="100%"/>
 </div>
--->
 
 ---
 
@@ -54,12 +51,12 @@ Quick-start templates for common 360° experiences:
 
 Generate smooth AI video transitions between adjacent waypoints:
 
-| Quality | Model | Steps | Speed |
-|---------|-------|-------|-------|
-| **Fast** | LightX2V | 4 | ~12-20s |
-| **Balanced** | LightX2V | 8 | ~25-40s |
-| **High Quality** | Wan 2.2 14B | 20 | ~3-4 min |
-| **Pro** | Wan 2.2 14B | 30 | ~6-9 min |
+| Quality | Model | Steps |
+|---------|-------|-------|
+| **Fast** | LightX2V | 4 |
+| **Balanced** | LightX2V | 8 |
+| **High Quality** | Wan 2.2 14B | 20 |
+| **Pro** | Wan 2.2 14B | 30 |
 
 Resolutions: 480p, 580p, 720p
 
