@@ -2776,6 +2776,12 @@ html, body {
   padding: 1rem;
 }
 
+@media (max-width: 480px) {
+  .config-card-3d-overlay {
+    padding: 0.25rem;
+  }
+}
+
 .config-card-check {
   position: absolute;
   top: 0.75rem;
