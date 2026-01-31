@@ -14,12 +14,24 @@ import { CAMERA_ANGLE_LORA } from '../constants/cameraAngleSettings';
 const MAX_ATTEMPTS = 3;
 
 /**
+ * Check if an error is an insufficient funds error
+ */
+function isInsufficientFundsError(error: Error): boolean {
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('insufficient') ||
+    message.includes('debit error') ||
+    (message.includes('funds') && !message.includes('refund'))
+  );
+}
+
+/**
  * Check if an error is non-retryable (e.g., insufficient credits)
  */
 function isNonRetryableError(error: Error): boolean {
   const message = error.message.toLowerCase();
   return (
-    message.includes('insufficient') ||
+    isInsufficientFundsError(error) ||
     message.includes('credits') ||
     message.includes('balance') ||
     message.includes('unauthorized') ||
@@ -185,6 +197,7 @@ export async function generateMultipleAngles(
     onWaypointProgress?: (waypointId: string, progress: number) => void;
     onWaypointComplete?: (waypointId: string, result: GenerateAngleResult) => void;
     onWaypointError?: (waypointId: string, error: Error) => void;
+    onOutOfCredits?: () => void;
     onAllComplete?: () => void;
   } = {}
 ): Promise<Map<string, GenerateAngleResult | null>> {
@@ -195,8 +208,12 @@ export async function generateMultipleAngles(
     onWaypointProgress,
     onWaypointComplete,
     onWaypointError,
+    onOutOfCredits,
     onAllComplete
   } = options;
+
+  // Track if we've already called onOutOfCredits to avoid multiple popups
+  let hasCalledOutOfCredits = false;
 
   const results = new Map<string, GenerateAngleResult | null>();
 
@@ -265,6 +282,12 @@ export async function generateMultipleAngles(
         // Don't retry non-retryable errors (like insufficient credits)
         if (isNonRetryableError(lastError)) {
           console.error(`[Generator] Waypoint ${waypoint.id} failed with non-retryable error:`, lastError.message);
+
+          // Call onOutOfCredits callback if this is an insufficient funds error
+          if (isInsufficientFundsError(lastError) && !hasCalledOutOfCredits) {
+            hasCalledOutOfCredits = true;
+            onOutOfCredits?.();
+          }
           break;
         }
 
@@ -286,7 +309,11 @@ export async function generateMultipleAngles(
     // All attempts failed
     results.set(waypoint.id, null);
     if (lastError) {
-      onWaypointError?.(waypoint.id, lastError);
+      // Provide user-friendly error message for insufficient funds
+      const userFriendlyError = isInsufficientFundsError(lastError)
+        ? new Error('Insufficient credits')
+        : lastError;
+      onWaypointError?.(waypoint.id, userFriendlyError);
     }
   };
 

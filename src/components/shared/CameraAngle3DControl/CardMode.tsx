@@ -66,10 +66,11 @@ const CardMode: React.FC<CardModeProps> = ({
       background: COLORS.darkGray,
       borderRadius: '12px',
       border: `1px solid ${COLORS.border}`,
-      width: '100%',
+      width: 'fit-content',
       maxWidth: '100%',
-      height: '100%',
-      overflow: 'hidden'
+      height: 'fit-content',
+      overflow: 'hidden',
+      margin: '0 auto'
     }}>
       {/* Main row: Height | Orbital - flex: 1 to fill available space */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flex: 1 }}>
@@ -113,13 +114,14 @@ const CardMode: React.FC<CardModeProps> = ({
         </div>
 
         {/* Orbital container */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
           <div
             ref={orbitRef}
             onClick={handleOrbitClick}
             style={{
               width: `${orbitalSize}px`,
               height: `${orbitalSize}px`,
+              aspectRatio: '1',
               position: 'relative',
               cursor: 'pointer',
               flexShrink: 0

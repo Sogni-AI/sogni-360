@@ -25,13 +25,15 @@ interface WaypointEditorProps {
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
   onRequireAuth?: () => void;
+  onOutOfCredits?: () => void;
 }
 
 const WaypointEditor: React.FC<WaypointEditorProps> = ({
   onClose,
   onConfirmDestructiveAction,
   onWorkflowStepClick,
-  onRequireAuth
+  onRequireAuth,
+  onOutOfCredits
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
@@ -118,11 +120,6 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
   }, [waypoints.length, dispatch, showToast]);
 
   const handleToggleOriginal = useCallback((waypoint: Waypoint) => {
-    const hasOtherOriginal = waypoints.some(wp => wp.isOriginal && wp.id !== waypoint.id);
-    if (!waypoint.isOriginal && hasOtherOriginal) {
-      showToast({ message: 'Only one angle can use the original perspective', type: 'warning' });
-      return;
-    }
     const newIsOriginal = !waypoint.isOriginal;
     dispatch({
       type: 'UPDATE_WAYPOINT',
@@ -136,7 +133,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
       }
     });
     setSelectedPresetKey('custom');
-  }, [waypoints, dispatch, showToast, currentProject?.sourceImageUrl]);
+  }, [dispatch, currentProject?.sourceImageUrl]);
 
   const handleUpdateWaypoint = useCallback((id: string, updates: Partial<Waypoint>) => {
     dispatch({
@@ -202,6 +199,9 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
           onWaypointError: (waypointId, error) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined } } });
           },
+          onOutOfCredits: () => {
+            onOutOfCredits?.();
+          },
           onAllComplete: () => {
             setIsGenerating(false);
             dispatch({ type: 'SET_PROJECT_STATUS', payload: 'draft' });
@@ -220,7 +220,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
       }
       showToast({ message: 'Generation failed: ' + (error instanceof Error ? error.message : 'Unknown error'), type: 'error' });
     }
-  }, [currentProject, waypoints, dispatch, showToast, selectedPresetKey]);
+  }, [currentProject, waypoints, dispatch, showToast, selectedPresetKey, onOutOfCredits]);
 
   // Handle generate button click - confirms if work would be lost
   const handleGenerateAngles = useCallback(() => {
@@ -287,6 +287,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
         onConfirmDestructiveAction={onConfirmDestructiveAction}
         onWorkflowStepClick={onWorkflowStepClick}
         onRequireAuth={onRequireAuth}
+        onOutOfCredits={onOutOfCredits}
       />
     );
   }

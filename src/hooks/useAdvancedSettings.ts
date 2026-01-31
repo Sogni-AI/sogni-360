@@ -123,11 +123,14 @@ export function useAdvancedSettings() {
 
   const setGuidance = useCallback((guidance: number) => {
     const modelConfig = getModelConfig(globalSettings.imageModel);
+    // Clamp and round to proper decimal places
     const clampedGuidance = Math.max(
       modelConfig.guidance.min,
       Math.min(modelConfig.guidance.max, guidance)
     );
-    globalSettings = { ...globalSettings, imageGuidance: clampedGuidance };
+    const decimals = modelConfig.guidance.decimals;
+    const roundedGuidance = Math.round(clampedGuidance * 10 ** decimals) / 10 ** decimals;
+    globalSettings = { ...globalSettings, imageGuidance: roundedGuidance };
     saveSettings(globalSettings);
     notifyListeners();
   }, []);

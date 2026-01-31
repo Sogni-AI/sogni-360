@@ -19,6 +19,7 @@ import AuthStatus, { AuthStatusRef } from './auth/AuthStatus';
 import LoginPromptModal from './auth/LoginPromptModal';
 import StripePurchase from './stripe/StripePurchase';
 import PWAInstallPrompt from './shared/PWAInstallPrompt';
+import OutOfCreditsPopup from './shared/OutOfCreditsPopup';
 import { ApiProvider } from '../hooks/useSogniApi';
 import { useWallet } from '../hooks/useWallet';
 import useAutoHideUI from '../hooks/useAutoHideUI';
@@ -48,6 +49,7 @@ const Sogni360Container: React.FC = () => {
   const [showNewProjectConfirm, setShowNewProjectConfirm] = useState(false);
   const [showProjectNameModal, setShowProjectNameModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showOutOfCredits, setShowOutOfCredits] = useState(false);
   const [projectCount, setProjectCount] = useState(0);
 
   // Auth state
@@ -256,6 +258,9 @@ const Sogni360Container: React.FC = () => {
           onSegmentError: (segmentId, error) => {
             updateSegment(segmentId, { status: 'failed', error: error.message });
           },
+          onOutOfCredits: () => {
+            setShowOutOfCredits(true);
+          },
           onAllComplete: () => {
             setIsTransitionGenerating(false);
             dispatch({ type: 'SET_PROJECT_STATUS', payload: 'complete' });
@@ -328,6 +333,9 @@ const Sogni360Container: React.FC = () => {
           },
           onSegmentError: (segmentId, error) => {
             updateSegment(segmentId, { status: 'failed', error: error.message });
+          },
+          onOutOfCredits: () => {
+            setShowOutOfCredits(true);
           }
         }
       );
@@ -459,6 +467,17 @@ const Sogni360Container: React.FC = () => {
   const handleOpenProjectManager = useCallback(() => {
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: true });
   }, [dispatch]);
+
+  // Handle out of credits - show popup to buy more
+  const handleOutOfCredits = useCallback(() => {
+    setShowOutOfCredits(true);
+  }, []);
+
+  // Handle purchase from out of credits popup
+  const handleOutOfCreditsPurchase = useCallback(() => {
+    setShowOutOfCredits(false);
+    setShowPurchaseModal(true);
+  }, []);
 
   // Compute workflow state - needs to be before callbacks that use it
   const { currentStep, completedSteps } = computeWorkflowStep(currentProject);
@@ -803,6 +822,7 @@ const Sogni360Container: React.FC = () => {
           onConfirmDestructiveAction={confirmDestructiveAction}
           onWorkflowStepClick={handleWorkflowStepClick}
           onRequireAuth={handleRequireAuth}
+          onOutOfCredits={handleOutOfCredits}
         />
       )}
 
@@ -816,6 +836,7 @@ const Sogni360Container: React.FC = () => {
             onConfirmDestructiveAction={confirmDestructiveAction}
             onWorkflowStepClick={handleWorkflowStepClick}
             onRequireAuth={handleRequireAuth}
+            onOutOfCredits={handleOutOfCredits}
           />
         </div>
       )}
@@ -905,6 +926,14 @@ const Sogni360Container: React.FC = () => {
           onCancel={handleProjectNameCancel}
         />
       )}
+
+      {/* Stripe Purchase Modal */}
+      {/* Out of Credits Popup */}
+      <OutOfCreditsPopup
+        isOpen={showOutOfCredits}
+        onClose={() => setShowOutOfCredits(false)}
+        onPurchase={handleOutOfCreditsPurchase}
+      />
 
       {/* Stripe Purchase Modal */}
       {showPurchaseModal && sogniClient && (

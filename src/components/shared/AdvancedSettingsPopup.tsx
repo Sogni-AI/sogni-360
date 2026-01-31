@@ -4,6 +4,7 @@
  * Allows users to configure:
  * - Primary image model (Lightning vs Standard Qwen)
  * - Inference steps (within model-specific ranges)
+ * - Guidance scale (within model-specific ranges)
  */
 
 import React, { useCallback } from 'react';
@@ -24,6 +25,7 @@ export default function AdvancedSettingsPopup({
     settings,
     setModel,
     setSteps,
+    setGuidance,
     resetToDefaults,
     getCurrentModelConfig,
     modelConfigs
@@ -38,6 +40,10 @@ export default function AdvancedSettingsPopup({
   const handleStepsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setSteps(Number.parseInt(event.target.value, 10));
   }, [setSteps]);
+
+  const handleGuidanceChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setGuidance(Number.parseFloat(event.target.value));
+  }, [setGuidance]);
 
   const handleOverlayClick = useCallback((event: React.MouseEvent) => {
     if (event.target === event.currentTarget) {
@@ -114,6 +120,33 @@ export default function AdvancedSettingsPopup({
               <div className="slider-labels">
                 <span>{currentModelConfig.steps.min}</span>
                 <span>{currentModelConfig.steps.max}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Guidance Scale */}
+          <div className="settings-section">
+            <label className="settings-label">
+              Guidance Scale
+              <span className="settings-value">{settings.imageGuidance.toFixed(1)}</span>
+            </label>
+            <p className="settings-description">
+              How closely to follow the prompt (higher = more literal)
+              ({currentModelConfig.guidance.min}-{currentModelConfig.guidance.max} for this model)
+            </p>
+            <div className="slider-container">
+              <input
+                type="range"
+                min={currentModelConfig.guidance.min}
+                max={currentModelConfig.guidance.max}
+                step={0.1}
+                value={settings.imageGuidance}
+                onChange={handleGuidanceChange}
+                className="settings-slider"
+              />
+              <div className="slider-labels">
+                <span>{currentModelConfig.guidance.min}</span>
+                <span>{currentModelConfig.guidance.max}</span>
               </div>
             </div>
           </div>

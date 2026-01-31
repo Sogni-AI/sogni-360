@@ -23,12 +23,24 @@ import { v4 as uuidv4 } from 'uuid';
 const MAX_ATTEMPTS = 3;
 
 /**
+ * Check if an error is an insufficient funds error
+ */
+function isInsufficientFundsError(error: Error): boolean {
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('insufficient') ||
+    message.includes('debit error') ||
+    (message.includes('funds') && !message.includes('refund'))
+  );
+}
+
+/**
  * Check if an error is non-retryable (e.g., insufficient credits)
  */
 function isNonRetryableError(error: Error): boolean {
   const message = error.message.toLowerCase();
   return (
-    message.includes('insufficient') ||
+    isInsufficientFundsError(error) ||
     message.includes('credits') ||
     message.includes('balance') ||
     message.includes('unauthorized') ||
@@ -234,6 +246,7 @@ export async function generateMultipleTransitions(
     onSegmentProgress?: (segmentId: string, progress: number, workerName?: string) => void;
     onSegmentComplete?: (segmentId: string, result: GenerateTransitionResult, version: TransitionVersion) => void;
     onSegmentError?: (segmentId: string, error: Error) => void;
+    onOutOfCredits?: () => void;
     onAllComplete?: () => void;
   }
 ): Promise<Map<string, GenerateTransitionResult | null>> {
@@ -250,8 +263,12 @@ export async function generateMultipleTransitions(
     onSegmentProgress,
     onSegmentComplete,
     onSegmentError,
+    onOutOfCredits,
     onAllComplete
   } = options;
+
+  // Track if we've already called onOutOfCredits to avoid multiple popups
+  let hasCalledOutOfCredits = false;
 
   const results = new Map<string, GenerateTransitionResult | null>();
 
@@ -333,6 +350,12 @@ export async function generateMultipleTransitions(
         // Don't retry non-retryable errors (like insufficient credits)
         if (isNonRetryableError(lastError)) {
           console.error(`[TransitionGenerator] Segment ${segment.id} failed with non-retryable error:`, lastError.message);
+
+          // Call onOutOfCredits callback if this is an insufficient funds error
+          if (isInsufficientFundsError(lastError) && !hasCalledOutOfCredits) {
+            hasCalledOutOfCredits = true;
+            onOutOfCredits?.();
+          }
           break;
         }
 
@@ -354,7 +377,11 @@ export async function generateMultipleTransitions(
     // All attempts failed
     results.set(segment.id, null);
     if (lastError) {
-      onSegmentError?.(segment.id, lastError);
+      // Provide user-friendly error message for insufficient funds
+      const userFriendlyError = isInsufficientFundsError(lastError)
+        ? new Error('Insufficient credits')
+        : lastError;
+      onSegmentError?.(segment.id, userFriendlyError);
     }
   };
 

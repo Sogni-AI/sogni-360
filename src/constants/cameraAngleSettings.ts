@@ -17,6 +17,7 @@ export const CAMERA_ANGLE_MODEL = 'qwen_image_edit_2511_fp8_lightning';
 export const CAMERA_ANGLE_MODEL_STANDARD = 'qwen_image_edit_2511_fp8';
 
 // Model definitions with their parameter ranges
+// Source: https://socket.sogni.ai/api/v1/models/tiers
 export type ImageModelId = 'qwen_image_edit_2511_fp8_lightning' | 'qwen_image_edit_2511_fp8';
 
 export interface ModelConfig {
@@ -32,23 +33,30 @@ export interface ModelConfig {
     min: number;
     max: number;
     default: number;
+    decimals: number;
   };
+  benchmark: number; // seconds
+  costUsd: number; // per render
 }
 
 export const IMAGE_MODELS: Record<ImageModelId, ModelConfig> = {
   'qwen_image_edit_2511_fp8_lightning': {
     id: 'qwen_image_edit_2511_fp8_lightning',
     label: 'Qwen Image Edit 2511 Lightning',
-    description: 'Fast generation (4-8 steps)',
-    steps: { min: 4, max: 8, default: 8 },
-    guidance: { min: 1, max: 2, default: 1 }
+    description: 'Fast generation',
+    steps: { min: 4, max: 8, default: 4 },
+    guidance: { min: 0.6, max: 1.6, default: 1, decimals: 1 },
+    benchmark: 179,
+    costUsd: 0.0104
   },
   'qwen_image_edit_2511_fp8': {
     id: 'qwen_image_edit_2511_fp8',
     label: 'Qwen Image Edit 2511',
-    description: 'Higher quality (4-50 steps)',
-    steps: { min: 4, max: 50, default: 25 },
-    guidance: { min: 1, max: 4, default: 2.5 }
+    description: 'Higher quality',
+    steps: { min: 20, max: 50, default: 20 },
+    guidance: { min: 2.5, max: 5, default: 4, decimals: 1 },
+    benchmark: 358,
+    costUsd: 0.0207
   }
 } as const;
 
@@ -68,9 +76,9 @@ export const CAMERA_ANGLE_LORA = {
   defaultStrength: 0.9
 } as const;
 
-// Default generation parameters
+// Default generation parameters (matches Lightning model defaults from API)
 export const CAMERA_ANGLE_DEFAULTS = {
-  steps: 8,
+  steps: 4,
   guidance: 1,
   sampler: 'euler',
   scheduler: 'simple'

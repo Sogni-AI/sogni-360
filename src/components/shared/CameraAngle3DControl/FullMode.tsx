@@ -151,7 +151,10 @@ const FullMode: React.FC<FullModeProps> = ({
       background: COLORS.darkGray,
       borderRadius: '16px',
       border: `1px solid ${COLORS.border}`,
-      overflow: 'hidden'
+      overflow: 'hidden',
+      width: 'fit-content',
+      maxWidth: '100%',
+      margin: '0 auto'
     }}>
       {/* Main Control Area */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -231,11 +234,11 @@ const FullMode: React.FC<FullModeProps> = ({
         </button>
 
         {/* Orbital View */}
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, minWidth: 0 }}>
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
           <div
             ref={orbitRef}
             onClick={handleOrbitClick}
-            style={{ width: `${orbitalSize}px`, height: `${orbitalSize}px`, position: 'relative', cursor: 'pointer' }}
+            style={{ width: `${orbitalSize}px`, height: `${orbitalSize}px`, aspectRatio: '1', position: 'relative', cursor: 'pointer', flexShrink: 0 }}
           >
             {AZIMUTHS.map(renderAzimuthDot)}
 

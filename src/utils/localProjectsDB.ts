@@ -5,11 +5,65 @@
  * Allows users to save, load, and resume projects locally.
  */
 
-import type { Sogni360Project, LocalProject } from '../types';
+import type { Sogni360Project, LocalProject, Waypoint } from '../types';
 
 const DB_NAME = 'sogni360-projects';
 const DB_VERSION = 1;
 const STORE_NAME = 'projects';
+
+/**
+ * Convert a blob URL to a data URL (base64)
+ * This allows the image data to persist in IndexedDB across page reloads
+ */
+async function blobUrlToDataUrl(blobUrl: string): Promise<string> {
+  const response = await fetch(blobUrl);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Process a waypoint's image URLs, converting blob URLs to data URLs for persistence
+ */
+async function processWaypointForStorage(waypoint: Waypoint): Promise<Waypoint> {
+  const processed = { ...waypoint };
+
+  // Convert main imageUrl if it's a blob URL
+  if (processed.imageUrl?.startsWith('blob:')) {
+    try {
+      processed.imageUrl = await blobUrlToDataUrl(processed.imageUrl);
+    } catch (e) {
+      console.warn('[LocalDB] Failed to convert blob URL to data URL:', e);
+      // Clear the blob URL since it won't work after reload anyway
+      processed.imageUrl = undefined;
+      processed.status = 'pending';
+    }
+  }
+
+  // Convert imageHistory blob URLs if present
+  if (processed.imageHistory && processed.imageHistory.length > 0) {
+    const convertedHistory: string[] = [];
+    for (const url of processed.imageHistory) {
+      if (url.startsWith('blob:')) {
+        try {
+          convertedHistory.push(await blobUrlToDataUrl(url));
+        } catch (e) {
+          console.warn('[LocalDB] Failed to convert history blob URL:', e);
+          // Skip failed conversions
+        }
+      } else {
+        convertedHistory.push(url);
+      }
+    }
+    processed.imageHistory = convertedHistory;
+  }
+
+  return processed;
+}
 
 // App schema version - INCREMENT THIS when making breaking changes to invalidate saved state
 // This is separate from DB_VERSION which is for IndexedDB schema migrations
@@ -54,30 +108,40 @@ function openDB(): Promise<IDBDatabase> {
 
 /**
  * Save a project to IndexedDB
- * Blob URLs are stripped as they don't persist across page reloads
+ * Blob URLs are converted to data URLs so they persist across page reloads
  */
 export async function saveProject(project: Sogni360Project): Promise<void> {
   const db = await openDB();
 
+  // Process waypoints to convert blob URLs to data URLs
+  const processedWaypoints = await Promise.all(
+    project.waypoints.map(wp => processWaypointForStorage(wp))
+  );
+
+  // Create a clean copy of the project with processed waypoints
+  const cleanProject: Sogni360Project = {
+    ...project,
+    waypoints: processedWaypoints,
+    // Don't save blob URLs for final loop - they won't work after page reload
+    finalLoopUrl: project.finalLoopUrl?.startsWith('blob:')
+      ? undefined
+      : project.finalLoopUrl
+  };
+
+  // Get thumbnail URL (prefer first ready waypoint with image, fall back to source)
+  const thumbnailWaypoint = cleanProject.waypoints.find(wp => wp.imageUrl && wp.status === 'ready');
+  const thumbnailUrl = thumbnailWaypoint?.imageUrl || cleanProject.sourceImageUrl;
+
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-
-    // Create a clean copy of the project, stripping blob URLs
-    const cleanProject = {
-      ...project,
-      // Don't save blob URLs - they won't work after page reload
-      finalLoopUrl: project.finalLoopUrl?.startsWith('blob:')
-        ? undefined
-        : project.finalLoopUrl
-    };
 
     const localProject: LocalProject = {
       id: project.id,
       name: project.name,
       createdAt: project.createdAt,
       updatedAt: Date.now(),
-      thumbnailUrl: project.waypoints[0]?.imageUrl || project.sourceImageUrl,
+      thumbnailUrl,
       project: cleanProject
     };
 
@@ -108,20 +172,41 @@ function sanitizeLoadedProject(project: Sogni360Project): Sogni360Project {
     sanitized.finalLoopUrl = undefined;
   }
 
-  // Reset waypoints that were stuck in "generating" state
-  // If they have an image, mark as ready; otherwise mark as pending
+  // Reset waypoints that were stuck in "generating" state or have stale blob URLs
+  // If they have a valid image, mark as ready; otherwise mark as pending
   sanitized.waypoints = sanitized.waypoints.map(wp => {
-    if (wp.status === 'generating' || wp.enhancing) {
+    let updated = { ...wp };
+
+    // Clear stale blob URLs (they don't persist across page reloads)
+    if (updated.imageUrl?.startsWith('blob:')) {
+      console.log(`[LocalDB] Clearing stale blob URL for waypoint ${wp.id}`);
+      updated.imageUrl = undefined;
+      updated.status = 'pending';
+    }
+
+    // Clear stale blob URLs from imageHistory
+    if (updated.imageHistory && updated.imageHistory.length > 0) {
+      const validHistory = updated.imageHistory.filter(url => !url.startsWith('blob:'));
+      if (validHistory.length !== updated.imageHistory.length) {
+        console.log(`[LocalDB] Clearing stale blob URLs from imageHistory for waypoint ${wp.id}`);
+        updated.imageHistory = validHistory.length > 0 ? validHistory : undefined;
+        updated.currentImageIndex = validHistory.length > 0 ? Math.min(updated.currentImageIndex || 0, validHistory.length - 1) : undefined;
+      }
+    }
+
+    // Reset stuck generating state
+    if (updated.status === 'generating' || updated.enhancing) {
       console.log(`[LocalDB] Resetting stuck waypoint ${wp.id} from generating state`);
-      return {
-        ...wp,
-        status: wp.imageUrl ? 'ready' : 'pending',
+      updated = {
+        ...updated,
+        status: updated.imageUrl ? 'ready' : 'pending',
         progress: 0,
         enhancing: false,
         enhancementProgress: 0
       };
     }
-    return wp;
+
+    return updated;
   });
 
   // Reset segments that were stuck in "generating" state

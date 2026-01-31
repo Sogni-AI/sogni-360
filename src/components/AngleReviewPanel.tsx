@@ -26,6 +26,7 @@ interface AngleReviewPanelProps {
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
   onRequireAuth?: () => void;
+  onOutOfCredits?: () => void;
 }
 
 const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
@@ -34,7 +35,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   isGenerating,
   onConfirmDestructiveAction,
   onWorkflowStepClick,
-  onRequireAuth
+  onRequireAuth,
+  onOutOfCredits
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
@@ -232,6 +234,9 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined } }
             });
             showToast({ message: 'Regeneration failed', type: 'error' });
+          },
+          onOutOfCredits: () => {
+            onOutOfCredits?.();
           }
         }
       );
@@ -242,7 +247,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       });
       showToast({ message: 'Regeneration failed', type: 'error' });
     }
-  }, [currentProject, dispatch, showToast]);
+  }, [currentProject, dispatch, showToast, onOutOfCredits]);
 
   // Handle redo button click - confirms if work would be lost
   const handleRedo = useCallback((waypoint: Waypoint) => {
