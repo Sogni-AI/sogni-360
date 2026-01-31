@@ -798,22 +798,12 @@ const Sogni360Container: React.FC = () => {
 
       {/* Waypoint editor panel - full screen overlay */}
       {showWaypointEditor && (
-        <div className="waypoint-editor-panel">
-          <div className="waypoint-editor-panel-header">
-            <h2 className="text-lg font-semibold text-white">Configure Camera Angles</h2>
-            <button
-              className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-              onClick={() => dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: false })}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="waypoint-editor-panel-content">
-            <WaypointEditor onConfirmDestructiveAction={confirmDestructiveAction} onWorkflowStepClick={handleWorkflowStepClick} onRequireAuth={handleRequireAuth} />
-          </div>
-        </div>
+        <WaypointEditor
+          onClose={() => dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: false })}
+          onConfirmDestructiveAction={confirmDestructiveAction}
+          onWorkflowStepClick={handleWorkflowStepClick}
+          onRequireAuth={handleRequireAuth}
+        />
       )}
 
       {/* Standalone Angle Review Panel - shown when accessed from timeline (not from editor) */}

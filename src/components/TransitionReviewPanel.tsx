@@ -188,6 +188,31 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
     }
   }, [onConfirmDestructiveAction, onRedoSegment, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
+  // Delete last segment (only last can be deleted to keep transitions aligned)
+  const handleDeleteSegment = useCallback((segmentId: string, index: number) => {
+    // Only allow deleting the last segment
+    if (index !== segments.length - 1) {
+      showToast({ message: 'Only the last transition can be removed', type: 'error' });
+      return;
+    }
+
+    // Prevent deleting if it's the only segment
+    if (segments.length <= 1) {
+      showToast({ message: 'At least one transition required', type: 'error' });
+      return;
+    }
+
+    const segment = segments.find(s => s.id === segmentId);
+
+    // Also remove the corresponding waypoint (the "to" waypoint of this segment)
+    const lastWaypoint = waypoints[waypoints.length - 1];
+    if (lastWaypoint && segment?.toWaypointId === lastWaypoint.id) {
+      dispatch({ type: 'REMOVE_WAYPOINT', payload: lastWaypoint.id });
+    }
+
+    dispatch({ type: 'REMOVE_SEGMENT', payload: segmentId });
+  }, [segments, waypoints, dispatch, showToast]);
+
   const canStitch = readyCount === totalSegments && totalSegments > 0 && !isGenerating;
 
   // Calculate thumbnail aspect ratio
@@ -239,6 +264,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               key={segment.id}
               segment={segment}
               index={index}
+              totalSegments={segments.length}
               thumbAspect={thumbAspect}
               sourceAspectRatio={sourceAspectRatio}
               fromImageUrl={fromWaypoint?.imageUrl}
@@ -250,6 +276,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               onNextVersion={() => handleNextVersion(segment)}
               onRegenerate={() => handleRedoWithConfirmation(segment.id)}
               onDownload={() => handleDownloadSingle(segment, index)}
+              onDelete={() => handleDeleteSegment(segment.id, index)}
               isDownloading={downloadingId === segment.id}
             />
           );

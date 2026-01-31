@@ -161,6 +161,7 @@ export type Sogni360Action =
   | { type: 'REORDER_WAYPOINTS'; payload: string[] }
   | { type: 'SET_SEGMENTS'; payload: Segment[] }
   | { type: 'ADD_SEGMENT'; payload: Segment }
+  | { type: 'REMOVE_SEGMENT'; payload: string }
   | { type: 'UPDATE_SEGMENT'; payload: { id: string; updates: Partial<Segment> } }
   | { type: 'ADD_SEGMENT_VERSION'; payload: { segmentId: string; version: TransitionVersion } }
   | { type: 'SELECT_SEGMENT_VERSION'; payload: { segmentId: string; versionIndex: number } }

@@ -45,6 +45,10 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const [isEnhancingAll, setIsEnhancingAll] = useState(false);
   const [enhanceAllProgress, setEnhanceAllProgress] = useState<{ current: number; total: number } | null>(null);
 
+  // Drag-and-drop state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
   // Popup state
   const [showEnhancePopup, setShowEnhancePopup] = useState(false);
   const [pendingEnhanceWaypoint, setPendingEnhanceWaypoint] = useState<Waypoint | null>(null);
@@ -289,6 +293,76 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       canNext: currentIdx < waypoint.imageHistory.length - 1
     };
   };
+
+  // Drag-and-drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, waypointId: string) => {
+    setDraggedId(waypointId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', waypointId);
+    // Add a slight delay to allow the drag image to be set
+    setTimeout(() => {
+      const target = e.target as HTMLElement;
+      target.classList.add('dragging');
+    }, 0);
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    const target = e.target as HTMLElement;
+    target.classList.remove('dragging');
+    setDraggedId(null);
+    setDragOverId(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, waypointId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedId && waypointId !== draggedId) {
+      setDragOverId(waypointId);
+    }
+  }, [draggedId]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverId(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const draggedWaypointId = e.dataTransfer.getData('text/plain');
+
+    if (!draggedWaypointId || draggedWaypointId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    // Calculate new order
+    const currentOrder = waypoints.map(wp => wp.id);
+    const draggedIndex = currentOrder.indexOf(draggedWaypointId);
+    const targetIndex = currentOrder.indexOf(targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Remove dragged item and insert at target position
+    const newOrder = [...currentOrder];
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedWaypointId);
+
+    dispatch({ type: 'REORDER_WAYPOINTS', payload: newOrder });
+    setDraggedId(null);
+    setDragOverId(null);
+  }, [waypoints, dispatch]);
+
+  // Delete waypoint handler
+  const handleDeleteWaypoint = useCallback((waypointId: string) => {
+    // Prevent deleting if we'd have fewer than 2 waypoints
+    if (waypoints.length <= 2) {
+      showToast({ message: 'Minimum 2 angles required', type: 'error' });
+      return;
+    }
+
+    dispatch({ type: 'REMOVE_WAYPOINT', payload: waypointId });
+    showToast({ message: 'Angle removed', type: 'success' });
+  }, [waypoints, dispatch, showToast]);
 
   // Download single image
   const handleDownloadSingle = useCallback(async (waypoint: Waypoint, index: number) => {
@@ -578,11 +652,32 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       <div className="review-carousel-wrap" ref={carouselRef}>
         {waypoints.map((waypoint, index) => {
           const versionInfo = getVersionInfo(waypoint);
+          const isDragging = draggedId === waypoint.id;
+          const isDragOver = dragOverId === waypoint.id;
           return (
-            <div key={waypoint.id} className="review-card-clean">
+            <div
+              key={waypoint.id}
+              className={`review-card-clean ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, waypoint.id)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => handleDragOver(e, waypoint.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, waypoint.id)}
+            >
               {/* Card Header */}
               <div className="review-card-top">
                 <div className="review-card-top-left">
+                  <div className="review-card-drag-handle" title="Drag to reorder">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                      <circle cx="9" cy="6" r="1.5" />
+                      <circle cx="15" cy="6" r="1.5" />
+                      <circle cx="9" cy="12" r="1.5" />
+                      <circle cx="15" cy="12" r="1.5" />
+                      <circle cx="9" cy="18" r="1.5" />
+                      <circle cx="15" cy="18" r="1.5" />
+                    </svg>
+                  </div>
                   <span className="review-card-step-num">Step {index + 1}</span>
                   {waypoint.isOriginal && <span className="review-card-orig-tag">Original</span>}
                 </div>
@@ -624,6 +719,17 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                     )}
                   </div>
                 )}
+                {/* Delete button */}
+                <button
+                  className="review-card-delete-btn"
+                  onClick={() => handleDeleteWaypoint(waypoint.id)}
+                  title={waypoints.length <= 2 ? 'Minimum 2 angles required' : 'Remove this angle'}
+                  disabled={waypoints.length <= 2}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
 
               {/* Image - Expands to fill available vertical space */}
@@ -792,16 +898,16 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                     )}
                   </button>
 
-                  {/* Regenerate Button - Always same position */}
+                  {/* Regenerate Button - Always enabled to allow cancel & retry */}
                   <button
                     className={`review-card-btn regen ${waypoint.isOriginal ? 'invisible' : ''} ${waypoint.status === 'generating' ? 'loading' : ''}`}
                     onClick={() => handleRedo(waypoint)}
-                    disabled={waypoint.isOriginal || waypoint.status === 'generating'}
+                    disabled={waypoint.isOriginal}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Regenerate
+                    {waypoint.status === 'generating' ? 'Restart' : 'Regenerate'}
                   </button>
                 </div>
               </div>

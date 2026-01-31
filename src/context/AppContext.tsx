@@ -217,6 +217,19 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         }
       };
 
+    case 'REMOVE_SEGMENT':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          segments: state.currentProject.segments.filter(s => s.id !== action.payload),
+          // Clear final loop URL since segments changed
+          finalLoopUrl: undefined,
+          updatedAt: Date.now()
+        }
+      };
+
     case 'ADD_SEGMENT':
       if (!state.currentProject) return state;
       return {
@@ -423,6 +436,7 @@ interface AppContextType {
   updateWaypoint: (id: string, updates: Partial<Waypoint>) => void;
   reorderWaypoints: (ids: string[]) => void;
   updateSegment: (id: string, updates: Partial<Segment>) => void;
+  removeSegment: (id: string) => void;
   setProjectStatus: (status: ProjectStatus) => void;
   navigateToWaypoint: (index: number) => void;
   nextWaypoint: () => void;
@@ -530,6 +544,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dispatch({ type: 'UPDATE_SEGMENT', payload: { id, updates } });
   }, []);
 
+  const removeSegment = useCallback((id: string) => {
+    dispatch({ type: 'REMOVE_SEGMENT', payload: id });
+  }, []);
+
   const setProjectStatus = useCallback((status: ProjectStatus) => {
     dispatch({ type: 'SET_PROJECT_STATUS', payload: status });
   }, []);
@@ -595,6 +613,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateWaypoint,
     reorderWaypoints,
     updateSegment,
+    removeSegment,
     setProjectStatus,
     navigateToWaypoint,
     nextWaypoint,

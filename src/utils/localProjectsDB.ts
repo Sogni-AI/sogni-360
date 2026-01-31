@@ -95,8 +95,9 @@ export async function saveProject(project: Sogni360Project): Promise<void> {
 }
 
 /**
- * Sanitize a loaded project by clearing stale blob URLs
+ * Sanitize a loaded project by clearing stale blob URLs and resetting in-progress states
  * Blob URLs don't persist across page reloads, so they need to be cleared
+ * "generating" states need to be reset since progress is lost on refresh
  */
 function sanitizeLoadedProject(project: Sogni360Project): Sogni360Project {
   const sanitized = { ...project };
@@ -105,6 +106,42 @@ function sanitizeLoadedProject(project: Sogni360Project): Sogni360Project {
   if (sanitized.finalLoopUrl?.startsWith('blob:')) {
     console.log('[LocalDB] Clearing stale blob URL for finalLoopUrl');
     sanitized.finalLoopUrl = undefined;
+  }
+
+  // Reset waypoints that were stuck in "generating" state
+  // If they have an image, mark as ready; otherwise mark as pending
+  sanitized.waypoints = sanitized.waypoints.map(wp => {
+    if (wp.status === 'generating' || wp.enhancing) {
+      console.log(`[LocalDB] Resetting stuck waypoint ${wp.id} from generating state`);
+      return {
+        ...wp,
+        status: wp.imageUrl ? 'ready' : 'pending',
+        progress: 0,
+        enhancing: false,
+        enhancementProgress: 0
+      };
+    }
+    return wp;
+  });
+
+  // Reset segments that were stuck in "generating" state
+  // If they have a video, mark as ready; otherwise mark as pending
+  sanitized.segments = sanitized.segments.map(seg => {
+    if (seg.status === 'generating') {
+      console.log(`[LocalDB] Resetting stuck segment ${seg.id} from generating state`);
+      return {
+        ...seg,
+        status: seg.videoUrl ? 'ready' : 'pending',
+        progress: 0
+      };
+    }
+    return seg;
+  });
+
+  // Reset project status if it was stuck in a generating state
+  if (sanitized.status === 'generating-angles' || sanitized.status === 'generating-transitions') {
+    console.log(`[LocalDB] Resetting stuck project status from ${sanitized.status}`);
+    sanitized.status = 'draft';
   }
 
   // Note: S3 presigned URLs in waypoints/segments may also be expired,

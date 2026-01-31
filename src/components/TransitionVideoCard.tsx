@@ -4,6 +4,7 @@ import type { Segment } from '../types';
 interface TransitionVideoCardProps {
   segment: Segment;
   index: number;
+  totalSegments: number;
   thumbAspect: number;
   sourceAspectRatio: string;
   fromImageUrl?: string;
@@ -15,6 +16,7 @@ interface TransitionVideoCardProps {
   onNextVersion: () => void;
   onRegenerate: () => void;
   onDownload: () => void;
+  onDelete: () => void;
   isDownloading: boolean;
 }
 
@@ -24,6 +26,7 @@ interface TransitionVideoCardProps {
 const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   segment,
   index,
+  totalSegments,
   thumbAspect,
   sourceAspectRatio,
   fromImageUrl,
@@ -35,8 +38,11 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   onNextVersion,
   onRegenerate,
   onDownload,
+  onDelete,
   isDownloading
 }) => {
+  const isLastSegment = index === totalSegments - 1;
+  const canDelete = isLastSegment && totalSegments > 1;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -76,20 +82,33 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
       {/* Card Header */}
       <div className="transition-card-header">
         <span className="transition-card-title">Transition {index + 1}</span>
-        {segment.status === 'ready' && (
-          <span className="transition-status-pill ready">Ready</span>
-        )}
-        {segment.status === 'generating' && (
-          <span className="transition-status-pill generating">
-            {Math.round(segment.progress || 0)}%
-          </span>
-        )}
-        {segment.status === 'failed' && (
-          <span className="transition-status-pill failed">Failed</span>
-        )}
-        {segment.status === 'pending' && (
-          <span className="transition-status-pill pending">Pending</span>
-        )}
+        <div className="transition-header-right">
+          {segment.status === 'ready' && (
+            <span className="transition-status-pill ready">Ready</span>
+          )}
+          {segment.status === 'generating' && (
+            <span className="transition-status-pill generating">
+              {Math.round(segment.progress || 0)}%
+            </span>
+          )}
+          {segment.status === 'failed' && (
+            <span className="transition-status-pill failed">Failed</span>
+          )}
+          {segment.status === 'pending' && (
+            <span className="transition-status-pill pending">Pending</span>
+          )}
+          {/* Delete button - only visible for last segment */}
+          <button
+            className={`transition-delete-btn ${!canDelete ? 'hidden' : ''}`}
+            onClick={onDelete}
+            title={!isLastSegment ? 'Only the last transition can be removed' : totalSegments <= 1 ? 'At least one transition required' : 'Remove this transition'}
+            disabled={!canDelete}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Preview Area */}
@@ -240,16 +259,15 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
             Download
           </button>
 
-          {/* Regenerate Button */}
+          {/* Regenerate Button - always enabled to allow cancel & retry */}
           <button
-            className={`transition-action-btn regen ${segment.status === 'generating' ? 'disabled' : ''}`}
+            className="transition-action-btn regen"
             onClick={onRegenerate}
-            disabled={segment.status === 'generating'}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Regenerate
+            {segment.status === 'generating' ? 'Restart' : 'Regenerate'}
           </button>
         </div>
       </div>

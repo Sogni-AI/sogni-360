@@ -7,12 +7,12 @@ import {
   MIN_WAYPOINTS,
   MAX_WAYPOINTS,
   MULTI_ANGLE_PRESETS,
-  getAzimuthConfig,
-  getElevationConfig,
-  getDistanceConfig
+  AZIMUTHS,
+  ELEVATIONS,
+  DISTANCES
 } from '../constants/cameraAngleSettings';
 import type { MultiAnglePreset } from '../types/cameraAngle';
-import type { WorkflowStep } from './shared/WorkflowWizard';
+import WorkflowWizard, { WorkflowStep, computeWorkflowStep } from './shared/WorkflowWizard';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import AngleReviewPanel from './AngleReviewPanel';
@@ -21,23 +21,18 @@ import { useImageCostEstimation } from '../hooks/useImageCostEstimation';
 import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 
 interface WaypointEditorProps {
+  onClose: () => void;
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
   onRequireAuth?: () => void;
 }
 
-/**
- * Get a human-readable label for a waypoint's angle
- */
-function getAngleLabel(waypoint: Waypoint): string {
-  if (waypoint.isOriginal) return 'Original Image';
-  const az = getAzimuthConfig(waypoint.azimuth);
-  const el = getElevationConfig(waypoint.elevation);
-  const dist = getDistanceConfig(waypoint.distance);
-  return `${az.label} · ${el.label} · ${dist.label}`;
-}
-
-const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAction, onWorkflowStepClick, onRequireAuth }) => {
+const WaypointEditor: React.FC<WaypointEditorProps> = ({
+  onClose,
+  onConfirmDestructiveAction,
+  onWorkflowStepClick,
+  onRequireAuth
+}) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject, showAngleReview, isAuthenticated, hasUsedFreeGeneration } = state;
@@ -71,6 +66,9 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
     tokenType: currentProject?.settings.tokenType || 'spark',
     enabled: anglesToGenerate > 0
   });
+
+  // Workflow step
+  const { currentStep, completedSteps } = computeWorkflowStep(currentProject);
 
   const handleLoadPreset = useCallback((preset: MultiAnglePreset) => {
     const anglesToAdd = preset.angles.slice(0, MAX_WAYPOINTS);
@@ -207,7 +205,6 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
           onAllComplete: () => {
             setIsGenerating(false);
             dispatch({ type: 'SET_PROJECT_STATUS', payload: 'draft' });
-            // Play sound when all angles complete
             playSogniSignatureIfEnabled();
           }
         }
@@ -223,7 +220,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
       }
       showToast({ message: 'Generation failed: ' + (error instanceof Error ? error.message : 'Unknown error'), type: 'error' });
     }
-  }, [currentProject, waypoints, dispatch, showToast]);
+  }, [currentProject, waypoints, dispatch, showToast, selectedPresetKey]);
 
   // Handle generate button click - confirms if work would be lost
   const handleGenerateAngles = useCallback(() => {
@@ -276,7 +273,6 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
   const handleReviewApply = useCallback(() => {
     dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
     dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: false });
-    // Automatically open transition config panel
     dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
   }, [dispatch]);
 
@@ -296,97 +292,93 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
   }
 
   return (
-    <div className="waypoint-editor-timeline">
-      {/* Header with presets */}
-      <div className="timeline-header">
-        <div className="timeline-title">
-          <h2>Timeline Editor</h2>
-          <p className="timeline-subtitle">
-            Create a sequence of camera angles. Each step will generate a new perspective.
-          </p>
-        </div>
-        <div className="preset-tabs">
-          {MULTI_ANGLE_PRESETS.map((preset) => (
-            <button
-              key={preset.key}
-              className={`preset-tab ${selectedPresetKey === preset.key ? 'active' : ''}`}
-              onClick={() => handleLoadPreset(preset)}
-              disabled={isGenerating}
-            >
-              <span className="preset-icon">{preset.icon}</span>
-              <span className="preset-label">{preset.label}</span>
-            </button>
-          ))}
-          <button
-            className={`preset-tab ${selectedPresetKey === 'custom' ? 'active' : ''}`}
-            onClick={() => setSelectedPresetKey('custom')}
-            disabled={isGenerating}
-          >
-            <span className="preset-icon">✏️</span>
-            <span className="preset-label">Custom</span>
-          </button>
-        </div>
+    <div className="config-panel">
+      {/* Wizard Progress Bar */}
+      <div className="review-wizard-wrap">
+        <WorkflowWizard
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+          onStepClick={onWorkflowStepClick}
+        />
       </div>
 
-      {/* Timeline track */}
-      <div className="timeline-track" ref={carouselRef}>
-        <div className="timeline-steps">
-          {waypoints.map((waypoint, index) => (
-            <div key={waypoint.id} className="timeline-step">
-              {/* Connector line (except first) */}
-              {index > 0 && <div className="timeline-connector" />}
+      {/* Header */}
+      <div className="config-header-bar">
+        <div>
+          <h2 className="config-main-title">Configure Camera Angles</h2>
+          <p className="config-main-subtitle">{waypoints.length} angles configured</p>
+        </div>
+        <button className="review-close" onClick={onClose}>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
-              {/* Step card */}
-              <div className={`step-card ${waypoint.isOriginal ? 'is-original' : ''}`}>
-                {/* Delete button */}
-                {waypoints.length > 1 && (
-                  <button
-                    className="step-delete"
-                    onClick={() => handleRemoveWaypoint(waypoint.id)}
-                    disabled={isGenerating}
-                    title="Remove angle"
-                  >
-                    ×
-                  </button>
-                )}
+      {/* Preset Tabs */}
+      <div className="config-preset-bar">
+        {MULTI_ANGLE_PRESETS.map((preset) => (
+          <button
+            key={preset.key}
+            className={`preset-chip ${selectedPresetKey === preset.key ? 'active' : ''}`}
+            onClick={() => handleLoadPreset(preset)}
+            disabled={isGenerating}
+          >
+            <span className="preset-chip-icon">{preset.icon}</span>
+            <span className="preset-chip-label">{preset.label}</span>
+          </button>
+        ))}
+        <button
+          className={`preset-chip ${selectedPresetKey === 'custom' ? 'active' : ''}`}
+          onClick={() => setSelectedPresetKey('custom')}
+          disabled={isGenerating}
+        >
+          <span className="preset-chip-icon">✏️</span>
+          <span className="preset-chip-label">Custom</span>
+        </button>
+      </div>
 
-                {/* Step header */}
-                <div className="step-header">
-                  <div className="step-number">Step {index + 1}</div>
-                  {waypoint.isOriginal && (
-                    <span className="original-badge">Original</span>
+      {/* Carousel - Cards expand to fill vertical space */}
+      <div className="config-carousel-wrap" ref={carouselRef}>
+        {waypoints.map((waypoint, index) => (
+          <div key={waypoint.id} className="config-card">
+            {/* Card Header */}
+            <div className="config-card-top">
+              <div className="config-card-top-left">
+                <span className="config-card-step-num">Step {index + 1}</span>
+                {waypoint.isOriginal && <span className="config-card-orig-tag">Original</span>}
+              </div>
+              {/* Delete button */}
+              {waypoints.length > 1 && (
+                <button
+                  className="config-card-delete"
+                  onClick={() => handleRemoveWaypoint(waypoint.id)}
+                  disabled={isGenerating}
+                  title="Remove angle"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Main Content Area - Image or 3D Control */}
+            <div className="config-card-main">
+              {waypoint.isOriginal ? (
+                // Original: Show source image
+                currentProject?.sourceImageUrl ? (
+                  <img src={currentProject.sourceImageUrl} alt="Original" />
+                ) : (
+                  <div className="config-card-placeholder">No image</div>
+                )
+              ) : (
+                // Non-original: Show source image dimmed with 3D control overlay
+                <>
+                  {currentProject?.sourceImageUrl && (
+                    <img src={currentProject.sourceImageUrl} alt="Preview" className="dimmed" />
                   )}
-                </div>
-
-                {/* Angle label */}
-                <div className="step-angle-label">
-                  {getAngleLabel(waypoint)}
-                </div>
-
-                {/* Use original toggle */}
-                <label className="step-original-toggle">
-                  <input
-                    type="checkbox"
-                    checked={waypoint.isOriginal || false}
-                    onChange={() => handleToggleOriginal(waypoint)}
-                    disabled={isGenerating}
-                  />
-                  <span>Use original image</span>
-                </label>
-
-                {/* Original image preview */}
-                {waypoint.isOriginal && currentProject?.sourceImageUrl && (
-                  <div className="step-original-preview">
-                    <img
-                      src={currentProject.sourceImageUrl}
-                      alt="Original"
-                    />
-                  </div>
-                )}
-
-                {/* 3D Control for non-original angles */}
-                {!waypoint.isOriginal && (
-                  <div className="step-3d-control">
+                  <div className="config-card-3d-overlay">
                     <CameraAngle3DControl
                       azimuth={waypoint.azimuth}
                       elevation={waypoint.elevation}
@@ -394,71 +386,116 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
                       onAzimuthChange={(azimuth) => handleUpdateWaypoint(waypoint.id, { azimuth })}
                       onElevationChange={(elevation) => handleUpdateWaypoint(waypoint.id, { elevation })}
                       onDistanceChange={(distance) => handleUpdateWaypoint(waypoint.id, { distance })}
-                      size="card"
+                      size="full"
                     />
                   </div>
-                )}
+                </>
+              )}
 
-                {/* Status indicator */}
-                {waypoint.status === 'ready' && !waypoint.isOriginal && (
-                  <div className="step-status ready">Generated</div>
-                )}
-                {waypoint.status === 'pending' && !waypoint.isOriginal && (
-                  <div className="step-status pending">Pending</div>
-                )}
-                {waypoint.status === 'failed' && (
-                  <div className="step-status failed">Failed</div>
-                )}
-              </div>
+              {/* Status badge for original */}
+              {waypoint.isOriginal && (
+                <div className="config-card-check">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
             </div>
-          ))}
 
-          {/* Add angle button */}
-          {waypoints.length < MAX_WAYPOINTS && (
-            <div className="timeline-step">
-              {waypoints.length > 0 && <div className="timeline-connector" />}
-              <button
-                className="step-card add-step"
-                onClick={handleAddWaypoint}
-                disabled={isGenerating}
-              >
-                <div className="add-step-icon">+</div>
-                <div className="add-step-label">Add Step</div>
-                <div className="add-step-count">{waypoints.length}/{MAX_WAYPOINTS}</div>
-              </button>
+            {/* Info Section */}
+            <div className="config-card-info">
+              {waypoint.isOriginal ? (
+                <div className="config-card-angle">Original Image</div>
+              ) : (
+                <div className="config-card-angle-selectors">
+                  <select
+                    className="angle-select"
+                    value={waypoint.azimuth}
+                    onChange={(e) => handleUpdateWaypoint(waypoint.id, { azimuth: e.target.value as AzimuthKey })}
+                    disabled={isGenerating}
+                  >
+                    {AZIMUTHS.map(az => (
+                      <option key={az.key} value={az.key}>{az.label}</option>
+                    ))}
+                  </select>
+                  <span className="angle-separator">·</span>
+                  <select
+                    className="angle-select"
+                    value={waypoint.elevation}
+                    onChange={(e) => handleUpdateWaypoint(waypoint.id, { elevation: e.target.value as ElevationKey })}
+                    disabled={isGenerating}
+                  >
+                    {ELEVATIONS.map(el => (
+                      <option key={el.key} value={el.key}>{el.label}</option>
+                    ))}
+                  </select>
+                  <span className="angle-separator">·</span>
+                  <select
+                    className="angle-select"
+                    value={waypoint.distance}
+                    onChange={(e) => handleUpdateWaypoint(waypoint.id, { distance: e.target.value as DistanceKey })}
+                    disabled={isGenerating}
+                  >
+                    {DISTANCES.map(d => (
+                      <option key={d.key} value={d.key}>{d.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Use original toggle */}
+              <label className="config-card-original-toggle">
+                <input
+                  type="checkbox"
+                  checked={waypoint.isOriginal || false}
+                  onChange={() => handleToggleOriginal(waypoint)}
+                  disabled={isGenerating}
+                />
+                <span>Use original image</span>
+              </label>
             </div>
-          )}
-        </div>
+          </div>
+        ))}
+
+        {/* Add Step Card */}
+        {waypoints.length < MAX_WAYPOINTS && (
+          <button
+            className="config-card config-card-add"
+            onClick={handleAddWaypoint}
+            disabled={isGenerating}
+          >
+            <div className="config-card-add-content">
+              <div className="config-card-add-icon">+</div>
+              <div className="config-card-add-label">Add Step</div>
+              <div className="config-card-add-count">{waypoints.length}/{MAX_WAYPOINTS}</div>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Footer */}
-      <div className="timeline-footer">
-        <div className="cost-estimate">
-          <div className="cost-breakdown">
-            {anglesToGenerate} angle{anglesToGenerate !== 1 ? 's' : ''} to generate
-          </div>
-          <div className="cost-total">
-            {costLoading ? (
-              <span className="cost-loading">Calculating...</span>
-            ) : (
-              <>{formattedCost} spark ≈ {formattedUSD}</>
-            )}
-          </div>
+      <div className="config-footer-bar">
+        <div className="config-status-tags">
+          <span className="status-tag pending">
+            {anglesToGenerate} to generate
+          </span>
+          <span className="config-cost">
+            {costLoading ? 'Calculating...' : `${formattedCost} spark ≈ ${formattedUSD}`}
+          </span>
         </div>
-        <div className="footer-actions">
-          <button
-            className="btn btn-ghost"
-            onClick={() => dispatch({ type: 'SET_SHOW_WAYPOINT_EDITOR', payload: false })}
-            disabled={isGenerating}
-          >
+        <div className="config-footer-actions">
+          <button className="config-btn cancel" onClick={onClose} disabled={isGenerating}>
             Cancel
           </button>
           <button
-            className={`btn ${canGenerate ? 'btn-primary' : 'btn-disabled'}`}
+            className={`config-btn primary ${!canGenerate ? 'disabled' : ''}`}
             onClick={handleGenerateAngles}
             disabled={!canGenerate}
           >
             {isGenerating ? 'Generating...' : `Generate ${anglesToGenerate} Angle${anglesToGenerate !== 1 ? 's' : ''}`}
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>
