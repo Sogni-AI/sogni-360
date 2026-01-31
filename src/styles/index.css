@@ -373,53 +373,323 @@ html, body {
   pointer-events: none;
 }
 
-/* Upload area styling */
+/* ========================================
+   PREMIUM UPLOAD AREA STYLING
+   DJI-inspired glassmorphism and animations
+   ======================================== */
+
+/* Animated gradient glow keyframes */
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes borderRotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes orbitalSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floatUp {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-100px) translateX(10px);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Upload area wrapper */
+.upload-area-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
 .upload-area {
-  border: 2px dashed rgba(255, 255, 255, 0.3);
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1rem;
-  padding: 3rem;
+  padding: 2.5rem 3rem;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+  min-width: 280px;
+}
+
+/* Animated border gradient */
+.upload-area::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 1rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.3)
+  );
+  background-size: 200% 200%;
+  animation: borderRotate 3s ease infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .upload-area:hover {
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.7);
+  transform: translateY(-2px);
 }
 
 .upload-area.dragover {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px) scale(1.01);
 }
 
+/* Upload icon with orbital animation */
+.upload-orbital-icon {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 1;
+}
+
+.upload-icon-circle svg {
+  width: 28px;
+  height: 28px;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 2;
+  fill: none;
+}
+
+.orbital-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  margin: -50px 0 0 -50px;
+  border: 2px solid transparent;
+  border-top-color: rgba(59, 130, 246, 0.8);
+  border-right-color: rgba(147, 51, 234, 0.6);
+  border-radius: 50%;
+  animation: orbitalSpin 3s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.4));
+}
+
+.orbital-ring::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  border: 1.5px solid transparent;
+  border-bottom-color: rgba(236, 72, 153, 0.6);
+  border-left-color: rgba(59, 130, 246, 0.4);
+  border-radius: 50%;
+  animation: orbitalSpin 2s linear infinite reverse;
+}
+
+/* Upload text styling */
+.upload-text {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.upload-text-secondary {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+/* Title with animated gradient */
+.uploader-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #a5b4fc 20%,
+    #c4b5fd 40%,
+    #f0abfc 60%,
+    #c4b5fd 80%,
+    #ffffff 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 60px rgba(168, 85, 247, 0.3);
+}
+
+.uploader-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+/* Floating particles container */
+.upload-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.upload-particle {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.8) 0%, rgba(59, 130, 246, 0.4) 100%);
+  border-radius: 50%;
+  animation: floatUp 5s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(147, 51, 234, 0.5);
+}
+
+.upload-particle:nth-child(1) {
+  left: 15%;
+  bottom: 10%;
+  animation-delay: 0s;
+}
+
+.upload-particle:nth-child(2) {
+  left: 35%;
+  bottom: 5%;
+  animation-delay: 1s;
+  width: 4px;
+  height: 4px;
+}
+
+.upload-particle:nth-child(3) {
+  left: 65%;
+  bottom: 15%;
+  animation-delay: 2s;
+}
+
+.upload-particle:nth-child(4) {
+  left: 85%;
+  bottom: 8%;
+  animation-delay: 3s;
+  width: 3px;
+  height: 3px;
+}
+
+.upload-particle:nth-child(5) {
+  left: 50%;
+  bottom: 3%;
+  animation-delay: 4s;
+  width: 4px;
+  height: 4px;
+}
+
+/* Load projects button - premium style */
 .uploader-load-projects-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   margin-top: 1.5rem;
-  padding: 0.75rem 1.25rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.5rem;
-  color: rgba(255, 255, 255, 0.8);
+  padding: 0.875rem 1.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.9375rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
 }
 
 .uploader-load-projects-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
   color: white;
+  transform: translateY(-1px);
 }
 
 .uploader-load-projects-btn svg {
   width: 20px;
   height: 20px;
+  opacity: 0.8;
 }
 
 /* Demo Video Background - 6-tile grid of showcase videos */
@@ -509,14 +779,77 @@ html, body {
   padding: 2rem;
 }
 
-/* Upload area adjustments for video background context */
-.upload-area {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+/* Frame container - centers all content */
+.uploader-frame {
+  position: relative;
+  padding: 3rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.upload-area:hover {
-  background: rgba(0, 0, 0, 0.7);
+/* Badge/tagline at bottom */
+.uploader-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.uploader-badge svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+/* Mobile responsive adjustments for uploader */
+@media (max-width: 767px) {
+  .uploader-title {
+    font-size: 2.5rem;
+  }
+
+  .uploader-subtitle {
+    font-size: 1rem;
+  }
+
+  .uploader-frame {
+    padding: 2rem 1.5rem;
+  }
+
+  .uploader-frame::before,
+  .uploader-frame::after {
+    width: 40px;
+    height: 40px;
+  }
+
+  .upload-area {
+    padding: 2rem;
+    min-width: 240px;
+  }
+
+  .upload-orbital-icon {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 1rem;
+  }
+
+  .orbital-ring {
+    width: 80px;
+    height: 80px;
+    margin: -40px 0 0 -40px;
+  }
+
+  .upload-area-glow {
+    filter: blur(25px);
+  }
 }
 
 /* Button styles */

@@ -102,53 +102,86 @@ const SourceUploader: React.FC = () => {
 
       {/* Main content */}
       <div className="source-uploader-content">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Sogni 360</h1>
-          <p className="text-gray-400 text-lg">Create immersive 360° orbital portraits</p>
-        </div>
+        <div className="uploader-frame">
+          <div className="text-center mb-8">
+            <h1 className="uploader-title">Sogni 360</h1>
+            <p className="uploader-subtitle">Create immersive 360° orbital portraits</p>
+          </div>
 
-        <div
-          className={`upload-area ${isDragOver ? 'dragover' : ''}`}
-          onClick={handleClick}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
+          <div className="upload-area-wrapper">
+            <div
+              className={`upload-area ${isDragOver ? 'dragover' : ''}`}
+              onClick={handleClick}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
+              {/* Floating particles */}
+              <div className="upload-particles">
+                <div className="upload-particle" />
+                <div className="upload-particle" />
+                <div className="upload-particle" />
+                <div className="upload-particle" />
+                <div className="upload-particle" />
+              </div>
 
-          {isLoading ? (
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-white">Processing...</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-white">Processing...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Upload icon with rotating orbital rings */}
+                  <div className="upload-orbital-icon">
+                    <div className="orbital-ring" />
+                    <div className="upload-icon-circle">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 16V4M12 4L8 8M12 4L16 8" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="upload-text">
+                    Drop an image or tap to upload
+                  </p>
+                  <p className="upload-text-secondary">
+                    PNG, JPG up to 20MB
+                  </p>
+                </>
+              )}
             </div>
-          ) : (
-            <>
-              <div className="text-5xl mb-4">📷</div>
-              <p className="text-white text-lg">
-                Drop an image or tap to upload
-              </p>
-            </>
-          )}
-        </div>
+          </div>
 
-        {projectCount > 0 && (
-          <button
-            className="uploader-load-projects-btn"
-            onClick={handleOpenProjects}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          {projectCount > 0 && (
+            <button
+              className="uploader-load-projects-btn"
+              onClick={handleOpenProjects}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              Load Existing Project ({projectCount})
+            </button>
+          )}
+
+          {/* Powered by badge */}
+          <div className="uploader-badge">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            Load Existing Project ({projectCount})
-          </button>
-        )}
+            Powered by Sogni Supernet
+          </div>
+        </div>
       </div>
     </div>
   );

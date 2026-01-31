@@ -4,7 +4,7 @@
  * These videos are automatically synced to R2 from the ./demo folder
  * using the sync-demo-videos.mjs script.
  *
- * Auto-generated on: 2026-01-31T02:44:22.590Z
+ * Auto-generated on: 2026-01-31T03:14:09.719Z
  */
 
 export interface DemoVideo {
@@ -52,11 +52,11 @@ export const DEMO_VIDEOS: DemoVideo[] = [
     "size": 3219784
   },
   {
-    "id": "sogni-360-loop-vance-1769765109995",
-    "title": "Vance",
-    "filename": "sogni-360-loop-vance-1769765109995.MP4",
-    "url": "https://pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev/sogni-360/demo-videos/sogni-360-loop-vance-1769765109995.MP4",
-    "size": 1154901
+    "id": "multi-angle-transition-vance-shark",
+    "title": "Multi Angle Transition Vance Shark",
+    "filename": "multi-angle-transition-vance-shark.mp4",
+    "url": "https://pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev/sogni-360/demo-videos/multi-angle-transition-vance-shark.mp4",
+    "size": 2834669
   }
 ];
 
