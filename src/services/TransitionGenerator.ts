@@ -163,6 +163,7 @@ async function generateWithFrontendSDK(
     steps: qualityConfig.steps,
     guidance: 5,
     frames: frames,
+    fps: DEFAULT_VIDEO_SETTINGS.fps, // Output video FPS (32fps for smooth playback)
     numberOfMedia: 1,
     numberOfPreviews: 3,
     sampler: 'euler' as const,
@@ -311,6 +312,7 @@ async function generateWithBackendAPI(
     width: videoDimensions.width,
     height: videoDimensions.height,
     frames,
+    fps: DEFAULT_VIDEO_SETTINGS.fps, // Output video FPS (32fps for smooth playback)
     steps: qualityConfig.steps,
     model: qualityConfig.model,
     tokenType

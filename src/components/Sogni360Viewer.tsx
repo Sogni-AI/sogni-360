@@ -28,14 +28,13 @@ const Sogni360Viewer: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const content = getCurrentContent();
 
-  // Local state to track when DOM video element is actually ready to play
-  // This is separate from the preload cache - the actual video element needs to load too
-  const [isVideoElementReady, setIsVideoElementReady] = useState(false);
+  // Track which video URL is ready to play (not just a boolean)
+  // This prevents race conditions when rapidly switching videos - the old "ready" state
+  // won't match the new URL, so opacity stays at 0 until the new video is actually ready
+  const [readyVideoUrl, setReadyVideoUrl] = useState<string | null>(null);
 
-  // Reset video ready state when content URL changes
-  useEffect(() => {
-    setIsVideoElementReady(false);
-  }, [content?.url]);
+  // Video is ready only if the ready URL matches the current content URL
+  const isVideoElementReady = content?.type === 'video' && readyVideoUrl === content?.url;
 
   // Check if sequence is complete (has transitions to play)
   const waypoints = currentProject?.waypoints || [];
@@ -141,7 +140,7 @@ const Sogni360Viewer: React.FC = () => {
     // Start animation when video is ready
     const startReverse = () => {
       if (video.duration && video.duration > 0) {
-        setIsVideoElementReady(true);
+        setReadyVideoUrl(content?.url || null);
         video.currentTime = video.duration;
         lastTimeRef.current = 0;
         reverseAnimationRef.current = requestAnimationFrame(animateReverse);
@@ -312,7 +311,7 @@ const Sogni360Viewer: React.FC = () => {
             // Video is actually rendering frames now - safe to show
             // This prevents flicker on iOS where canplaythrough fires before frames render
             if (!playReverse) {
-              setIsVideoElementReady(true);
+              setReadyVideoUrl(content.url);
             }
           }}
           onEnded={playReverse ? undefined : handleTransitionEnd}

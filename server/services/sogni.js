@@ -401,6 +401,7 @@ export async function generateVideo(client, params, progressCallback, localProje
     steps: params.inferenceSteps || 4,
     guidance: params.promptGuidance || 5,
     frames: params.frames || 49,
+    fps: params.fps || 32, // Output video FPS (32fps for smooth playback)
     numberOfMedia: 1,
     numberOfPreviews: 3,
     sampler: params.sampler || 'euler',

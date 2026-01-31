@@ -303,6 +303,7 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
       width = 720,
       height = 720,
       frames = 49,
+      fps = 32,           // Output video FPS (32fps for smooth playback)
       steps = 4,
       model = 'wan_v2.2-14b-fp8_i2v_lightx2v',
       tokenType = 'spark'
@@ -367,6 +368,7 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
       width,
       height,
       frames,
+      fps,
       inferenceSteps: steps,
       promptGuidance: 5,
       sampler: 'euler',

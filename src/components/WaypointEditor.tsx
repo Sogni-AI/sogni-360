@@ -56,6 +56,13 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     }
   }, [waypoints.length]);
 
+  // Reset scroll position to the start when component mounts
+  useEffect(() => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollLeft = 0;
+    }
+  }, []);
+
   useEffect(() => {
     return () => { hasAutoLoadedPreset.current = false; };
   }, []);

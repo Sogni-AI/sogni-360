@@ -17,6 +17,30 @@ import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 // Key for persisting free generation usage in localStorage
 const FREE_GENERATION_KEY = 'sogni360_has_used_free_generation';
 
+/**
+ * Strip ephemeral fields from project for save comparison.
+ * These fields are transient (progress state, worker info) and should NOT:
+ * 1. Trigger saves when they change
+ * 2. Be persisted to storage (we don't restore them anyway)
+ */
+const getProjectForSaveComparison = (project: Sogni360Project): Sogni360Project => {
+  return {
+    ...project,
+    // Strip ephemeral fields from waypoints
+    waypoints: project.waypoints.map(wp => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { progress, enhancing, enhancementProgress, ...persistentFields } = wp;
+      return persistentFields;
+    }),
+    // Strip ephemeral fields from segments
+    segments: project.segments.map(seg => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { progress, workerName, ...persistentFields } = seg;
+      return persistentFields;
+    })
+  };
+};
+
 // Check if free generation has been used (from localStorage)
 const getHasUsedFreeGeneration = (): boolean => {
   try {
@@ -561,15 +585,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // Check if project actually changed
-    const projectJson = JSON.stringify(state.currentProject);
+    // Strip ephemeral fields (progress, workerName, etc.) for comparison
+    // These change frequently during generation but aren't worth persisting
+    const projectForComparison = getProjectForSaveComparison(state.currentProject);
+    const projectJson = JSON.stringify(projectForComparison);
+
+    // Check if persistent fields actually changed
     if (projectJson === lastSavedProjectRef.current) return;
 
     // Debounced save
     const saveDebounced = debounce(async () => {
       try {
-        console.log('[AppContext] Auto-saving project:', state.currentProject?.id);
-        await saveCurrentProject(state.currentProject!);
+        // Save the stripped version (without ephemeral fields)
+        const projectToSave = getProjectForSaveComparison(state.currentProject!);
+        console.log('[AppContext] Auto-saving project:', projectToSave.id);
+        await saveCurrentProject(projectToSave);
         lastSavedProjectRef.current = projectJson;
         console.log('[AppContext] Project saved successfully');
       } catch (error) {

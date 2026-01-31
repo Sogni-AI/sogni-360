@@ -142,6 +142,7 @@ class ApiClient {
     width?: number;
     height?: number;
     frames?: number;
+    fps?: number;  // Output video FPS (32fps for smooth playback)
     steps?: number;
     model?: string;
     tokenType?: 'spark' | 'sogni';
@@ -175,6 +176,7 @@ class ApiClient {
         width: params.width || 720,  // Default to 720p if not specified
         height: params.height || 720,
         frames: params.frames || 49,
+        fps: params.fps || 32,  // Output video FPS (32fps for smooth playback)
         steps: params.steps || 4,
         model: params.model || 'wan_v2.2-14b-fp8_i2v_lightx2v',
         tokenType: params.tokenType || 'spark',

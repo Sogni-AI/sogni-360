@@ -80,8 +80,12 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     await handleMusicConfirm(selection);
   }, [handleMusicConfirm]);
 
-  // All steps completed up to export
+  // Compute completed steps dynamically based on stitching state
   const completedSteps: WorkflowStep[] = ['upload', 'define-angles', 'render-angles', 'render-videos'];
+  // Add 'export' to completed steps when stitching is done
+  if (localStitchedUrl && !isStitching) {
+    completedSteps.push('export');
+  }
 
   return (
     <div className="final-video-panel">
