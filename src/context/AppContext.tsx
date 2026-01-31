@@ -545,10 +545,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.log('[AppContext] Restored project:', project.id, project.name);
 
           // Try to restore cached video if project has segments but no finalLoopUrl
-          const hasReadySegments = project.segments?.some(s => s.status === 'ready' && s.videoUrl);
-          if (hasReadySegments && !project.finalLoopUrl) {
+          const readySegmentUrls = project.segments
+            ?.filter(s => s.status === 'ready' && s.videoUrl)
+            .map(s => s.videoUrl) as string[] | undefined;
+          if (readySegmentUrls && readySegmentUrls.length > 0 && !project.finalLoopUrl) {
             try {
-              const cachedBlob = await loadStitchedVideo(project.id);
+              // Pass video URLs for validation - ensures cached video matches current segments
+              const cachedBlob = await loadStitchedVideo(project.id, readySegmentUrls);
               if (cachedBlob) {
                 console.log('[AppContext] Restoring cached final video');
                 const blobUrl = URL.createObjectURL(cachedBlob);
@@ -684,10 +687,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const project = await loadProject(projectId);
       if (project) {
         // Try to restore cached video if project has segments but no finalLoopUrl
-        const hasReadySegments = project.segments?.some(s => s.status === 'ready' && s.videoUrl);
-        if (hasReadySegments && !project.finalLoopUrl) {
+        const readySegmentUrls = project.segments
+          ?.filter(s => s.status === 'ready' && s.videoUrl)
+          .map(s => s.videoUrl) as string[] | undefined;
+        if (readySegmentUrls && readySegmentUrls.length > 0 && !project.finalLoopUrl) {
           try {
-            const cachedBlob = await loadStitchedVideo(project.id);
+            // Pass video URLs for validation - ensures cached video matches current segments
+            const cachedBlob = await loadStitchedVideo(project.id, readySegmentUrls);
             if (cachedBlob) {
               console.log('[AppContext] Restoring cached final video for project:', projectId);
               const blobUrl = URL.createObjectURL(cachedBlob);
