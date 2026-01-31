@@ -15,7 +15,9 @@ import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 import EnhancePromptPopup from './shared/EnhancePromptPopup';
+import AddAnglePopup from './AddAnglePopup';
 import { trackDownload } from '../utils/analytics';
+import { ensureDataUrl } from '../utils/imageUtils';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
@@ -53,6 +55,10 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const [showEnhancePopup, setShowEnhancePopup] = useState(false);
   const [pendingEnhanceWaypoint, setPendingEnhanceWaypoint] = useState<Waypoint | null>(null);
   const [isEnhanceAllMode, setIsEnhanceAllMode] = useState(false);
+
+  // Add angle popup state
+  const [showAddAnglePopup, setShowAddAnglePopup] = useState(false);
+  const [insertAfterIndex, setInsertAfterIndex] = useState(-1);
 
   // Reference image selection for regeneration (waypointId -> 'original' | otherWaypointId)
   const [referenceSelections, setReferenceSelections] = useState<Record<string, string>>({});
@@ -140,7 +146,10 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     if (!currentProject?.sourceImageUrl || waypoint.isOriginal) return;
 
     // Get the reference image (either original or another generated angle)
-    const referenceImageUrl = getReferenceImageUrl(waypoint.id) || currentProject.sourceImageUrl;
+    const rawReferenceUrl = getReferenceImageUrl(waypoint.id) || currentProject.sourceImageUrl;
+
+    // Convert blob URLs to data URLs so the backend can access them
+    const referenceImageUrl = await ensureDataUrl(rawReferenceUrl);
 
     // Get effective angle values (with any overrides applied)
     const effectiveAngles = getEffectiveAngle(waypoint);
@@ -363,6 +372,21 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     dispatch({ type: 'REMOVE_WAYPOINT', payload: waypointId });
     showToast({ message: 'Angle removed', type: 'success' });
   }, [waypoints, dispatch, showToast]);
+
+  // Add angle handlers
+  const handleAddAngleClick = useCallback((afterIndex: number) => {
+    setInsertAfterIndex(afterIndex);
+    setShowAddAnglePopup(true);
+  }, []);
+
+  const handleInsertAngle = useCallback((waypoint: Waypoint) => {
+    dispatch({
+      type: 'INSERT_WAYPOINT',
+      payload: { afterIndex: insertAfterIndex, waypoint }
+    });
+    showToast({ message: 'Angle added', type: 'success' });
+    setShowAddAnglePopup(false);
+  }, [dispatch, insertAfterIndex, showToast]);
 
   // Download single image
   const handleDownloadSingle = useCallback(async (waypoint: Waypoint, index: number) => {
@@ -655,16 +679,28 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
           const isDragging = draggedId === waypoint.id;
           const isDragOver = dragOverId === waypoint.id;
           return (
-            <div
-              key={waypoint.id}
-              className={`review-card-clean ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, waypoint.id)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, waypoint.id)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, waypoint.id)}
-            >
+            <React.Fragment key={waypoint.id}>
+              {/* Add button before first card */}
+              {index === 0 && (
+                <button
+                  className="review-add-angle-btn"
+                  onClick={() => handleAddAngleClick(-1)}
+                  title="Add angle before"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              )}
+              <div
+                className={`review-card-clean ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, waypoint.id)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, waypoint.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, waypoint.id)}
+              >
               {/* Card Header */}
               <div className="review-card-top">
                 <div className="review-card-top-left">
@@ -736,13 +772,13 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               <div className="review-card-img">
                 {waypoint.imageUrl ? (
                   <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} />
-                ) : currentProject?.sourceImageUrl ? (
+                ) : (
                   <img
-                    src={currentProject.sourceImageUrl}
+                    src={getReferenceImageUrl(waypoint.id) || currentProject?.sourceImageUrl}
                     alt={`Step ${index + 1}`}
-                    className={waypoint.status === 'generating' ? 'dimmed' : ''}
+                    className={waypoint.status === 'generating' ? 'dimmed' : 'pending-preview'}
                   />
-                ) : null}
+                )}
 
                 {/* Status overlays */}
                 {waypoint.status === 'generating' && (
@@ -911,7 +947,18 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
+              </div>
+              {/* Add button after each card */}
+              <button
+                className="review-add-angle-btn"
+                onClick={() => handleAddAngleClick(index)}
+                title="Add angle after"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </React.Fragment>
           );
         })}
       </div>
@@ -1024,6 +1071,15 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
           ? waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl && !wp.enhancing).length
           : 1}
         tokenType={currentProject?.settings.tokenType || 'spark'}
+      />
+
+      {/* Add Angle Popup */}
+      <AddAnglePopup
+        isOpen={showAddAnglePopup}
+        onClose={() => setShowAddAnglePopup(false)}
+        insertAfterIndex={insertAfterIndex}
+        sourceImageDimensions={currentProject?.sourceImageDimensions || { width: 896, height: 1152 }}
+        onInsertAngle={handleInsertAngle}
       />
     </div>
   );

@@ -409,6 +409,7 @@
   background: linear-gradient(135deg, #0d9488 0%, #0e7490 100%);
   opacity: 0;
   transition: opacity 0.2s ease;
+  z-index: -1;
 }
 
 .claim-button:hover::before {

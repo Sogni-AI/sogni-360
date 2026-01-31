@@ -14,6 +14,53 @@ import type { MultiAnglePreset } from '../types/cameraAngle';
 
 // Model configuration for camera angle generation
 export const CAMERA_ANGLE_MODEL = 'qwen_image_edit_2511_fp8_lightning';
+export const CAMERA_ANGLE_MODEL_STANDARD = 'qwen_image_edit_2511_fp8';
+
+// Model definitions with their parameter ranges
+export type ImageModelId = 'qwen_image_edit_2511_fp8_lightning' | 'qwen_image_edit_2511_fp8';
+
+export interface ModelConfig {
+  id: ImageModelId;
+  label: string;
+  description: string;
+  steps: {
+    min: number;
+    max: number;
+    default: number;
+  };
+  guidance: {
+    min: number;
+    max: number;
+    default: number;
+  };
+}
+
+export const IMAGE_MODELS: Record<ImageModelId, ModelConfig> = {
+  'qwen_image_edit_2511_fp8_lightning': {
+    id: 'qwen_image_edit_2511_fp8_lightning',
+    label: 'Qwen Image Edit 2511 Lightning',
+    description: 'Fast generation (4-8 steps)',
+    steps: { min: 4, max: 8, default: 8 },
+    guidance: { min: 1, max: 2, default: 1 }
+  },
+  'qwen_image_edit_2511_fp8': {
+    id: 'qwen_image_edit_2511_fp8',
+    label: 'Qwen Image Edit 2511',
+    description: 'Higher quality (4-50 steps)',
+    steps: { min: 4, max: 50, default: 25 },
+    guidance: { min: 1, max: 4, default: 2.5 }
+  }
+} as const;
+
+// Get default model config
+export function getDefaultModelConfig(): ModelConfig {
+  return IMAGE_MODELS[CAMERA_ANGLE_MODEL];
+}
+
+// Get model config by ID
+export function getModelConfig(modelId: ImageModelId): ModelConfig {
+  return IMAGE_MODELS[modelId] || IMAGE_MODELS[CAMERA_ANGLE_MODEL];
+}
 
 // LoRA configuration - using LoRA IDs (resolved to filenames by worker via config API)
 export const CAMERA_ANGLE_LORA = {

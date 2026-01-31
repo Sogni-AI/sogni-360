@@ -5,6 +5,7 @@ import { formatTokenAmount, getTokenLabel } from '../../services/walletService';
 import { useRewards } from '../../context/RewardsContext';
 import LoginModal, { LoginModalMode } from './LoginModal';
 import DailyBoostCelebration from '../shared/DailyBoostCelebration';
+import AdvancedSettingsPopup from '../shared/AdvancedSettingsPopup';
 import { getAuthButtonText, getDefaultModalMode, markAsVisited } from '../../utils/visitorTracking';
 import '../../styles/components/AuthStatus.css';
 
@@ -39,6 +40,7 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   const [loginModalMode, setLoginModalMode] = useState<LoginModalMode>('login');
   const [highlightDailyBoost, setHighlightDailyBoost] = useState(false);
   const [showDailyBoostCelebration, setShowDailyBoostCelebration] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const hasShownLoginBoostRef = useRef(false);
   const authButtonTextRef = useRef<string>(getAuthButtonText());
   const authButtonText = authButtonTextRef.current;
@@ -424,8 +426,25 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
                   </>
                 )}
 
-                {/* Logout Button */}
+                {/* Advanced Settings Link */}
                 <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
+                  <button
+                    className="auth-advanced-settings-link"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowAdvancedSettings(true);
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    </svg>
+                    advanced settings
+                  </button>
+                </div>
+
+                {/* Logout Button */}
+                <div style={{ paddingTop: '12px', textAlign: 'center' }}>
                   <button
                     className="auth-logout-button"
                     onClick={() => { void handleLogout(); }}
@@ -466,6 +485,12 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
         isClaiming={claimInProgress}
         claimSuccess={lastClaimSuccess}
         claimError={claimError}
+      />
+
+      {/* Advanced Settings Popup */}
+      <AdvancedSettingsPopup
+        isOpen={showAdvancedSettings}
+        onClose={() => setShowAdvancedSettings(false)}
       />
     </>
   );

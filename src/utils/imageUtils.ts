@@ -83,3 +83,35 @@ export function getImageDimensions(dataUrl: string): Promise<{ width: number; he
     img.src = dataUrl;
   });
 }
+
+/**
+ * Converts a blob URL to a base64 data URL.
+ * If the URL is already a data URL or a regular HTTP(S) URL, returns it unchanged.
+ */
+export async function ensureDataUrl(url: string): Promise<string> {
+  // Already a data URL - return as-is
+  if (url.startsWith('data:')) {
+    return url;
+  }
+
+  // Blob URL - fetch and convert to data URL
+  if (url.startsWith('blob:')) {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to convert blob to data URL'));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // Regular HTTP(S) URL - return as-is (backend can fetch these)
+  return url;
+}

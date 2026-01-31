@@ -14,8 +14,11 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import type { VideoTransitionState } from '../types';
 
-// Cache for preloaded video elements (module-level singleton)
-const videoCache = new Map<string, HTMLVideoElement>();
+// Cache for preloaded video blob URLs (module-level singleton)
+// Using blob URLs ensures video data is in memory for instant playback
+const videoBlobCache = new Map<string, string>();
+// Track URLs currently being fetched to avoid duplicate requests
+const videoFetchInProgress = new Set<string>();
 
 export function useTransitionNavigation() {
   const { state, dispatch } = useApp();
@@ -32,27 +35,35 @@ export function useTransitionNavigation() {
   // This prevents the timer from being reset when nextWaypoint changes
   const nextWaypointRef = useRef<() => void>(() => {});
 
-  // Preload all segment videos when project changes or segments update
+  // Preload all segment videos as blob URLs when project changes or segments update
+  // Blob URLs guarantee the video data is in memory for instant playback
   useEffect(() => {
     if (!currentProject || currentProject.segments.length === 0) return;
 
     currentProject.segments.forEach(segment => {
-      if (segment.status === 'ready' && segment.videoUrl && !videoCache.has(segment.videoUrl)) {
-        const video = document.createElement('video');
-        video.preload = 'auto';
-        video.muted = true;
-        video.playsInline = true;
+      if (segment.status === 'ready' && segment.videoUrl &&
+          !videoBlobCache.has(segment.videoUrl) &&
+          !videoFetchInProgress.has(segment.videoUrl)) {
 
-        video.oncanplaythrough = () => {
-          videoCache.set(segment.videoUrl!, video);
-        };
+        const videoUrl = segment.videoUrl;
+        videoFetchInProgress.add(videoUrl);
 
-        video.onerror = () => {
-          console.warn('[useTransitionNavigation] Failed to preload video:', segment.videoUrl);
-        };
-
-        video.src = segment.videoUrl;
-        video.load();
+        // Fetch video as blob for guaranteed in-memory playback
+        fetch(videoUrl)
+          .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch video');
+            return response.blob();
+          })
+          .then(blob => {
+            const blobUrl = URL.createObjectURL(blob);
+            videoBlobCache.set(videoUrl, blobUrl);
+          })
+          .catch(err => {
+            console.warn('[useTransitionNavigation] Failed to preload video:', videoUrl, err);
+          })
+          .finally(() => {
+            videoFetchInProgress.delete(videoUrl);
+          });
       }
     });
   }, [currentProject?.segments]);
@@ -99,13 +110,17 @@ export function useTransitionNavigation() {
     const segmentVideo = findSegmentVideo(currentWaypointIndex, clampedTarget);
 
     if (segmentVideo) {
-      // Check if video is already preloaded
-      const isVideoReady = videoCache.has(segmentVideo.url);
+      // Check if video is preloaded as blob URL (instant playback)
+      const blobUrl = videoBlobCache.get(segmentVideo.url);
+      const isVideoReady = !!blobUrl;
+
+      // Use blob URL if available, otherwise fall back to original URL
+      const videoUrl = blobUrl || segmentVideo.url;
 
       // Set transition state in global context
       const transition: VideoTransitionState = {
         isPlaying: true,
-        videoUrl: segmentVideo.url,
+        videoUrl,
         targetWaypointIndex: clampedTarget,
         isVideoReady,
         playReverse: segmentVideo.playReverse

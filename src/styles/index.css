@@ -3819,6 +3819,11 @@ html, body {
   opacity: 0.25;
 }
 
+.review-card-img img.pending-preview {
+  opacity: 0.6;
+  filter: grayscale(30%);
+}
+
 /* Overlays */
 .review-card-overlay {
   position: absolute;
@@ -5034,6 +5039,51 @@ html, body {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+}
+
+/* Add Angle Button in Review Carousel */
+.review-add-angle-btn {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: center;
+}
+
+.review-add-angle-btn:hover {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  transform: scale(1.05);
+}
+
+.review-add-angle-btn:active {
+  transform: scale(0.95);
+}
+
+.review-add-angle-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media (max-width: 767px) {
+  .review-add-angle-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .review-add-angle-btn svg {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* Footer */

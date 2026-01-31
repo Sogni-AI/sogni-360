@@ -111,6 +111,22 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         }
       };
 
+    case 'INSERT_WAYPOINT': {
+      if (!state.currentProject) return state;
+      const newWaypoints = [...state.currentProject.waypoints];
+      // afterIndex of -1 means insert at beginning, 0+ means insert after that index
+      const insertIndex = action.payload.afterIndex + 1;
+      newWaypoints.splice(insertIndex, 0, action.payload.waypoint);
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          waypoints: newWaypoints,
+          updatedAt: Date.now()
+        }
+      };
+    }
+
     case 'SET_WAYPOINTS':
       if (!state.currentProject) return state;
       return {

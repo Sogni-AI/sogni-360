@@ -253,13 +253,12 @@ const Sogni360Viewer: React.FC = () => {
       onTouchEnd={handleTouchEnd}
     >
       {/* Base image layer - always visible, prevents flicker during transitions */}
-      {/* Shows source until video is playing, then swaps to destination */}
+      {/* During video playback, keep showing source image - the video covers it */}
+      {/* Only switch to new waypoint image after transition completes */}
       <img
         ref={imageRef}
         src={content.type === 'video'
-          ? (isVideoElementReady
-              ? (content.destinationImageUrl || content.sourceImageUrl || '')
-              : (content.sourceImageUrl || content.destinationImageUrl || ''))
+          ? (content.sourceImageUrl || content.destinationImageUrl || '')
           : content.url}
         alt="Current view"
         className="max-w-full max-h-full object-contain select-none"
@@ -269,8 +268,8 @@ const Sogni360Viewer: React.FC = () => {
           setImageDisplaySize({ width: img.offsetWidth, height: img.offsetHeight });
         }}
       />
-      {/* Preload destination image during video so it's cached for the swap */}
-      {content.type === 'video' && content.destinationImageUrl && !isVideoElementReady && (
+      {/* Preload destination image during video so it's cached when transition ends */}
+      {content.type === 'video' && content.destinationImageUrl && (
         <img
           src={content.destinationImageUrl}
           alt=""

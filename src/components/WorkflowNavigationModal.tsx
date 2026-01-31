@@ -57,7 +57,7 @@ const WorkflowNavigationModal: React.FC<WorkflowNavigationModalProps> = ({
 
         <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-3 mb-6">
           <p className="text-yellow-200 text-sm">
-            You can save a copy of your current project before going back.
+            We will automatically save a copy of your current project to make this new change so you can go back to the old version if needed.
           </p>
         </div>
 
@@ -83,7 +83,7 @@ const WorkflowNavigationModal: React.FC<WorkflowNavigationModalProps> = ({
             disabled={!projectName.trim() || isSaving}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium rounded-lg transition-colors"
           >
-            {isSaving ? 'Saving...' : 'Save Copy & Go Back'}
+            {isSaving ? 'Saving...' : 'Save Copy & Continue'}
           </button>
 
           <button

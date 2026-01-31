@@ -27,6 +27,7 @@ import {
   getElevationConfig,
   getDistanceConfig
 } from '../constants/cameraAngleSettings';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 type SogniClient = {
   projects: {
@@ -142,14 +143,17 @@ async function generateSingleAngle(
     // Create project
     const seed = Math.floor(Math.random() * 2147483647);
 
+    // Get advanced settings (model, steps, guidance from user preferences)
+    const advancedSettings = getAdvancedSettings();
+
     const projectConfig = {
       type: 'image',
-      modelId: CAMERA_ANGLE_MODEL,
+      modelId: advancedSettings.imageModel || CAMERA_ANGLE_MODEL,
       positivePrompt: fullPrompt,
       negativePrompt: '',
       numberOfMedia: 1,
-      steps: CAMERA_ANGLE_DEFAULTS.steps,
-      guidance: CAMERA_ANGLE_DEFAULTS.guidance,
+      steps: advancedSettings.imageSteps || CAMERA_ANGLE_DEFAULTS.steps,
+      guidance: advancedSettings.imageGuidance || CAMERA_ANGLE_DEFAULTS.guidance,
       seed: seed,
       sizePreset: 'custom',
       width: params.imageWidth,
@@ -163,7 +167,7 @@ async function generateSingleAngle(
       outputFormat: params.outputFormat || 'jpg'
     };
 
-    console.log(`[MultiAngleGenerator] Project config:`, {
+    console.log(`[MultiAngleGenerator] Project config (using advanced settings):`, {
       modelId: projectConfig.modelId,
       positivePrompt: projectConfig.positivePrompt,
       steps: projectConfig.steps,
@@ -173,7 +177,12 @@ async function generateSingleAngle(
       height: projectConfig.height,
       loras: projectConfig.loras,
       loraStrengths: projectConfig.loraStrengths,
-      contextImageSize: imageBuffer.length
+      contextImageSize: imageBuffer.length,
+      advancedSettingsApplied: {
+        model: advancedSettings.imageModel,
+        steps: advancedSettings.imageSteps,
+        guidance: advancedSettings.imageGuidance
+      }
     });
 
     sogniClient.projects.create(projectConfig)

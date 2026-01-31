@@ -70,6 +70,9 @@ export interface Segment {
 // Video generation quality presets
 export type TransitionQuality = 'fast' | 'balanced' | 'quality' | 'pro';
 
+// Image model types
+export type ImageModelId = 'qwen_image_edit_2511_fp8_lightning' | 'qwen_image_edit_2511_fp8';
+
 // Project settings
 export interface Sogni360Settings {
   videoQuality: VideoQualityPreset;
@@ -82,6 +85,10 @@ export interface Sogni360Settings {
   transitionDuration?: number; // Duration per clip in seconds
   // Music for final video
   musicSelection?: MusicSelection;
+  // Advanced image generation settings
+  imageModel?: ImageModelId;
+  imageSteps?: number;
+  imageGuidance?: number;
 }
 
 // Project status
@@ -154,6 +161,7 @@ export type Sogni360Action =
   | { type: 'SET_PROJECT'; payload: Sogni360Project | null }
   | { type: 'SET_SOURCE_IMAGE'; payload: { url: string; dimensions: { width: number; height: number } } }
   | { type: 'ADD_WAYPOINT'; payload: Waypoint }
+  | { type: 'INSERT_WAYPOINT'; payload: { afterIndex: number; waypoint: Waypoint } }
   | { type: 'SET_WAYPOINTS'; payload: Waypoint[] }
   | { type: 'REMOVE_WAYPOINT'; payload: string }
   | { type: 'UPDATE_WAYPOINT'; payload: { id: string; updates: Partial<Waypoint> } }
