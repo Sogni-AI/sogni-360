@@ -43,3 +43,6 @@ test-results/
 
 # TypeScript
 *.tsbuildinfo
+
+# Demo videos (synced to R2 separately)
+demo/

@@ -422,6 +422,103 @@ html, body {
   height: 20px;
 }
 
+/* Demo Video Background - 6-tile grid of showcase videos */
+.demo-video-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  transition: opacity 1.5s ease-out;
+}
+
+/* Desktop: 3 columns x 2 rows */
+.demo-video-grid.desktop {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  width: 100%;
+  height: 100%;
+  gap: 4px;
+}
+
+/* Mobile portrait: 2 columns x 3 rows */
+.demo-video-grid.mobile {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  gap: 3px;
+}
+
+.demo-video-tile {
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.8s ease-out;
+}
+
+.demo-video-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Gradient overlay - darkens center for UI readability */
+.demo-video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse 50% 45% at 50% 50%,
+    rgba(0, 0, 0, 0.92) 0%,
+    rgba(0, 0, 0, 0.75) 35%,
+    rgba(0, 0, 0, 0.4) 65%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  pointer-events: none;
+}
+
+/* Mobile: tighter center focus */
+@media (max-width: 767px) {
+  .demo-video-overlay {
+    background: radial-gradient(
+      ellipse 55% 40% at 50% 45%,
+      rgba(0, 0, 0, 0.92) 0%,
+      rgba(0, 0, 0, 0.75) 30%,
+      rgba(0, 0, 0, 0.4) 60%,
+      rgba(0, 0, 0, 0.1) 100%
+    );
+  }
+}
+
+/* Uploader content needs to be above video background */
+.source-uploader-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+}
+
+/* Upload area adjustments for video background context */
+.upload-area {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.upload-area:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
 /* Button styles */
 .btn {
   @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
