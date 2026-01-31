@@ -10,6 +10,65 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🚨 CRITICAL: Frontend SDK vs Backend Proxy Architecture
+
+**UNDERSTAND THIS BEFORE WRITING ANY GENERATION CODE.**
+
+This app has TWO modes for communicating with Sogni:
+
+### 1. Frontend SDK Mode (Direct Connection)
+When user is logged in via the frontend Sogni SDK (`authMode === 'frontend'`):
+- User has a direct WebSocket connection to Sogni
+- Jobs should use `getSogniClient().projects.create()` directly
+- Charges go to the **user's wallet**
+- Faster (no proxy latency)
+- Check with `isFrontendMode()` from `src/services/frontend/index.ts`
+
+### 2. Backend Proxy Mode (Demo Mode)
+When user is NOT logged in or in demo mode:
+- Jobs go through the Express backend at `/api/sogni/*`
+- Backend has its own Sogni credentials in `server/.env`
+- Charges go to the **backend's account** (app owner pays)
+- SSE progress events come from backend
+
+### ⚠️ CRITICAL MISTAKES TO AVOID
+
+1. **NEVER proxy through backend when user is logged in via frontend SDK**
+   - This wastes the backend's credits, not the user's
+   - Adds unnecessary latency
+   - Makes "insufficient funds" errors confusing (wrong wallet)
+
+2. **ALWAYS check `isFrontendMode()` before making generation calls**
+   - If true: use SDK directly via `getSogniClient()`
+   - If false: use `api.*` methods that go through backend
+
+3. **Generation services that MUST support both modes:**
+   - `CameraAngleGenerator.ts` - image generation ✅
+   - `TransitionGenerator.ts` - video generation ✅
+   - `ImageEnhancer.ts` - image enhancement (needs update)
+
+4. **Cost estimation:** Can use backend since it's read-only and doesn't charge
+
+### Code Pattern
+```typescript
+import { isFrontendMode, getSogniClient } from './frontend';
+
+export async function generateSomething(options) {
+  const useFrontendSDK = isFrontendMode();
+
+  if (useFrontendSDK) {
+    const client = getSogniClient();
+    const project = await client.projects.create(projectOptions);
+    // Handle project events directly
+  } else {
+    const { projectId } = await api.generateSomething(options);
+    // Subscribe to SSE events via api.subscribeToProgress()
+  }
+}
+```
+
+---
+
 ## 🚨 FILE SIZE LIMIT: 300 LINES MAX
 
 **No code file should exceed 300 lines.** Break large files into smaller, focused modules.

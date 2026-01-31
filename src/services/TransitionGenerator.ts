@@ -2,11 +2,15 @@
  * Transition Generator Service
  *
  * Generates video transitions between camera angle images.
- * Uses the backend API for video generation via SSE progress tracking.
- * All transitions are submitted in parallel to leverage dePIN network concurrency.
+ *
+ * Supports two modes:
+ * 1. Frontend SDK mode: When user is logged in via frontend SDK, jobs go directly
+ *    to Sogni without proxying through the backend (faster, uses user's wallet)
+ * 2. Backend proxy mode: Falls back to backend API when in demo mode
  */
 
 import { api } from './api';
+import { isFrontendMode, getSogniClient } from './frontend';
 import type { Segment, GenerationProgressEvent, TransitionVersion } from '../types';
 import {
   VIDEO_QUALITY_PRESETS,
@@ -72,29 +76,41 @@ export interface GenerateTransitionOptions {
 }
 
 /**
- * Prepare image for sending to backend
- * For data URLs: convert to base64 string
- * For HTTP URLs: pass through (backend will fetch server-side, avoiding CORS)
+ * Convert image URL to Blob for SDK (InputMedia type)
  */
-function prepareImageForBackend(imageUrl: string): string {
-  // For HTTP URLs, pass them directly to backend (backend fetches server-side)
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl;
+async function imageUrlToBlob(url: string): Promise<Blob> {
+  if (url.startsWith('data:')) {
+    const [header, base64Data] = url.split(',');
+    const mimeMatch = header.match(/data:([^;]+)/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mimeType });
+  } else if (url.startsWith('http') || url.startsWith('blob:')) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    return await response.blob();
+  } else {
+    const binaryString = atob(url);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: 'image/jpeg' });
   }
-
-  // For data URLs, pass them as-is (backend can handle data URLs)
-  if (imageUrl.startsWith('data:')) {
-    return imageUrl;
-  }
-
-  // For other formats, assume it's already base64
-  return imageUrl;
 }
 
 /**
- * Generate a single video transition between two images
+ * Generate transition using frontend SDK directly (no backend proxy)
  */
-export async function generateTransition(options: GenerateTransitionOptions): Promise<GenerateTransitionResult | null> {
+async function generateWithFrontendSDK(
+  options: GenerateTransitionOptions
+): Promise<GenerateTransitionResult | null> {
   const {
     segment,
     fromImageUrl,
@@ -105,121 +121,296 @@ export async function generateTransition(options: GenerateTransitionOptions): Pr
     quality = 'fast',
     duration = 1.5,
     tokenType = 'spark',
-    sourceWidth = 1024,  // Default to 1024 for square images
+    sourceWidth = 1024,
     sourceHeight = 1024,
     onProgress,
     onComplete,
     onError
   } = options;
 
-  try {
-    // Prepare images for backend (URLs passed through, backend fetches server-side)
-    const fromImage = prepareImageForBackend(fromImageUrl);
-    const toImage = prepareImageForBackend(toImageUrl);
+  const client = getSogniClient();
+  if (!client) {
+    throw new Error('Frontend SDK client not available');
+  }
 
-    // Get quality config
-    const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
+  // Get quality config
+  const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
 
-    // Calculate video dimensions preserving aspect ratio
-    const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
+  // Calculate video dimensions preserving aspect ratio
+  const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
 
-    // Calculate frames from duration
-    const frames = calculateVideoFrames(duration);
+  // Calculate frames from duration
+  const frames = calculateVideoFrames(duration);
 
-    console.log(`[TransitionGenerator] Video dimensions: ${videoDimensions.width}x${videoDimensions.height} (source: ${sourceWidth}x${sourceHeight})`);
+  console.log(`[TransitionGenerator-SDK] Video: ${videoDimensions.width}x${videoDimensions.height}, frames: ${frames}`);
 
-    // Start generation via API (backend fetches URLs server-side)
-    const { projectId } = await api.generateTransition({
-      referenceImage: fromImage,
-      referenceImageEnd: toImage,
-      prompt,
-      negativePrompt,
-      width: videoDimensions.width,
-      height: videoDimensions.height,
-      frames,
-      steps: qualityConfig.steps,
-      model: qualityConfig.model,
-      tokenType
-    });
+  // Convert images to blobs
+  const [fromBlob, toBlob] = await Promise.all([
+    imageUrlToBlob(fromImageUrl),
+    imageUrlToBlob(toImageUrl)
+  ]);
 
-    console.log(`[TransitionGenerator] Started project ${projectId} for segment ${segment.id}`);
+  // Create project options matching backend implementation
+  const projectOptions = {
+    type: 'video' as const,
+    modelId: qualityConfig.model,
+    positivePrompt: prompt,
+    negativePrompt: negativePrompt,
+    stylePrompt: '', // Required by SDK
+    sizePreset: 'custom' as const,
+    width: videoDimensions.width,
+    height: videoDimensions.height,
+    steps: qualityConfig.steps,
+    guidance: 5,
+    frames: frames,
+    numberOfMedia: 1,
+    numberOfPreviews: 3,
+    sampler: 'euler' as const,
+    scheduler: 'simple' as const,
+    disableNSFWFilter: true,
+    outputFormat: 'mp4' as const,
+    tokenType: tokenType,
+    referenceImage: fromBlob,
+    referenceImageEnd: toBlob
+  };
 
-    // Subscribe to progress events
-    return new Promise((resolve) => {
-      let result: GenerateTransitionResult | null = null;
+  // Create project
+  const project = await client.projects.create(projectOptions);
+  console.log(`[TransitionGenerator-SDK] Project created: ${project.id}`);
 
-      const unsubscribe = api.subscribeToProgress(
-        projectId,
-        (event: GenerationProgressEvent) => {
-          console.log(`[TransitionGenerator] Event for segment ${segment.id}:`, event.type);
+  return new Promise((resolve) => {
+    let projectFinished = false;
+    let result: GenerateTransitionResult | null = null;
+    const sentJobCompletions = new Set<string>();
 
-          switch (event.type) {
-            case 'connected':
-              console.log(`[TransitionGenerator] SSE connected for segment ${segment.id}`);
-              break;
+    // Job event handler for progress
+    const jobHandler = (event: any) => {
+      if (event.projectId !== project.id) return;
 
-            case 'progress':
-              if (event.progress !== undefined) {
-                const progressPct = event.progress * 100;
-                onProgress?.(progressPct, event.workerName);
-              }
-              break;
+      console.log(`[TransitionGenerator-SDK] Event for segment ${segment.id}:`, event.type);
 
-            case 'jobCompleted':
-              if (event.resultUrl) {
-                result = {
-                  videoUrl: event.resultUrl,
-                  sdkProjectId: event.sdkProjectId,
-                  sdkJobId: event.sdkJobId
-                };
-                onComplete?.(result);
-              }
-              break;
+      switch (event.type) {
+        case 'started':
+        case 'initiating':
+          break;
 
-            case 'completed':
-              if (event.resultUrl && !result) {
-                result = {
-                  videoUrl: event.resultUrl,
-                  sdkProjectId: event.sdkProjectId,
-                  sdkJobId: event.sdkJobId
-                };
-                onComplete?.(result);
-              }
-              // Also check for videoUrls array
-              if (!result && event.imageUrls && event.imageUrls.length > 0) {
-                result = {
-                  videoUrl: event.imageUrls[0],
-                  sdkProjectId: event.sdkProjectId,
-                  sdkJobId: event.sdkJobId
-                };
-                onComplete?.(result);
-              }
-              unsubscribe();
-              if (!result) {
-                onError?.(new Error('Generation completed but no video URL received'));
-              }
-              resolve(result);
-              break;
-
-            case 'error':
-              console.error(`[TransitionGenerator] Error for segment ${segment.id}:`, event.error);
-              unsubscribe();
-              const error = new Error(event.error || 'Generation failed');
-              onError?.(error);
-              resolve(null);
-              break;
+        case 'progress':
+          if (event.step && event.stepCount) {
+            const progress = (event.step / event.stepCount) * 100;
+            onProgress?.(progress, event.workerName || 'Worker');
           }
-        },
-        (error) => {
-          console.error(`[TransitionGenerator] SSE error for segment ${segment.id}:`, error);
-          onError?.(error);
-          resolve(null);
-        }
-      );
+          break;
+
+        case 'completed':
+        case 'jobCompleted':
+          if (event.jobId && !sentJobCompletions.has(event.jobId) && event.resultUrl) {
+            sentJobCompletions.add(event.jobId);
+            result = {
+              videoUrl: event.resultUrl,
+              sdkProjectId: event.projectId,
+              sdkJobId: event.jobId
+            };
+            console.log(`[TransitionGenerator-SDK] Job completed with URL:`, result.videoUrl);
+            onComplete?.(result);
+          }
+          break;
+      }
+    };
+
+    // Register job handler
+    client.projects.on('job', jobHandler);
+
+    // Handle project completion
+    project.on('completed', (videoUrls: string[]) => {
+      console.log(`[TransitionGenerator-SDK] Project completed, videos:`, videoUrls?.length);
+      if (projectFinished) return;
+      projectFinished = true;
+
+      client.projects.off('job', jobHandler);
+
+      if (!result && videoUrls && videoUrls.length > 0) {
+        result = {
+          videoUrl: videoUrls[0],
+          sdkProjectId: project.id
+        };
+        onComplete?.(result);
+      }
+
+      if (!result) {
+        console.error(`[TransitionGenerator-SDK] Completed but no result URL!`);
+        onError?.(new Error('Generation completed but no video URL received'));
+      }
+
+      resolve(result);
     });
+
+    // Handle project failure
+    project.on('failed', (errorData: { message?: string; code?: number }) => {
+      const errorMessage = errorData?.message || 'Generation failed';
+      console.error(`[TransitionGenerator-SDK] Project failed:`, errorMessage, 'code:', errorData?.code);
+      if (projectFinished) return;
+      projectFinished = true;
+
+      client.projects.off('job', jobHandler);
+      onError?.(new Error(errorMessage));
+      resolve(null);
+    });
+
+    // Timeout after 15 minutes (video generation takes longer)
+    setTimeout(() => {
+      if (!projectFinished) {
+        projectFinished = true;
+        client.projects.off('job', jobHandler);
+        onError?.(new Error('Video project timeout after 15 minutes'));
+        resolve(null);
+      }
+    }, 15 * 60 * 1000);
+  });
+}
+
+/**
+ * Generate transition using backend API (proxy mode)
+ */
+async function generateWithBackendAPI(
+  options: GenerateTransitionOptions
+): Promise<GenerateTransitionResult | null> {
+  const {
+    segment,
+    fromImageUrl,
+    toImageUrl,
+    prompt,
+    negativePrompt = '',
+    resolution = DEFAULT_VIDEO_SETTINGS.resolution,
+    quality = 'fast',
+    duration = 1.5,
+    tokenType = 'spark',
+    sourceWidth = 1024,
+    sourceHeight = 1024,
+    onProgress,
+    onComplete,
+    onError
+  } = options;
+
+  // Get quality config
+  const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
+
+  // Calculate video dimensions preserving aspect ratio
+  const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
+
+  // Calculate frames from duration
+  const frames = calculateVideoFrames(duration);
+
+  console.log(`[TransitionGenerator-API] Video dimensions: ${videoDimensions.width}x${videoDimensions.height}`);
+
+  // Start generation via API
+  const { projectId } = await api.generateTransition({
+    referenceImage: fromImageUrl,
+    referenceImageEnd: toImageUrl,
+    prompt,
+    negativePrompt,
+    width: videoDimensions.width,
+    height: videoDimensions.height,
+    frames,
+    steps: qualityConfig.steps,
+    model: qualityConfig.model,
+    tokenType
+  });
+
+  console.log(`[TransitionGenerator-API] Started project ${projectId} for segment ${segment.id}`);
+
+  // Subscribe to progress events
+  return new Promise((resolve) => {
+    let result: GenerateTransitionResult | null = null;
+
+    const unsubscribe = api.subscribeToProgress(
+      projectId,
+      (event: GenerationProgressEvent) => {
+        console.log(`[TransitionGenerator-API] Event for segment ${segment.id}:`, event.type);
+
+        switch (event.type) {
+          case 'connected':
+            console.log(`[TransitionGenerator-API] SSE connected for segment ${segment.id}`);
+            break;
+
+          case 'progress':
+            if (event.progress !== undefined) {
+              const progressPct = event.progress * 100;
+              onProgress?.(progressPct, event.workerName);
+            }
+            break;
+
+          case 'jobCompleted':
+            if (event.resultUrl) {
+              result = {
+                videoUrl: event.resultUrl,
+                sdkProjectId: event.sdkProjectId,
+                sdkJobId: event.sdkJobId
+              };
+              onComplete?.(result);
+            }
+            break;
+
+          case 'completed':
+            if (event.resultUrl && !result) {
+              result = {
+                videoUrl: event.resultUrl,
+                sdkProjectId: event.sdkProjectId,
+                sdkJobId: event.sdkJobId
+              };
+              onComplete?.(result);
+            }
+            if (!result && event.imageUrls && event.imageUrls.length > 0) {
+              result = {
+                videoUrl: event.imageUrls[0],
+                sdkProjectId: event.sdkProjectId,
+                sdkJobId: event.sdkJobId
+              };
+              onComplete?.(result);
+            }
+            unsubscribe();
+            if (!result) {
+              onError?.(new Error('Generation completed but no video URL received'));
+            }
+            resolve(result);
+            break;
+
+          case 'error':
+            // Backend sends error message in 'message' field, not 'error'
+            const errorMessage = event.message || event.error || 'Generation failed';
+            console.error(`[TransitionGenerator-API] Error for segment ${segment.id}:`, errorMessage);
+            unsubscribe();
+            onError?.(new Error(errorMessage));
+            resolve(null);
+            break;
+        }
+      },
+      (error) => {
+        console.error(`[TransitionGenerator-API] SSE error for segment ${segment.id}:`, error);
+        onError?.(error);
+        resolve(null);
+      }
+    );
+  });
+}
+
+/**
+ * Generate a single video transition between two images.
+ * Automatically routes to frontend SDK or backend API based on auth mode.
+ */
+export async function generateTransition(options: GenerateTransitionOptions): Promise<GenerateTransitionResult | null> {
+  const useFrontendSDK = isFrontendMode();
+
+  console.log(`[TransitionGenerator] Mode: ${useFrontendSDK ? 'Frontend SDK (direct)' : 'Backend API (proxy)'}`);
+
+  try {
+    if (useFrontendSDK) {
+      return await generateWithFrontendSDK(options);
+    } else {
+      return await generateWithBackendAPI(options);
+    }
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Generation failed');
-    onError?.(err);
+    options.onError?.(err);
     return null;
   }
 }
@@ -257,7 +448,7 @@ export async function generateMultipleTransitions(
     quality = 'fast',
     duration = 1.5,
     tokenType = 'spark',
-    sourceWidth = 1024,  // Default to 1024 for square images
+    sourceWidth = 1024,
     sourceHeight = 1024,
     onSegmentStart,
     onSegmentProgress,
@@ -266,6 +457,10 @@ export async function generateMultipleTransitions(
     onOutOfCredits,
     onAllComplete
   } = options;
+
+  // Log which mode we're using
+  const useFrontendSDK = isFrontendMode();
+  console.log(`[TransitionGenerator] Starting ${segments.length} transition generations using ${useFrontendSDK ? 'Frontend SDK (direct to Sogni)' : 'Backend API (proxy)'}`);
 
   // Track if we've already called onOutOfCredits to avoid multiple popups
   let hasCalledOutOfCredits = false;
@@ -386,7 +581,6 @@ export async function generateMultipleTransitions(
   };
 
   // Fire ALL requests simultaneously - the dePIN network handles concurrency
-  console.log(`[TransitionGenerator] Starting ${segments.length} transition generations in parallel`);
   await Promise.all(segments.map(processSegment));
 
   onAllComplete?.();
