@@ -2778,7 +2778,7 @@ html, body {
 
 @media (max-width: 480px) {
   .config-card-3d-overlay {
-    padding: 0.25rem;
+    padding: 0.5rem;
   }
 }
 
