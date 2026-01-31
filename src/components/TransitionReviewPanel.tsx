@@ -17,6 +17,7 @@ interface TransitionReviewPanelProps {
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   isGenerating: boolean;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
+  onRequireAuth?: () => void;
 }
 
 const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
@@ -25,11 +26,12 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   onRedoSegment,
   onConfirmDestructiveAction,
   isGenerating,
-  onWorkflowStepClick
+  onWorkflowStepClick,
+  onRequireAuth
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
-  const { currentProject } = state;
+  const { currentProject, isAuthenticated, hasUsedFreeGeneration } = state;
   const carouselRef = useRef<HTMLDivElement>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
@@ -166,12 +168,25 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
   // Handle redo with confirmation for destructive actions
   const handleRedoWithConfirmation = useCallback((segmentId: string) => {
+    // Auth gating: require login if user has already used their free generation
+    if (!isAuthenticated && hasUsedFreeGeneration) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    // Mark that user has used their free generation (for unauthenticated users)
+    if (!isAuthenticated && !hasUsedFreeGeneration) {
+      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+    }
+
     if (onConfirmDestructiveAction) {
       onConfirmDestructiveAction('render-videos', () => onRedoSegment(segmentId));
     } else {
       onRedoSegment(segmentId);
     }
-  }, [onConfirmDestructiveAction, onRedoSegment]);
+  }, [onConfirmDestructiveAction, onRedoSegment, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   const canStitch = readyCount === totalSegments && totalSegments > 0 && !isGenerating;
 

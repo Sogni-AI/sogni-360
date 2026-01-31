@@ -4,9 +4,11 @@ import { useToast } from '../context/ToastContext';
 import type { Waypoint } from '../types';
 import {
   getAzimuthConfig,
-  getElevationConfig,
-  getDistanceConfig
+  AZIMUTHS,
+  ELEVATIONS,
+  DISTANCES
 } from '../constants/cameraAngleSettings';
+import type { AzimuthKey, ElevationKey, DistanceKey } from '../types';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import { enhanceImage } from '../services/ImageEnhancer';
 import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
@@ -21,6 +23,7 @@ interface AngleReviewPanelProps {
   isGenerating: boolean;
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
+  onRequireAuth?: () => void;
 }
 
 const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
@@ -28,11 +31,12 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   onApply,
   isGenerating,
   onConfirmDestructiveAction,
-  onWorkflowStepClick
+  onWorkflowStepClick,
+  onRequireAuth
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
-  const { currentProject } = state;
+  const { currentProject, isAuthenticated, hasUsedFreeGeneration } = state;
   const carouselRef = useRef<HTMLDivElement>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
@@ -46,7 +50,78 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const [pendingEnhanceWaypoint, setPendingEnhanceWaypoint] = useState<Waypoint | null>(null);
   const [isEnhanceAllMode, setIsEnhanceAllMode] = useState(false);
 
+  // Reference image selection for regeneration (waypointId -> 'original' | otherWaypointId)
+  const [referenceSelections, setReferenceSelections] = useState<Record<string, string>>({});
+  // Ref to track current selections for use in memoized callbacks
+  const referenceSelectionsRef = useRef(referenceSelections);
+  referenceSelectionsRef.current = referenceSelections;
+
+  // Tooltip visibility state (waypointId or null)
+  const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null);
+
+  // Angle overrides for regeneration (waypointId -> {azimuth, elevation, distance})
+  interface AngleOverride {
+    azimuth?: AzimuthKey;
+    elevation?: ElevationKey;
+    distance?: DistanceKey;
+  }
+  const [angleOverrides, setAngleOverrides] = useState<Record<string, AngleOverride>>({});
+  // Ref to track current overrides for use in memoized callbacks
+  const angleOverridesRef = useRef(angleOverrides);
+  angleOverridesRef.current = angleOverrides;
+
+  // Get effective angle values (override or original) - uses ref for latest values
+  const getEffectiveAngle = useCallback((waypoint: Waypoint) => ({
+    azimuth: angleOverridesRef.current[waypoint.id]?.azimuth ?? waypoint.azimuth,
+    elevation: angleOverridesRef.current[waypoint.id]?.elevation ?? waypoint.elevation,
+    distance: angleOverridesRef.current[waypoint.id]?.distance ?? waypoint.distance
+  }), []);
+
+  // Check if angle has been modified from original
+  const isAngleModified = (waypoint: Waypoint) => {
+    const override = angleOverrides[waypoint.id];
+    if (!override) return false;
+    return (
+      (override.azimuth && override.azimuth !== waypoint.azimuth) ||
+      (override.elevation && override.elevation !== waypoint.elevation) ||
+      (override.distance && override.distance !== waypoint.distance)
+    );
+  };
+
   const waypoints = currentProject?.waypoints || [];
+  // Ref to track current waypoints for use in memoized callbacks
+  const waypointsRef = useRef(waypoints);
+  waypointsRef.current = waypoints;
+
+  // Get the reference image URL for a waypoint (uses refs for latest values)
+  const getReferenceImageUrl = useCallback((waypointId: string): string | undefined => {
+    const selection = referenceSelectionsRef.current[waypointId] || 'original';
+    if (selection === 'original') {
+      return currentProject?.sourceImageUrl;
+    }
+    // Find the referenced waypoint and use its currently selected version
+    const refWaypoint = waypointsRef.current.find(wp => wp.id === selection);
+    return refWaypoint?.imageUrl;
+  }, [currentProject?.sourceImageUrl]);
+
+  // Get available reference options for a waypoint (excludes itself)
+  const getReferenceOptions = useCallback((waypointId: string) => {
+    const options: { id: string; label: string }[] = [
+      { id: 'original', label: 'Original Photo' }
+    ];
+
+    waypoints.forEach((wp, index) => {
+      // Skip the current waypoint and any without ready images
+      if (wp.id === waypointId || wp.status !== 'ready' || !wp.imageUrl) return;
+
+      const label = wp.isOriginal
+        ? `Step ${index + 1}: Original`
+        : `Step ${index + 1}: ${getAzimuthConfig(wp.azimuth).label}`;
+      options.push({ id: wp.id, label });
+    });
+
+    return options;
+  }, [waypoints]);
 
   // Count statuses
   const readyCount = waypoints.filter(wp => wp.status === 'ready').length;
@@ -56,28 +131,49 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   // Workflow step
   const completedSteps: ('upload' | 'define-angles' | 'render-angles' | 'render-videos' | 'export')[] = ['upload', 'define-angles'];
 
-  // Get angle label
-  const getAngleLabel = (waypoint: Waypoint): string => {
-    if (waypoint.isOriginal) return 'Original Image';
-    const az = getAzimuthConfig(waypoint.azimuth);
-    const el = getElevationConfig(waypoint.elevation);
-    const dist = getDistanceConfig(waypoint.distance);
-    return `${az.label} · ${el.label} · ${dist.label}`;
-  };
-
   // Execute redo for a single waypoint (called after confirmation)
   const executeRedo = useCallback(async (waypoint: Waypoint) => {
     if (!currentProject?.sourceImageUrl || waypoint.isOriginal) return;
 
+    // Get the reference image (either original or another generated angle)
+    const referenceImageUrl = getReferenceImageUrl(waypoint.id) || currentProject.sourceImageUrl;
+
+    // Get effective angle values (with any overrides applied)
+    const effectiveAngles = getEffectiveAngle(waypoint);
+    const waypointWithOverrides: Waypoint = {
+      ...waypoint,
+      azimuth: effectiveAngles.azimuth,
+      elevation: effectiveAngles.elevation,
+      distance: effectiveAngles.distance
+    };
+
+    // Update waypoint with new angles and generating status
     dispatch({
       type: 'UPDATE_WAYPOINT',
-      payload: { id: waypoint.id, updates: { status: 'generating', progress: 0, error: undefined } }
+      payload: {
+        id: waypoint.id,
+        updates: {
+          status: 'generating',
+          progress: 0,
+          error: undefined,
+          azimuth: effectiveAngles.azimuth,
+          elevation: effectiveAngles.elevation,
+          distance: effectiveAngles.distance
+        }
+      }
+    });
+
+    // Clear the override since we're applying it
+    setAngleOverrides(prev => {
+      const next = { ...prev };
+      delete next[waypoint.id];
+      return next;
     });
 
     try {
       await generateMultipleAngles(
-        currentProject.sourceImageUrl,
-        [waypoint],
+        referenceImageUrl,
+        [waypointWithOverrides],
         currentProject.sourceImageDimensions.width,
         currentProject.sourceImageDimensions.height,
         {
@@ -139,13 +235,26 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const handleRedo = useCallback((waypoint: Waypoint) => {
     if (waypoint.isOriginal) return;
 
+    // Auth gating: require login if user has already used their free generation
+    if (!isAuthenticated && hasUsedFreeGeneration) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    // Mark that user has used their free generation (for unauthenticated users)
+    if (!isAuthenticated && !hasUsedFreeGeneration) {
+      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+    }
+
     // Use confirmation callback if provided, otherwise execute directly
     if (onConfirmDestructiveAction) {
       onConfirmDestructiveAction('render-angles', () => executeRedo(waypoint));
     } else {
       executeRedo(waypoint);
     }
-  }, [onConfirmDestructiveAction, executeRedo]);
+  }, [onConfirmDestructiveAction, executeRedo, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   // Navigate versions
   const handlePrevVersion = useCallback((waypoint: Waypoint) => {
@@ -254,17 +363,44 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   // Show enhance popup for single image
   const handleEnhanceClick = useCallback((waypoint: Waypoint) => {
     if (!waypoint.imageUrl || !currentProject) return;
+
+    // Auth gating: require login if user has already used their free generation
+    if (!isAuthenticated && hasUsedFreeGeneration) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    // Mark that user has used their free generation (for unauthenticated users)
+    if (!isAuthenticated && !hasUsedFreeGeneration) {
+      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+    }
+
     setPendingEnhanceWaypoint(waypoint);
     setIsEnhanceAllMode(false);
     setShowEnhancePopup(true);
-  }, [currentProject]);
+  }, [currentProject, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   // Show enhance popup for all images
   const handleEnhanceAllClick = useCallback(() => {
+    // Auth gating: require login if user has already used their free generation
+    if (!isAuthenticated && hasUsedFreeGeneration) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    // Mark that user has used their free generation (for unauthenticated users)
+    if (!isAuthenticated && !hasUsedFreeGeneration) {
+      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+    }
+
     setIsEnhanceAllMode(true);
     setPendingEnhanceWaypoint(null);
     setShowEnhancePopup(true);
-  }, []);
+  }, [isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   // Execute enhancement with custom prompt
   const executeEnhance = useCallback(async (waypoint: Waypoint, prompt: string) => {
@@ -446,8 +582,48 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             <div key={waypoint.id} className="review-card-clean">
               {/* Card Header */}
               <div className="review-card-top">
-                <span className="review-card-step-num">Step {index + 1}</span>
-                {waypoint.isOriginal && <span className="review-card-orig-tag">Original</span>}
+                <div className="review-card-top-left">
+                  <span className="review-card-step-num">Step {index + 1}</span>
+                  {waypoint.isOriginal && <span className="review-card-orig-tag">Original</span>}
+                </div>
+                {/* Reference selector for non-original waypoints */}
+                {!waypoint.isOriginal && (
+                  <div className="review-card-reference">
+                    <label className="reference-label">
+                      Reference:
+                      <button
+                        type="button"
+                        className="reference-info-btn"
+                        onClick={() => setVisibleTooltip(visibleTooltip === waypoint.id ? null : waypoint.id)}
+                        aria-label="What is reference image?"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                          <path strokeLinecap="round" strokeWidth="2.5" d="M12 16v-5" />
+                          <circle cx="12" cy="7.5" r="1.25" fill="currentColor" stroke="none" />
+                        </svg>
+                      </button>
+                    </label>
+                    <select
+                      className="reference-select"
+                      value={referenceSelections[waypoint.id] || 'original'}
+                      onChange={(e) => setReferenceSelections(prev => ({
+                        ...prev,
+                        [waypoint.id]: e.target.value
+                      }))}
+                    >
+                      {getReferenceOptions(waypoint.id).map(opt => (
+                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                      ))}
+                    </select>
+                    {visibleTooltip === waypoint.id && (
+                      <div className="reference-tooltip-bubble" onClick={() => setVisibleTooltip(null)}>
+                        <div className="tooltip-arrow" />
+                        <p>Select which image to use as the reference when regenerating. Using another generated angle can help maintain consistent details across similar views.</p><br/><p>Just keep in mind your angle will be relative to the subject in the new image. </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Image - Expands to fill available vertical space */}
@@ -499,7 +675,53 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
 
               {/* Info Section - Fixed Height */}
               <div className="review-card-info">
-                <div className="review-card-angle">{getAngleLabel(waypoint)}</div>
+                {waypoint.isOriginal ? (
+                  <div className="review-card-angle">Original Image</div>
+                ) : (
+                  <div className="review-card-angle-selectors">
+                    <select
+                      className="angle-select"
+                      value={angleOverrides[waypoint.id]?.azimuth ?? waypoint.azimuth}
+                      onChange={(e) => setAngleOverrides(prev => ({
+                        ...prev,
+                        [waypoint.id]: { ...prev[waypoint.id], azimuth: e.target.value as AzimuthKey }
+                      }))}
+                    >
+                      {AZIMUTHS.map(az => (
+                        <option key={az.key} value={az.key}>{az.label}</option>
+                      ))}
+                    </select>
+                    <span className="angle-separator">·</span>
+                    <select
+                      className="angle-select"
+                      value={angleOverrides[waypoint.id]?.elevation ?? waypoint.elevation}
+                      onChange={(e) => setAngleOverrides(prev => ({
+                        ...prev,
+                        [waypoint.id]: { ...prev[waypoint.id], elevation: e.target.value as ElevationKey }
+                      }))}
+                    >
+                      {ELEVATIONS.map(el => (
+                        <option key={el.key} value={el.key}>{el.label}</option>
+                      ))}
+                    </select>
+                    <span className="angle-separator">·</span>
+                    <select
+                      className="angle-select"
+                      value={angleOverrides[waypoint.id]?.distance ?? waypoint.distance}
+                      onChange={(e) => setAngleOverrides(prev => ({
+                        ...prev,
+                        [waypoint.id]: { ...prev[waypoint.id], distance: e.target.value as DistanceKey }
+                      }))}
+                    >
+                      {DISTANCES.map(d => (
+                        <option key={d.key} value={d.key}>{d.label}</option>
+                      ))}
+                    </select>
+                    {isAngleModified(waypoint) && (
+                      <span className="angle-modified-indicator" title="Angle changed - click Regenerate to apply">*</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Version Nav - Always reserve space */}
                 <div className={`review-card-versions ${versionInfo ? 'visible' : 'hidden'}`}>

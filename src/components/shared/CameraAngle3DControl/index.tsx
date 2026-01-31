@@ -42,7 +42,7 @@ const CameraAngle3DControl: React.FC<CameraAngle3DControlProps> = ({
   animationDuration,
   isAnimating
 }) => {
-  const orbitalSize = size === 'full' ? 200 : size === 'card' ? 120 : 80;
+  const orbitalSize = size === 'full' ? 200 : size === 'card' ? 140 : 80;
 
   if (size === 'compact') {
     return (

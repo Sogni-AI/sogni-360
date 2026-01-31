@@ -42,8 +42,8 @@ const CardMode: React.FC<CardModeProps> = ({
   onDistanceChange,
   orbitalSize: baseOrbitalSize
 }) => {
-  // Use smaller orbital in card mode - 70px fits within narrow mobile cards
-  const orbitalSize = Math.min(baseOrbitalSize, 70);
+  // Use the provided orbital size - parent controls sizing
+  const orbitalSize = baseOrbitalSize;
   const currentAzimuth = getAzimuthConfig(azimuth);
   const currentElevation = getElevationConfig(elevation);
 
@@ -68,10 +68,11 @@ const CardMode: React.FC<CardModeProps> = ({
       border: `1px solid ${COLORS.border}`,
       width: '100%',
       maxWidth: '100%',
+      height: '100%',
       overflow: 'hidden'
     }}>
-      {/* Main row: Height | Orbital */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+      {/* Main row: Height | Orbital - flex: 1 to fill available space */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flex: 1 }}>
         {/* Vertical Height buttons on LEFT */}
         <div style={{
           display: 'flex',
@@ -111,30 +112,8 @@ const CardMode: React.FC<CardModeProps> = ({
           })}
         </div>
 
-        {/* Orbital with rotate buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, justifyContent: 'center', minWidth: 0 }}>
-          <button
-            onClick={() => rotateCamera('ccw')}
-            style={{
-              width: '20px',
-              height: '20px',
-              borderRadius: '50%',
-              border: `1px solid ${COLORS.border}`,
-              background: 'rgba(30, 30, 30, 0.9)',
-              color: COLORS.textSecondary,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '10px',
-              padding: 0,
-              flexShrink: 0
-            }}
-            title="Rotate left"
-          >
-            ↻
-          </button>
-
+        {/* Orbital container */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
           <div
             ref={orbitRef}
             onClick={handleOrbitClick}
@@ -252,45 +231,67 @@ const CardMode: React.FC<CardModeProps> = ({
                 <span style={{ fontSize: '11px' }}>📷</span>
               </div>
             </div>
+          </div>
 
-            {/* Azimuth label */}
-            <div style={{
-              position: 'absolute',
-              bottom: '-4px',
-              left: '50%',
-              transform: 'translateX(-50%)',
+          {/* Azimuth label with rotate buttons */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginTop: '2px'
+          }}>
+            <button
+              onClick={() => rotateCamera('ccw')}
+              style={{
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                border: `1px solid ${COLORS.border}`,
+                background: 'rgba(30, 30, 30, 0.9)',
+                color: COLORS.textSecondary,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                padding: 0,
+                flexShrink: 0
+              }}
+              title="Rotate left"
+            >
+              ↻
+            </button>
+            <span style={{
               fontSize: '11px',
               fontWeight: '600',
               color: COLORS.textPrimary,
               textTransform: 'lowercase',
-              zIndex: 10,
               whiteSpace: 'nowrap'
             }}>
               {currentAzimuth.label.toLowerCase()}
-            </div>
+            </span>
+            <button
+              onClick={() => rotateCamera('cw')}
+              style={{
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                border: `1px solid ${COLORS.border}`,
+                background: 'rgba(30, 30, 30, 0.9)',
+                color: COLORS.textSecondary,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                padding: 0,
+                flexShrink: 0
+              }}
+              title="Rotate right"
+            >
+              ↺
+            </button>
           </div>
-
-          <button
-            onClick={() => rotateCamera('cw')}
-            style={{
-              width: '20px',
-              height: '20px',
-              borderRadius: '50%',
-              border: `1px solid ${COLORS.border}`,
-              background: 'rgba(30, 30, 30, 0.9)',
-              color: COLORS.textSecondary,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '10px',
-              padding: 0,
-              flexShrink: 0
-            }}
-            title="Rotate right"
-          >
-            ↺
-          </button>
         </div>
       </div>
 

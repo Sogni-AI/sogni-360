@@ -78,44 +78,37 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-  padding-top: 60px;
 }
 
-/* Sloth Mascot */
+/* Title wrapper - positions sloth behind title */
+.login-modal-title-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 20px 0;
+}
+
+/* Sloth Mascot - centered behind title */
 .login-modal-logo {
   position: absolute;
-  top: -40px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  width: 140px;
-  height: 140px;
+  transform: translate(-50%, -50%);
+  width: 160px;
+  height: 160px;
   object-fit: contain;
   z-index: 0;
-  opacity: 0.95;
+  opacity: 0.85;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
 }
 
-/* 360 Logo for Sogni 360 */
-.login-modal-logo-360 {
-  font-size: 48px;
-  font-weight: 900;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -2px;
+/* Title text - sits on top of sloth */
+.login-modal-title {
   position: relative;
   z-index: 1;
-  margin-top: 40px;
-}
-
-.login-modal-text {
-  position: relative;
-  z-index: 1;
-}
-
-.login-modal-text h1 {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: #fff;
   text-align: center;
@@ -124,14 +117,16 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
 }
 
-.login-modal-text h2 {
+/* Subtitle */
+.login-modal-subtitle {
   font-size: 18px;
   font-weight: 500;
   color: #e0e0e0;
   text-align: center;
-  margin: 8px 0 0 0;
+  margin: 0;
 }
 
 /* Field Container */
@@ -434,26 +429,21 @@
     padding: 32px 24px;
   }
 
-  .login-modal-content-header {
-    padding-top: 50px;
+  .login-modal-title-wrap {
+    min-height: 100px;
+    padding: 16px 0;
   }
 
   .login-modal-logo {
-    width: 110px;
-    height: 110px;
-    top: -30px;
+    width: 130px;
+    height: 130px;
   }
 
-  .login-modal-logo-360 {
-    font-size: 36px;
-    margin-top: 30px;
+  .login-modal-title {
+    font-size: 28px;
   }
 
-  .login-modal-text h1 {
-    font-size: 24px;
-  }
-
-  .login-modal-text h2 {
+  .login-modal-subtitle {
     font-size: 16px;
   }
 }

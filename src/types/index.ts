@@ -139,11 +139,13 @@ export interface Sogni360State {
   showTransitionReview: boolean;
   showFinalVideoPreview: boolean;
   showProjectManager: boolean;
+  showLoginPrompt: boolean;
 
   // Auth
   isAuthenticated: boolean;
   authMode: 'frontend' | 'demo' | null;
   walletBalance: { spark: number; sogni: number } | null;
+  hasUsedFreeGeneration: boolean;
 }
 
 // Context actions
@@ -184,6 +186,8 @@ export type Sogni360Action =
   | { type: 'SET_VIDEO_TRANSITION'; payload: VideoTransitionState | null }
   | { type: 'SET_VIDEO_TRANSITION_READY'; payload: boolean }
   | { type: 'SET_PROJECT_NAME'; payload: string }
+  | { type: 'SET_SHOW_LOGIN_PROMPT'; payload: boolean }
+  | { type: 'SET_HAS_USED_FREE_GENERATION'; payload: boolean }
   | { type: 'RESET_STATE' };
 
 // Generation event types

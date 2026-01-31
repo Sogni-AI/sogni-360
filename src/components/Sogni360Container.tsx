@@ -16,6 +16,7 @@ import WorkflowNavigationModal from './WorkflowNavigationModal';
 import NewProjectConfirmModal from './NewProjectConfirmModal';
 import ProjectNameModal, { generateProjectName } from './ProjectNameModal';
 import AuthStatus, { AuthStatusRef } from './auth/AuthStatus';
+import LoginPromptModal from './auth/LoginPromptModal';
 import StripePurchase from './stripe/StripePurchase';
 import PWAInstallPrompt from './shared/PWAInstallPrompt';
 import { ApiProvider } from '../hooks/useSogniApi';
@@ -39,7 +40,7 @@ interface PendingDestructiveAction {
 const Sogni360Container: React.FC = () => {
   const { state, dispatch, setUIVisible, isRestoring, updateSegment, clearProject, loadProjectById } = useApp();
   const { nextWaypoint, previousWaypoint, isTransitionPlaying, targetWaypointIndex } = useTransitionNavigation();
-  const { currentProject, showWaypointEditor, showAngleReview, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager } = state;
+  const { currentProject, showWaypointEditor, showAngleReview, currentWaypointIndex, showTransitionConfig, showTransitionReview, showFinalVideoPreview, showProjectManager, showLoginPrompt } = state;
   const hasAutoOpenedEditor = useRef(false);
   const authStatusRef = useRef<AuthStatusRef>(null);
   const [isTransitionGenerating, setIsTransitionGenerating] = useState(false);
@@ -437,6 +438,23 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
   }, [dispatch]);
 
+  // Handle auth requirement - show login prompt modal
+  const handleRequireAuth = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_LOGIN_PROMPT', payload: true });
+  }, [dispatch]);
+
+  // Handle login prompt close
+  const handleCloseLoginPrompt = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_LOGIN_PROMPT', payload: false });
+  }, [dispatch]);
+
+  // Handle login from login prompt
+  const handleLoginFromPrompt = useCallback(() => {
+    dispatch({ type: 'SET_SHOW_LOGIN_PROMPT', payload: false });
+    // Open the auth status login modal
+    authStatusRef.current?.openLoginModal();
+  }, [dispatch]);
+
   // Handle opening project manager
   const handleOpenProjectManager = useCallback(() => {
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: true });
@@ -793,7 +811,7 @@ const Sogni360Container: React.FC = () => {
             </button>
           </div>
           <div className="waypoint-editor-panel-content">
-            <WaypointEditor onConfirmDestructiveAction={confirmDestructiveAction} onWorkflowStepClick={handleWorkflowStepClick} />
+            <WaypointEditor onConfirmDestructiveAction={confirmDestructiveAction} onWorkflowStepClick={handleWorkflowStepClick} onRequireAuth={handleRequireAuth} />
           </div>
         </div>
       )}
@@ -807,6 +825,7 @@ const Sogni360Container: React.FC = () => {
             isGenerating={false}
             onConfirmDestructiveAction={confirmDestructiveAction}
             onWorkflowStepClick={handleWorkflowStepClick}
+            onRequireAuth={handleRequireAuth}
           />
         </div>
       )}
@@ -818,6 +837,7 @@ const Sogni360Container: React.FC = () => {
             onClose={() => dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: false })}
             onStartGeneration={handleStartTransitionGeneration}
             onConfirmDestructiveAction={confirmDestructiveAction}
+            onRequireAuth={handleRequireAuth}
           />
         </div>
       )}
@@ -836,6 +856,7 @@ const Sogni360Container: React.FC = () => {
           onConfirmDestructiveAction={confirmDestructiveAction}
           isGenerating={isTransitionGenerating}
           onWorkflowStepClick={handleWorkflowStepClick}
+          onRequireAuth={handleRequireAuth}
         />
       )}
 
@@ -907,6 +928,15 @@ const Sogni360Container: React.FC = () => {
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
+
+      {/* Login Prompt Modal - shown when auth is required for generation */}
+      <LoginPromptModal
+        isOpen={showLoginPrompt}
+        onClose={handleCloseLoginPrompt}
+        onLogin={handleLoginFromPrompt}
+        title="Sign in to Continue"
+        message="You've used your free generation. Sign in or create an account to keep creating amazing 360° portraits!"
+      />
     </div>
   );
 };

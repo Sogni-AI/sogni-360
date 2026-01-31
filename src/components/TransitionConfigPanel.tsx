@@ -32,16 +32,18 @@ interface TransitionConfigPanelProps {
   onClose: () => void;
   onStartGeneration: (segments: Segment[], settings: TransitionGenerationSettings) => void;
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
+  onRequireAuth?: () => void;
 }
 
 const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   onClose,
   onStartGeneration,
-  onConfirmDestructiveAction
+  onConfirmDestructiveAction,
+  onRequireAuth
 }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
-  const { currentProject } = state;
+  const { currentProject, isAuthenticated, hasUsedFreeGeneration } = state;
 
   // Local state for configuration
   const [transitionPrompt, setTransitionPrompt] = useState(
@@ -146,13 +148,26 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
       return;
     }
 
+    // Auth gating: require login if user has already used their free generation
+    if (!isAuthenticated && hasUsedFreeGeneration) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    // Mark that user has used their free generation (for unauthenticated users)
+    if (!isAuthenticated && !hasUsedFreeGeneration) {
+      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+    }
+
     // Use confirmation callback if provided, otherwise execute directly
     if (onConfirmDestructiveAction) {
       onConfirmDestructiveAction('render-videos', executeStartGeneration);
     } else {
       executeStartGeneration();
     }
-  }, [readyWaypoints.length, onConfirmDestructiveAction, executeStartGeneration, showToast]);
+  }, [readyWaypoints.length, onConfirmDestructiveAction, executeStartGeneration, showToast, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   return (
     <div className="transition-config-panel">

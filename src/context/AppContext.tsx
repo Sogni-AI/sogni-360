@@ -12,6 +12,27 @@ import { v4 as uuidv4 } from 'uuid';
 import { saveCurrentProject, getMostRecentProject, setCurrentProjectId, loadProject } from '../utils/localProjectsDB';
 import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
 
+// Key for persisting free generation usage in localStorage
+const FREE_GENERATION_KEY = 'sogni360_has_used_free_generation';
+
+// Check if free generation has been used (from localStorage)
+const getHasUsedFreeGeneration = (): boolean => {
+  try {
+    return localStorage.getItem(FREE_GENERATION_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+// Persist free generation usage to localStorage
+const setHasUsedFreeGenerationStorage = (value: boolean): void => {
+  try {
+    localStorage.setItem(FREE_GENERATION_KEY, value ? 'true' : 'false');
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 // Initial state
 const initialState: Sogni360State = {
   currentProject: null,
@@ -29,9 +50,11 @@ const initialState: Sogni360State = {
   showTransitionReview: false,
   showFinalVideoPreview: false,
   showProjectManager: false,
+  showLoginPrompt: false,
   isAuthenticated: false,
   authMode: null,
-  walletBalance: null
+  walletBalance: null,
+  hasUsedFreeGeneration: getHasUsedFreeGeneration()
 };
 
 // Default project settings
@@ -319,6 +342,14 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
 
     case 'SET_SHOW_PROJECT_MANAGER':
       return { ...state, showProjectManager: action.payload };
+
+    case 'SET_SHOW_LOGIN_PROMPT':
+      return { ...state, showLoginPrompt: action.payload };
+
+    case 'SET_HAS_USED_FREE_GENERATION':
+      // Also persist to localStorage
+      setHasUsedFreeGenerationStorage(action.payload);
+      return { ...state, hasUsedFreeGeneration: action.payload };
 
     case 'SET_FINAL_LOOP_URL':
       if (!state.currentProject) return state;

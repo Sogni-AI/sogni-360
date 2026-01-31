@@ -233,6 +233,12 @@ const Sogni360Viewer: React.FC = () => {
     touchStartRef.current = null;
   }, [nextWaypoint, previousWaypoint, togglePlayback, isPlaying, dispatch]);
 
+  // Stop touch propagation on interactive elements to prevent double-triggering
+  // (touch handler on parent + click handler on button)
+  const stopTouchPropagation = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+  }, []);
+
   if (!content) {
     return (
       <div className="sogni-360-viewer flex items-center justify-center text-white">
@@ -356,7 +362,11 @@ const Sogni360Viewer: React.FC = () => {
 
       {/* Waypoint indicator */}
       {currentProject && currentProject.waypoints.length > 0 && (
-        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex gap-2">
+        <div
+          className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex gap-2"
+          onTouchStart={stopTouchPropagation}
+          onTouchEnd={stopTouchPropagation}
+        >
           {currentProject.waypoints.map((_, index) => (
             <button
               key={index}
@@ -381,7 +391,11 @@ const Sogni360Viewer: React.FC = () => {
 
       {/* Playback and download controls - shown when sequence is complete */}
       {hasPlayableSequence && (
-        <div className="viewer-controls">
+        <div
+          className="viewer-controls"
+          onTouchStart={stopTouchPropagation}
+          onTouchEnd={stopTouchPropagation}
+        >
           {/* Auto-play toggle button with label */}
           <div className="autoplay-control">
             <button

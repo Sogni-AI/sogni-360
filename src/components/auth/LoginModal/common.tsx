@@ -42,16 +42,15 @@ export function FormContent({ children, noHeading, subHeading }: FormContentProp
   return (
     <div className="login-modal-form-content">
       <div className="login-modal-content-header">
-        <img
-          className="login-modal-logo"
-          src="/sloth_cam_hop_trnsparent.png"
-          alt="Sogni 360"
-        />
-        <div className="login-modal-logo-360">360</div>
-        <div className="login-modal-text">
-          {!noHeading && <h1>{text.heading}</h1>}
-          {subHeading && <h2>{subHeading}</h2>}
+        <div className="login-modal-title-wrap">
+          <img
+            className="login-modal-logo"
+            src="/sloth_cam_hop_trnsparent.png"
+            alt="Sogni 360"
+          />
+          {!noHeading && <h1 className="login-modal-title">{text.heading}</h1>}
         </div>
+        {subHeading && <h2 className="login-modal-subtitle">{subHeading}</h2>}
       </div>
       {children}
     </div>

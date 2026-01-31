@@ -23,6 +23,7 @@ import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 interface WaypointEditorProps {
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
+  onRequireAuth?: () => void;
 }
 
 /**
@@ -36,10 +37,10 @@ function getAngleLabel(waypoint: Waypoint): string {
   return `${az.label} · ${el.label} · ${dist.label}`;
 }
 
-const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAction, onWorkflowStepClick }) => {
+const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAction, onWorkflowStepClick, onRequireAuth }) => {
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
-  const { currentProject, showAngleReview } = state;
+  const { currentProject, showAngleReview, isAuthenticated, hasUsedFreeGeneration } = state;
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPresetKey, setSelectedPresetKey] = useState<string>('custom');
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -235,6 +236,19 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
       return;
     }
 
+    // Auth gating: require login if user has already used their free generation
+    if (!isAuthenticated && hasUsedFreeGeneration) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      return;
+    }
+
+    // Mark that user has used their free generation (for unauthenticated users)
+    if (!isAuthenticated && !hasUsedFreeGeneration) {
+      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+    }
+
     // Warm up audio on user interaction for iOS compatibility
     warmUpAudio();
 
@@ -244,7 +258,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
     } else {
       executeGenerateAngles();
     }
-  }, [currentProject?.sourceImageUrl, waypoints.length, onConfirmDestructiveAction, executeGenerateAngles, showToast]);
+  }, [currentProject?.sourceImageUrl, waypoints.length, onConfirmDestructiveAction, executeGenerateAngles, showToast, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   const handleReviewClose = useCallback(() => {
     dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
@@ -276,6 +290,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({ onConfirmDestructiveAct
         isGenerating={isGenerating}
         onConfirmDestructiveAction={onConfirmDestructiveAction}
         onWorkflowStepClick={onWorkflowStepClick}
+        onRequireAuth={onRequireAuth}
       />
     );
   }
