@@ -8,12 +8,13 @@ import {
 } from '../constants/cameraAngleSettings';
 import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import TransitionVideoCard from './TransitionVideoCard';
+import TransitionRegenerateModal from './TransitionRegenerateModal';
 import { downloadSingleVideo, downloadVideosAsZip, type VideoDownloadItem } from '../utils/bulkDownload';
 
 interface TransitionReviewPanelProps {
   onClose: () => void;
   onStitch: () => void;
-  onRedoSegment: (segmentId: string) => void;
+  onRedoSegment: (segmentId: string, customPrompt?: string) => void;
   onConfirmDestructiveAction?: (actionStep: WorkflowStep, onConfirm: () => void) => void;
   isGenerating: boolean;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
@@ -36,6 +37,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<string | null>(null);
+  const [regenerateModalSegment, setRegenerateModalSegment] = useState<Segment | null>(null);
 
   const waypoints = currentProject?.waypoints || [];
   const segments = currentProject?.segments || [];
@@ -166,8 +168,8 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
     }
   }, [segments, waypoints, showToast]);
 
-  // Handle redo with confirmation for destructive actions
-  const handleRedoWithConfirmation = useCallback((segmentId: string) => {
+  // Open the regenerate modal for a segment
+  const handleOpenRegenerateModal = useCallback((segmentId: string) => {
     // Auth gating: require login if user has already used their free generation
     if (!isAuthenticated && hasUsedFreeGeneration) {
       if (onRequireAuth) {
@@ -176,17 +178,35 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
       return;
     }
 
+    const segment = segments.find(s => s.id === segmentId);
+    if (segment) {
+      setRegenerateModalSegment(segment);
+    }
+  }, [segments, isAuthenticated, hasUsedFreeGeneration, onRequireAuth]);
+
+  // Handle actual regeneration after modal confirmation
+  const handleRegenerateConfirm = useCallback((customPrompt: string) => {
+    if (!regenerateModalSegment) return;
+
     // Mark that user has used their free generation (for unauthenticated users)
     if (!isAuthenticated && !hasUsedFreeGeneration) {
       dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
     }
 
+    const segmentId = regenerateModalSegment.id;
+    setRegenerateModalSegment(null);
+
     if (onConfirmDestructiveAction) {
-      onConfirmDestructiveAction('render-videos', () => onRedoSegment(segmentId));
+      onConfirmDestructiveAction('render-videos', () => onRedoSegment(segmentId, customPrompt));
     } else {
-      onRedoSegment(segmentId);
+      onRedoSegment(segmentId, customPrompt);
     }
-  }, [onConfirmDestructiveAction, onRedoSegment, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
+  }, [regenerateModalSegment, onConfirmDestructiveAction, onRedoSegment, isAuthenticated, hasUsedFreeGeneration, dispatch]);
+
+  // Close the regenerate modal
+  const handleRegenerateCancel = useCallback(() => {
+    setRegenerateModalSegment(null);
+  }, []);
 
   // Delete last segment (only last can be deleted to keep transitions aligned)
   const handleDeleteSegment = useCallback((segmentId: string, index: number) => {
@@ -274,7 +294,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               versionInfo={versionInfo}
               onPrevVersion={() => handlePrevVersion(segment)}
               onNextVersion={() => handleNextVersion(segment)}
-              onRegenerate={() => handleRedoWithConfirmation(segment.id)}
+              onRegenerate={() => handleOpenRegenerateModal(segment.id)}
               onDownload={() => handleDownloadSingle(segment, index)}
               onDelete={() => handleDeleteSegment(segment.id, index)}
               isDownloading={downloadingId === segment.id}
@@ -355,6 +375,20 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Regenerate Modal */}
+      {regenerateModalSegment && (
+        <TransitionRegenerateModal
+          fromLabel={getAngleLabel(regenerateModalSegment.fromWaypointId)}
+          toLabel={getAngleLabel(regenerateModalSegment.toWaypointId)}
+          fromImageUrl={getWaypoint(regenerateModalSegment.fromWaypointId)?.imageUrl}
+          toImageUrl={getWaypoint(regenerateModalSegment.toWaypointId)?.imageUrl}
+          thumbAspect={thumbAspect}
+          currentPrompt={currentProject?.settings.transitionPrompt}
+          onConfirm={handleRegenerateConfirm}
+          onCancel={handleRegenerateCancel}
+        />
+      )}
     </div>
   );
 };

@@ -276,7 +276,7 @@ const Sogni360Container: React.FC = () => {
   }, [currentProject, dispatch, updateSegment]);
 
   // Handle redo of a single segment
-  const handleRedoSegment = useCallback(async (segmentId: string) => {
+  const handleRedoSegment = useCallback(async (segmentId: string, customPrompt?: string) => {
     if (!currentProject) return;
 
     const segment = currentProject.segments.find(s => s.id === segmentId);
@@ -298,10 +298,14 @@ const Sogni360Container: React.FC = () => {
     const redoSourceHeight = currentProject.sourceImageDimensions?.height;
     const redoResolution = currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
 
+    // Use custom prompt if provided, otherwise fall back to project settings
+    const prompt = customPrompt || currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.';
+
     console.log('[Sogni360Container] Redo transition config:', {
       resolution: redoResolution,
       sourceWidth: redoSourceWidth,
-      sourceHeight: redoSourceHeight
+      sourceHeight: redoSourceHeight,
+      prompt: prompt.substring(0, 50) + '...'
     });
 
     try {
@@ -309,7 +313,7 @@ const Sogni360Container: React.FC = () => {
         [segment],
         waypointImages,
         {
-          prompt: currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.',
+          prompt,
           resolution: redoResolution,
           quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast',
           duration: currentProject.settings.transitionDuration || 1.5,
