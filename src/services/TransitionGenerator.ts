@@ -157,6 +157,7 @@ async function generateWithFrontendSDK(
   ]);
 
   // Create project options matching backend implementation
+  // Use shift and guidance values from quality config (model-specific optimal values)
   const projectOptions = {
     type: 'video' as const,
     modelId: qualityConfig.model,
@@ -167,7 +168,8 @@ async function generateWithFrontendSDK(
     width: videoDimensions.width,
     height: videoDimensions.height,
     steps: qualityConfig.steps,
-    guidance: 5,
+    shift: qualityConfig.shift,
+    guidance: qualityConfig.guidance,
     frames: frames,
     fps: DEFAULT_VIDEO_SETTINGS.fps, // Output video FPS (32fps for smooth playback)
     numberOfMedia: 1,
@@ -310,6 +312,7 @@ async function generateWithBackendAPI(
   console.log(`[TransitionGenerator-API] Video dimensions: ${videoDimensions.width}x${videoDimensions.height}`);
 
   // Start generation via API
+  // Pass shift and guidance from quality config (model-specific optimal values)
   const { projectId } = await api.generateTransition({
     referenceImage: fromImageUrl,
     referenceImageEnd: toImageUrl,
@@ -320,6 +323,8 @@ async function generateWithBackendAPI(
     frames,
     fps: DEFAULT_VIDEO_SETTINGS.fps, // Output video FPS (32fps for smooth playback)
     steps: qualityConfig.steps,
+    shift: qualityConfig.shift,
+    guidance: qualityConfig.guidance,
     model: qualityConfig.model,
     tokenType
   });

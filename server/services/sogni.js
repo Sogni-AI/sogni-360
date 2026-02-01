@@ -387,7 +387,9 @@ export async function generateVideo(client, params, progressCallback, localProje
     model: params.selectedModel,
     frames: params.frames,
     width: params.width,
-    height: params.height
+    height: params.height,
+    shift: params.shift,
+    guidance: params.promptGuidance
   });
 
   const projectOptions = {
@@ -399,7 +401,8 @@ export async function generateVideo(client, params, progressCallback, localProje
     width: params.width,
     height: params.height,
     steps: params.inferenceSteps || 4,
-    guidance: params.promptGuidance || 5,
+    shift: params.shift,                    // Motion intensity (lightx2v: 5.0, full: 8.0)
+    guidance: params.promptGuidance || 5,   // Guidance scale (lightx2v: 1.0, full: 4.0)
     frames: params.frames || 49,
     fps: params.fps || 32, // Output video FPS (32fps for smooth playback)
     numberOfMedia: 1,

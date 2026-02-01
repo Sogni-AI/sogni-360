@@ -27,7 +27,8 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [needsPlayPrompt, setNeedsPlayPrompt] = useState(false);
 
   const {
     isDownloading,
@@ -47,10 +48,22 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   } = useFinalVideoActions({ projectId, videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection });
 
   // Auto-play when stitched video is ready
+  // iOS blocks autoplay for videos with audio, so we handle the failure gracefully
   useEffect(() => {
     if (localStitchedUrl && videoRef.current) {
-      videoRef.current.play().catch(() => {});
-      setIsPlaying(true);
+      const video = videoRef.current;
+
+      video.play()
+        .then(() => {
+          setIsPlaying(true);
+          setNeedsPlayPrompt(false);
+        })
+        .catch((err) => {
+          // Autoplay was blocked (common on iOS with audio)
+          console.log('[FinalVideoPanel] Autoplay blocked:', err.name);
+          setIsPlaying(false);
+          setNeedsPlayPrompt(true);
+        });
     }
   }, [localStitchedUrl]);
 
@@ -58,8 +71,12 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   const togglePlayPause = useCallback(() => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      videoRef.current.play().catch(() => {});
-      setIsPlaying(true);
+      videoRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+          setNeedsPlayPrompt(false);
+        })
+        .catch(() => {});
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -83,7 +100,13 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   const handleVideoEnded = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          setIsPlaying(false);
+        });
       setCurrentSegmentIndex(0);
     }
   }, [setCurrentSegmentIndex]);
@@ -120,18 +143,77 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
             <p className="text-lg">{stitchProgress || 'Stitching videos...'}</p>
           </div>
         ) : localStitchedUrl ? (
-          <video
-            ref={videoRef}
-            src={localStitchedUrl}
-            autoPlay
-            muted={!musicSelection}
-            playsInline
-            loop
-            className="final-video"
-            onTimeUpdate={onTimeUpdate}
-            onEnded={handleVideoEnded}
-            onLoadedMetadata={handleLoadedMetadata}
-          />
+          <>
+            <video
+              ref={videoRef}
+              src={localStitchedUrl}
+              autoPlay
+              muted={!musicSelection}
+              playsInline
+              loop
+              className="final-video"
+              onTimeUpdate={onTimeUpdate}
+              onEnded={handleVideoEnded}
+              onLoadedMetadata={handleLoadedMetadata}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            />
+            {/* Play prompt overlay for iOS when autoplay is blocked */}
+            {needsPlayPrompt && (
+              <button
+                className="play-prompt-overlay"
+                onClick={togglePlayPause}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  zIndex: 5
+                }}
+              >
+                <div
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '50%',
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+                  }}
+                >
+                  <svg
+                    width="36"
+                    height="36"
+                    viewBox="0 0 24 24"
+                    fill="rgba(168, 85, 247, 1)"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+                <p
+                  style={{
+                    marginTop: '16px',
+                    color: 'white',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)'
+                  }}
+                >
+                  Tap to Play
+                </p>
+              </button>
+            )}
+          </>
         ) : (
           <div className="flex items-center justify-center h-full text-white">
             <p>No video available</p>

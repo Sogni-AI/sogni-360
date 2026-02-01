@@ -144,6 +144,8 @@ class ApiClient {
     frames?: number;
     fps?: number;  // Output video FPS (32fps for smooth playback)
     steps?: number;
+    shift?: number;  // Motion intensity (model-specific: lightx2v 5.0, full 8.0)
+    guidance?: number;  // Guidance scale (model-specific: lightx2v 1.0, full 4.0)
     model?: string;
     tokenType?: 'spark' | 'sogni';
   }): Promise<{ projectId: string; clientAppId: string }> {
@@ -178,6 +180,8 @@ class ApiClient {
         frames: params.frames || 49,
         fps: params.fps || 32,  // Output video FPS (32fps for smooth playback)
         steps: params.steps || 4,
+        shift: params.shift,  // Model-specific motion intensity
+        guidance: params.guidance,  // Model-specific guidance scale
         model: params.model || 'wan_v2.2-14b-fp8_i2v_lightx2v',
         tokenType: params.tokenType || 'spark',
         clientAppId: this.clientAppId,

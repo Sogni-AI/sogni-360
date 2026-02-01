@@ -10,6 +10,8 @@ interface AudioTrimmerProps {
   selectedDuration: number;
   onStartOffsetChange: (offset: number) => void;
   onSelectedDurationChange: (duration: number) => void;
+  /** When true, selection duration is fixed and user can only move it (not resize) */
+  fixedDuration?: boolean;
 }
 
 const CANVAS_WIDTH = 352;
@@ -25,7 +27,8 @@ const AudioTrimmer: React.FC<AudioTrimmerProps> = ({
   startOffset,
   selectedDuration,
   onStartOffsetChange,
-  onSelectedDurationChange
+  onSelectedDurationChange,
+  fixedDuration = false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -83,10 +86,12 @@ const AudioTrimmer: React.FC<AudioTrimmerProps> = ({
       ctx.lineWidth = 2;
       ctx.strokeRect(startX + 1, 1, selectionWidth - 2, height - 2);
 
-      // Draw drag handles
-      ctx.fillStyle = 'rgba(236, 72, 153, 1)';
-      ctx.fillRect(startX, 0, 4, height);
-      ctx.fillRect(startX + selectionWidth - 4, 0, 4, height);
+      // Draw drag handles only when duration is adjustable
+      if (!fixedDuration) {
+        ctx.fillStyle = 'rgba(236, 72, 153, 1)';
+        ctx.fillRect(startX, 0, 4, height);
+        ctx.fillRect(startX + selectionWidth - 4, 0, 4, height);
+      }
     }
 
     // Draw playhead if playing
@@ -99,7 +104,7 @@ const AudioTrimmer: React.FC<AudioTrimmerProps> = ({
       ctx.lineTo(playheadX, height);
       ctx.stroke();
     }
-  }, [waveform, audioDuration, startOffset, selectedDuration, isPlaying, playhead]);
+  }, [waveform, audioDuration, startOffset, selectedDuration, isPlaying, playhead, fixedDuration]);
 
   // Redraw on changes
   useEffect(() => {
@@ -114,8 +119,18 @@ const AudioTrimmer: React.FC<AudioTrimmerProps> = ({
     return (e as MouseEvent).clientX;
   };
 
+  // Prevent context menu on long press (mobile)
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   // Handle mouse/touch down on canvas
   const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+    // Prevent default to stop long-press actions on mobile
+    e.preventDefault();
+    e.stopPropagation();
+
     const canvas = canvasRef.current;
     if (!canvas || audioDuration === 0) return;
 
@@ -131,13 +146,20 @@ const AudioTrimmer: React.FC<AudioTrimmerProps> = ({
 
     let detectedType: 'start' | 'end' | 'move' | null = null;
 
-    if (Math.abs(clickTime - selectionStart) < handleZone) {
+    // When fixedDuration is true, only allow moving (no resizing)
+    if (fixedDuration) {
+      if (clickTime >= selectionStart && clickTime <= selectionEnd) {
+        detectedType = 'move';
+      }
+    } else if (Math.abs(clickTime - selectionStart) < handleZone) {
       detectedType = 'start';
     } else if (Math.abs(clickTime - selectionEnd) < handleZone) {
       detectedType = 'end';
     } else if (clickTime >= selectionStart && clickTime <= selectionEnd) {
       detectedType = 'move';
-    } else {
+    }
+
+    if (!detectedType) {
       // Clicked outside - jump selection to that position
       const maxOffset = Math.max(0, audioDuration - selectedDuration);
       const newOffset = Math.max(0, Math.min(clickTime - selectedDuration / 2, maxOffset));
@@ -291,11 +313,15 @@ const AudioTrimmer: React.FC<AudioTrimmerProps> = ({
           height={CANVAS_HEIGHT}
           onMouseDown={handleMouseDown}
           onTouchStart={handleMouseDown}
+          onContextMenu={handleContextMenu}
           style={{
             width: '100%',
             height: '60px',
-            cursor: isDragging ? 'grabbing' : 'pointer',
-            touchAction: 'none'
+            cursor: isDragging ? 'grabbing' : (fixedDuration ? 'grab' : 'pointer'),
+            touchAction: 'none',
+            WebkitTouchCallout: 'none',
+            WebkitUserSelect: 'none',
+            userSelect: 'none'
           }}
         />
 

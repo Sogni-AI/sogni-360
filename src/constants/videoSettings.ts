@@ -16,28 +16,39 @@ export const VIDEO_MODELS = {
 export type VideoModelType = keyof typeof VIDEO_MODELS;
 
 // Quality presets mapping to model + steps configuration
+// Shift and guidance values based on SDK defaults for each model:
+// - LightX2V (speed): shift 5.0, guidance 1.0 (range 0.7-1.6)
+// - Full quality: shift 8.0, guidance 4.0 (range 1.5-8.0)
 export const VIDEO_QUALITY_PRESETS = {
   fast: {
     model: VIDEO_MODELS.speed,
     steps: 4,
+    shift: 5.0,
+    guidance: 1.0,
     label: 'Fast',
     description: 'Quick generation (~12-20s)'
   },
   balanced: {
     model: VIDEO_MODELS.speed,
     steps: 8,
+    shift: 5.0,
+    guidance: 1.0,
     label: 'Balanced',
     description: 'Good balance of speed and quality (~25-40s)'
   },
   quality: {
     model: VIDEO_MODELS.quality,
     steps: 20,
+    shift: 8.0,
+    guidance: 4.0,
     label: 'High Quality',
     description: 'Higher quality, slower (~3-4 min)'
   },
   pro: {
     model: VIDEO_MODELS.quality,
     steps: 30,
+    shift: 8.0,
+    guidance: 4.0,
     label: 'Pro',
     description: 'Maximum quality (~6-9 min)'
   }

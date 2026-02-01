@@ -160,12 +160,19 @@ const MusicSelector: React.FC<MusicSelectorProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 10001,
-        padding: '20px'
+        padding: '20px',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none'
       }}
       onClick={onClose}
+      onContextMenu={e => e.preventDefault()}
+      onTouchStart={e => e.stopPropagation()}
     >
       <div
         onClick={e => e.stopPropagation()}
+        onContextMenu={e => e.preventDefault()}
+        onTouchStart={e => e.stopPropagation()}
         style={{
           background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.9) 0%, rgba(168, 85, 247, 0.9) 100%)',
           borderRadius: '20px',
@@ -174,7 +181,8 @@ const MusicSelector: React.FC<MusicSelectorProps> = ({
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
-          position: 'relative'
+          position: 'relative',
+          WebkitTouchCallout: 'none'
         }}
       >
         {/* Close button */}
@@ -289,6 +297,7 @@ const MusicSelector: React.FC<MusicSelectorProps> = ({
             selectedDuration={audioState.selectedDuration}
             onStartOffsetChange={handleStartOffsetChange}
             onSelectedDurationChange={handleSelectedDurationChange}
+            fixedDuration
           />
         )}
 

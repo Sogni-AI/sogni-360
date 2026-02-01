@@ -305,6 +305,8 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
       frames = 49,
       fps = 32,           // Output video FPS (32fps for smooth playback)
       steps = 4,
+      shift,              // Motion intensity (model-specific: lightx2v 5.0, full 8.0)
+      guidance,           // Guidance scale (model-specific: lightx2v 1.0, full 4.0)
       model = 'wan_v2.2-14b-fp8_i2v_lightx2v',
       tokenType = 'spark'
     } = req.body;
@@ -316,7 +318,7 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
     }
 
     console.log(`[${localProjectId}] Prompt: ${prompt}`);
-    console.log(`[${localProjectId}] Resolution: ${width}x${height}, Frames: ${frames}, Steps: ${steps}`);
+    console.log(`[${localProjectId}] Resolution: ${width}x${height}, Frames: ${frames}, Steps: ${steps}, Shift: ${shift}, Guidance: ${guidance}`);
 
     // Progress handler
     const progressHandler = (eventData) => {
@@ -359,6 +361,7 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
     ]);
 
     // Build project parameters
+    // Use shift and guidance from request (model-specific optimal values from quality config)
     const projectParams = {
       selectedModel: model,
       positivePrompt: prompt || '',
@@ -370,7 +373,8 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
       frames,
       fps,
       inferenceSteps: steps,
-      promptGuidance: 5,
+      shift: shift,               // Motion intensity (lightx2v: 5.0, full: 8.0)
+      promptGuidance: guidance,   // Guidance scale (lightx2v: 1.0, full: 4.0)
       sampler: 'euler',
       scheduler: 'simple',
       tokenType,

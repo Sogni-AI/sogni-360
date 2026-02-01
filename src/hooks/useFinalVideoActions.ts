@@ -133,6 +133,14 @@ export function useFinalVideoActions({
         return;
       }
 
+      // If music is selected, skip cache and stitch with music
+      // (cached videos don't include music)
+      if (initialMusicSelection) {
+        console.log('[useFinalVideoActions] Music selected, skipping cache to include audio');
+        stitchVideos(initialMusicSelection);
+        return;
+      }
+
       // Try to load from cache first (validates video URLs match)
       if (projectId) {
         try {
@@ -151,7 +159,7 @@ export function useFinalVideoActions({
       }
 
       // No cached video, stitch now
-      stitchVideos(initialMusicSelection || null);
+      stitchVideos(null);
     };
 
     initializeVideo();
