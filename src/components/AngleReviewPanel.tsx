@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import type { Waypoint } from '../types';
@@ -53,6 +53,33 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   // Drag-and-drop state
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Mobile reorder menu state (shows arrows instead of drag on touch devices)
+  const [reorderMenuId, setReorderMenuId] = useState<string | null>(null);
+
+  // Close reorder menu when clicking outside
+  useEffect(() => {
+    if (!reorderMenuId) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.reorder-menu') && !target.closest('.review-card-drag-handle')) {
+        setReorderMenuId(null);
+      }
+    };
+
+    // Slight delay to avoid immediately closing from the same click that opened it
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('touchend', handleClickOutside);
+    }, 10);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('touchend', handleClickOutside);
+    };
+  }, [reorderMenuId]);
 
   // Popup state
   const [showEnhancePopup, setShowEnhancePopup] = useState(false);
@@ -369,6 +396,37 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     dispatch({ type: 'REORDER_WAYPOINTS', payload: newOrder });
     setDraggedId(null);
     setDragOverId(null);
+  }, [waypoints, dispatch]);
+
+  // Mobile reorder handlers (shows arrows instead of dragging)
+  const handleReorderMenuToggle = useCallback((waypointId: string, e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setReorderMenuId(prev => prev === waypointId ? null : waypointId);
+  }, []);
+
+  const handleMoveEarlier = useCallback((waypointId: string) => {
+    const currentIndex = waypoints.findIndex(wp => wp.id === waypointId);
+    if (currentIndex <= 0) return;
+
+    const newOrder = waypoints.map(wp => wp.id);
+    // Swap with previous
+    [newOrder[currentIndex - 1], newOrder[currentIndex]] = [newOrder[currentIndex], newOrder[currentIndex - 1]];
+
+    dispatch({ type: 'REORDER_WAYPOINTS', payload: newOrder });
+    // Keep menu open so user can continue moving
+  }, [waypoints, dispatch]);
+
+  const handleMoveLater = useCallback((waypointId: string) => {
+    const currentIndex = waypoints.findIndex(wp => wp.id === waypointId);
+    if (currentIndex < 0 || currentIndex >= waypoints.length - 1) return;
+
+    const newOrder = waypoints.map(wp => wp.id);
+    // Swap with next
+    [newOrder[currentIndex], newOrder[currentIndex + 1]] = [newOrder[currentIndex + 1], newOrder[currentIndex]];
+
+    dispatch({ type: 'REORDER_WAYPOINTS', payload: newOrder });
+    // Keep menu open so user can continue moving
   }, [waypoints, dispatch]);
 
   // Delete waypoint handler
@@ -714,7 +772,11 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               {/* Card Header */}
               <div className="review-card-top">
                 <div className="review-card-top-left">
-                  <div className="review-card-drag-handle" title="Drag to reorder">
+                  <div
+                    className={`review-card-drag-handle ${reorderMenuId === waypoint.id ? 'menu-open' : ''}`}
+                    title="Reorder"
+                    onClick={(e) => handleReorderMenuToggle(waypoint.id, e)}
+                  >
                     <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                       <circle cx="9" cy="6" r="1.5" />
                       <circle cx="15" cy="6" r="1.5" />
@@ -723,6 +785,32 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                       <circle cx="9" cy="18" r="1.5" />
                       <circle cx="15" cy="18" r="1.5" />
                     </svg>
+                    {/* Mobile Reorder Menu */}
+                    {reorderMenuId === waypoint.id && (
+                      <div className="reorder-menu" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="reorder-btn"
+                          onClick={(e) => { e.stopPropagation(); handleMoveEarlier(waypoint.id); }}
+                          disabled={index === 0}
+                          title="Move earlier"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <span className="reorder-label">Move</span>
+                        <button
+                          className="reorder-btn"
+                          onClick={(e) => { e.stopPropagation(); handleMoveLater(waypoint.id); }}
+                          disabled={index === waypoints.length - 1}
+                          title="Move later"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <span className="review-card-step-num">Step {index + 1}</span>
                   {waypoint.isOriginal && <span className="review-card-orig-tag">Original</span>}
