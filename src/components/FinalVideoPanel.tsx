@@ -27,6 +27,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const {
     isDownloading,
@@ -49,8 +50,21 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   useEffect(() => {
     if (localStitchedUrl && videoRef.current) {
       videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
     }
   }, [localStitchedUrl]);
+
+  // Toggle play/pause
+  const togglePlayPause = useCallback(() => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, []);
 
   // Handle video metadata to get duration
   const handleLoadedMetadata = useCallback(() => {
@@ -147,6 +161,12 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
 
       {/* Action buttons */}
       <div className="final-video-actions">
+        <ActionButton
+          icon={isPlaying ? 'pause' : 'play'}
+          onClick={togglePlayPause}
+          disabled={isStitching || !localStitchedUrl}
+          title={isPlaying ? 'Pause' : 'Play'}
+        />
         <ActionButton
           icon="music"
           onClick={() => setShowMusicSelector(true)}
@@ -245,7 +265,7 @@ const MusicIndicator: React.FC<MusicIndicatorProps> = ({ title, onRemove }) => (
 );
 
 interface ActionButtonProps {
-  icon: 'music' | 'download' | 'share' | 'back';
+  icon: 'play' | 'pause' | 'music' | 'download' | 'share' | 'back';
   onClick: () => void;
   disabled?: boolean;
   title: string;
@@ -253,6 +273,8 @@ interface ActionButtonProps {
 }
 
 const ICON_PATHS = {
+  play: 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  pause: 'M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z',
   music: 'M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3',
   download: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
   share: 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z',

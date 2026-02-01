@@ -16,6 +16,7 @@ import MusicSelector from './shared/MusicSelector';
 import MusicConfigSection from './shared/MusicConfigSection';
 import { warmUpAudio } from '../utils/sonicLogos';
 import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
+import { useAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 // Default transition prompt
 const DEFAULT_TRANSITION_PROMPT = `Smooth camera orbit around the subject. Preserve the same subject identity, facial structure, and environment. Seamless motion between camera angles with consistent lighting.`;
@@ -44,8 +45,10 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject, isAuthenticated, hasUsedFreeGeneration } = state;
+  const { settings: advancedSettings } = useAdvancedSettings();
 
   // Local state for configuration
+  // Quality syncs with Advanced Settings as fallback when no project-specific setting exists
   const [transitionPrompt, setTransitionPrompt] = useState(
     currentProject?.settings.transitionPrompt || DEFAULT_TRANSITION_PROMPT
   );
@@ -56,12 +59,14 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     currentProject?.settings.transitionDuration || 1.5
   );
   const [quality, setQuality] = useState<VideoQualityPreset>(
-    (currentProject?.settings.transitionQuality as VideoQualityPreset) || 'fast'
+    (currentProject?.settings.transitionQuality as VideoQualityPreset) || advancedSettings.videoQuality
   );
 
-  // Music state
+  // Music state - sync with project settings so FinalVideoPanel sees it
   const [showMusicSelector, setShowMusicSelector] = useState(false);
-  const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(null);
+  const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(
+    currentProject?.settings.musicSelection || null
+  );
 
   const waypoints = currentProject?.waypoints || [];
   const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
