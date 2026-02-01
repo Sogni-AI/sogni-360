@@ -37,6 +37,76 @@ async function getImageDimensions(
   });
 }
 
+/**
+ * Normalize an image to match target dimensions using center+cover crop.
+ * Scales the image to cover the target area, then crops from center.
+ */
+async function normalizeImageToTargetDimensions(
+  imageUrl: string,
+  targetDimensions: { width: number; height: number }
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetDimensions.width;
+      canvas.height = targetDimensions.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Calculate cover dimensions (scale to fill, then crop from center)
+      const sourceAspect = img.naturalWidth / img.naturalHeight;
+      const targetAspect = targetDimensions.width / targetDimensions.height;
+
+      let drawWidth: number, drawHeight: number;
+      let offsetX: number, offsetY: number;
+
+      if (sourceAspect > targetAspect) {
+        // Source is wider - fit by height, crop width
+        drawHeight = targetDimensions.height;
+        drawWidth = drawHeight * sourceAspect;
+        offsetX = (targetDimensions.width - drawWidth) / 2;
+        offsetY = 0;
+      } else {
+        // Source is taller - fit by width, crop height
+        drawWidth = targetDimensions.width;
+        drawHeight = drawWidth / sourceAspect;
+        offsetX = 0;
+        offsetY = (targetDimensions.height - drawHeight) / 2;
+      }
+
+      ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+      // Return as blob URL
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(URL.createObjectURL(blob));
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        },
+        'image/jpeg',
+        0.95
+      );
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+
+    img.src = imageUrl;
+  });
+}
+
 const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
   sourceImageDimensions,
   onInsertAngle,
@@ -71,27 +141,6 @@ const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
           url: URL.createObjectURL(file),
           dimensions
         });
-      }
-
-      // Validate all images have the same dimensions
-      if (imagesWithDimensions.length > 1) {
-        const firstDims = imagesWithDimensions[0].dimensions;
-        const mismatch = imagesWithDimensions.find(
-          (img) =>
-            img.dimensions.width !== firstDims.width ||
-            img.dimensions.height !== firstDims.height
-        );
-
-        if (mismatch) {
-          // Clean up blob URLs
-          imagesWithDimensions.forEach((img) => URL.revokeObjectURL(img.url));
-          setError(
-            `All images must have the same dimensions. ` +
-              `First image is ${firstDims.width}x${firstDims.height}, ` +
-              `but "${mismatch.file.name}" is ${mismatch.dimensions.width}x${mismatch.dimensions.height}.`
-          );
-          return;
-        }
       }
 
       setPendingImages(imagesWithDimensions);
@@ -140,6 +189,7 @@ const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
 
     try {
       const waypoints: Waypoint[] = [];
+      const firstImageDims = pendingImages[0].dimensions;
 
       // First image is already processed
       const firstImageUrl = URL.createObjectURL(firstBlob);
@@ -158,11 +208,34 @@ const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
       for (let i = 1; i < pendingImages.length; i++) {
         const img = pendingImages[i];
         try {
+          // Check if this image has different dimensions than the first
+          const needsNormalization =
+            img.dimensions.width !== firstImageDims.width ||
+            img.dimensions.height !== firstImageDims.height;
+
+          let imageUrlToProcess = img.url;
+          let normalizedUrl: string | null = null;
+
+          // If dimensions differ, normalize to match first image using center+cover
+          if (needsNormalization) {
+            normalizedUrl = await normalizeImageToTargetDimensions(
+              img.url,
+              firstImageDims
+            );
+            imageUrlToProcess = normalizedUrl;
+          }
+
           const processedBlob = await applyAdjustmentToImage(
-            img.url,
+            imageUrlToProcess,
             sourceImageDimensions,
             params
           );
+
+          // Clean up normalized URL if we created one
+          if (normalizedUrl) {
+            URL.revokeObjectURL(normalizedUrl);
+          }
+
           const imageUrl = URL.createObjectURL(processedBlob);
           waypoints.push({
             id: uuidv4(),
@@ -217,9 +290,9 @@ const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
   return (
     <div className="upload-angle-mode">
       <p className="upload-angle-mode-desc">
-        Upload one or more images to use as frames. When uploading multiple
-        images, they must all be the same dimensions. The adjustment you make to
-        the first image will be applied to all.
+        Upload one or more images to use as frames. Images with different
+        dimensions will be automatically scaled and cropped to match the first
+        image. The adjustment you make to the first image will be applied to all.
       </p>
 
       <input
