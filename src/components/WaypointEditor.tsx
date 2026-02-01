@@ -48,10 +48,10 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
   useEffect(() => {
     if (waypoints.length === 0 && !hasAutoLoadedPreset.current) {
       hasAutoLoadedPreset.current = true;
-      const defaultPreset = MULTI_ANGLE_PRESETS.find(p => p.key === 'zoom-out-360-9');
+      const defaultPreset = MULTI_ANGLE_PRESETS.find(p => p.key === 'zoom-montage');
       if (defaultPreset) {
         handleLoadPreset(defaultPreset);
-        setSelectedPresetKey('zoom-out-360-9');
+        setSelectedPresetKey('zoom-montage');
       }
     }
   }, [waypoints.length]);

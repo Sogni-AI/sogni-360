@@ -274,16 +274,13 @@ export const MULTI_ANGLE_PRESETS: MultiAnglePreset[] = [
   {
     key: 'zoom-montage',
     label: 'Zoom Montage',
-    description: 'Original + 6 dynamic angles',
+    description: 'Original + 3 dynamic angles',
     icon: '🎬',
     angles: [
       { azimuth: 'front', elevation: 'eye-level', distance: 'close-up', isOriginal: true },
-      { azimuth: 'front-right', elevation: 'elevated', distance: 'medium' },
-      { azimuth: 'right', elevation: 'eye-level', distance: 'wide' },
-      { azimuth: 'back', elevation: 'high-angle', distance: 'medium' },
-      { azimuth: 'back-left', elevation: 'low-angle', distance: 'close-up' },
-      { azimuth: 'left', elevation: 'eye-level', distance: 'medium' },
-      { azimuth: 'front', elevation: 'eye-level', distance: 'wide' }
+      { azimuth: 'front-right', elevation: 'eye-level', distance: 'close-up' },
+      { azimuth: 'back', elevation: 'high-angle', distance: 'wide' },
+      { azimuth: 'left', elevation: 'low-angle', distance: 'medium' }
     ]
   },
   {

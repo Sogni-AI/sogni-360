@@ -207,7 +207,7 @@ const Sogni360Container: React.FC = () => {
     // Use passed settings directly (avoids race condition with state updates)
     // Fall back to project settings for redo operations
     const resolution = passedSettings?.resolution || currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
-    const quality = passedSettings?.quality || (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast';
+    const quality = passedSettings?.quality || (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'balanced';
     const duration = passedSettings?.duration || currentProject.settings.transitionDuration || 1.5;
     const prompt = passedSettings?.transitionPrompt || currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.';
 
@@ -315,7 +315,7 @@ const Sogni360Container: React.FC = () => {
         {
           prompt,
           resolution: redoResolution,
-          quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'fast',
+          quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'balanced',
           duration: currentProject.settings.transitionDuration || 1.5,
           tokenType: currentProject.settings.tokenType || 'spark',
           sourceWidth: redoSourceWidth || 1024,

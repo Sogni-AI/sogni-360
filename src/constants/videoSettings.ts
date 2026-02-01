@@ -80,16 +80,16 @@ export type VideoResolution = keyof typeof VIDEO_RESOLUTIONS;
 // Default video settings for 360 transitions
 export const DEFAULT_VIDEO_SETTINGS = {
   resolution: '720p' as VideoResolution,
-  quality: 'fast' as VideoQualityPreset,
-  frames: 49, // 3 seconds at 16fps base generation rate (32fps playback for smoothness)
+  quality: 'balanced' as VideoQualityPreset,
+  frames: 25, // 1.5 seconds at 16fps base generation rate (32fps playback for smoothness)
   fps: 32,
-  duration: 3 // 3 seconds per transition
+  duration: 1.5 // 1.5 seconds per transition
 };
 
 // Video generation config
 export const VIDEO_CONFIG = {
-  // Default frames for 3-second transition at 16fps base generation rate
-  defaultFrames: 49,
+  // Default frames for 1.5-second transition at 16fps base generation rate
+  defaultFrames: 25,
   // Frames per second options (affects playback smoothness, not frame count)
   fpsOptions: [16, 32] as const,
   defaultFps: 32,
@@ -97,7 +97,7 @@ export const VIDEO_CONFIG = {
   minDuration: 1,
   maxDuration: 8,
   durationStep: 0.5,
-  defaultDuration: 3,
+  defaultDuration: 1.5,
   // Frame range limits (1s = 17 frames, 8s = 129 frames at BASE_FPS 16)
   minFrames: 17,
   maxFrames: 129,

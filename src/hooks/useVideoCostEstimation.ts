@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   VIDEO_QUALITY_PRESETS,
   VIDEO_CONFIG,
+  DEFAULT_VIDEO_SETTINGS,
   calculateVideoDimensions,
   calculateVideoFrames,
   VideoQualityPreset,
@@ -94,7 +95,7 @@ export function useVideoCostEstimation(params: VideoCostEstimationParams): Video
     imageWidth,
     imageHeight,
     resolution = '720p',
-    quality = 'fast',
+    quality = DEFAULT_VIDEO_SETTINGS.quality,
     duration = VIDEO_CONFIG.defaultDuration,
     fps = VIDEO_CONFIG.defaultFps,
     enabled = true,
