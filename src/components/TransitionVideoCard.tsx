@@ -43,8 +43,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   onDelete,
   isDownloading
 }) => {
-  const isLastSegment = index === totalSegments - 1;
-  const canDelete = isLastSegment && totalSegments > 1;
+  const canDelete = totalSegments > 1;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
@@ -112,11 +111,11 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
           {segment.status === 'pending' && (
             <span className="transition-status-pill pending">Pending</span>
           )}
-          {/* Delete button - only visible for last segment */}
+          {/* Delete button */}
           <button
             className={`transition-delete-btn ${!canDelete ? 'hidden' : ''}`}
             onClick={onDelete}
-            title={!isLastSegment ? 'Only the last transition can be removed' : totalSegments <= 1 ? 'At least one transition required' : 'Remove this transition'}
+            title={totalSegments <= 1 ? 'At least one transition required' : 'Remove this transition'}
             disabled={!canDelete}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
