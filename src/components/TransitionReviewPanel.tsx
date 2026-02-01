@@ -72,50 +72,66 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
       expectedToMap.set(fromWp.id, toWp.id);
     }
 
-    // Track which fromWaypointIds we've handled
-    const handledFromIds = new Set<string>();
-    let needsUpdate = false;
+    // Build the final segments map: one segment per fromWaypointId
+    // This ensures no duplicates and updates existing segments as needed
+    const finalSegmentsMap = new Map<string, Segment>();
 
-    // Update existing segments if their toWaypointId is now incorrect
-    const updatedSegments = segments.map(segment => {
+    // First pass: process existing segments, keeping the best one for each fromWaypointId
+    for (const segment of segments) {
       const expectedToId = expectedToMap.get(segment.fromWaypointId);
 
-      // If this segment's fromWaypointId is still valid
-      if (expectedToId !== undefined) {
-        handledFromIds.add(segment.fromWaypointId);
+      // Skip segments whose fromWaypointId is no longer valid
+      if (expectedToId === undefined) continue;
 
-        // If toWaypointId doesn't match expected, update it
-        if (segment.toWaypointId !== expectedToId) {
-          needsUpdate = true;
-          return {
+      // Check if we already have a segment for this fromWaypointId
+      const existing = finalSegmentsMap.get(segment.fromWaypointId);
+
+      if (!existing) {
+        // No existing segment for this fromWaypointId - use this one
+        if (segment.toWaypointId === expectedToId) {
+          // Segment is already correct
+          finalSegmentsMap.set(segment.fromWaypointId, segment);
+        } else {
+          // Update toWaypointId to match expected
+          finalSegmentsMap.set(segment.fromWaypointId, {
             ...segment,
             toWaypointId: expectedToId,
-            // Keep the segment but it now needs regeneration since destination changed
-            // Don't change status if it was already pending or failed
             status: segment.status === 'ready' || segment.status === 'generating'
               ? 'pending' as const
               : segment.status
-          };
+          });
+        }
+      } else {
+        // Already have a segment - keep the one with more progress/history
+        // Prefer: ready > generating > pending, or more versions
+        const existingScore = existing.status === 'ready' ? 3 :
+          existing.status === 'generating' ? 2 : 1;
+        const newScore = segment.status === 'ready' ? 3 :
+          segment.status === 'generating' ? 2 : 1;
+
+        if (newScore > existingScore ||
+            (newScore === existingScore &&
+             (segment.versions?.length || 0) > (existing.versions?.length || 0))) {
+          // This segment is better - but still need to update toWaypointId if needed
+          if (segment.toWaypointId === expectedToId) {
+            finalSegmentsMap.set(segment.fromWaypointId, segment);
+          } else {
+            finalSegmentsMap.set(segment.fromWaypointId, {
+              ...segment,
+              toWaypointId: expectedToId,
+              status: segment.status === 'ready' || segment.status === 'generating'
+                ? 'pending' as const
+                : segment.status
+            });
+          }
         }
       }
-      return segment;
-    });
-
-    // Filter out segments whose fromWaypointId no longer exists in ready waypoints
-    const validSegments = updatedSegments.filter(segment =>
-      expectedToMap.has(segment.fromWaypointId)
-    );
-
-    if (validSegments.length !== updatedSegments.length) {
-      needsUpdate = true;
     }
 
-    // Create new segments for any missing fromWaypointIds
-    const newSegments: Segment[] = [];
+    // Second pass: create new segments for any missing fromWaypointIds
     for (const [fromId, toId] of expectedToMap) {
-      if (!handledFromIds.has(fromId)) {
-        needsUpdate = true;
-        newSegments.push({
+      if (!finalSegmentsMap.has(fromId)) {
+        finalSegmentsMap.set(fromId, {
           id: uuidv4(),
           fromWaypointId: fromId,
           toWaypointId: toId,
@@ -125,17 +141,24 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
       }
     }
 
-    // Only dispatch if there are actual changes
-    if (needsUpdate) {
-      const allSegments = [...validSegments, ...newSegments];
+    // Convert to array and sort by waypoint order
+    const sortedSegments = Array.from(finalSegmentsMap.values()).sort((a, b) => {
+      const aFromIndex = readyWaypoints.findIndex(wp => wp.id === a.fromWaypointId);
+      const bFromIndex = readyWaypoints.findIndex(wp => wp.id === b.fromWaypointId);
+      return aFromIndex - bFromIndex;
+    });
 
-      // Sort segments to match the waypoint order
-      const sortedSegments = allSegments.sort((a, b) => {
-        const aFromIndex = readyWaypoints.findIndex(wp => wp.id === a.fromWaypointId);
-        const bFromIndex = readyWaypoints.findIndex(wp => wp.id === b.fromWaypointId);
-        return aFromIndex - bFromIndex;
-      });
+    // Check if anything actually changed
+    const segmentsChanged =
+      sortedSegments.length !== segments.length ||
+      sortedSegments.some((seg, idx) =>
+        seg.id !== segments[idx]?.id ||
+        seg.fromWaypointId !== segments[idx]?.fromWaypointId ||
+        seg.toWaypointId !== segments[idx]?.toWaypointId ||
+        seg.status !== segments[idx]?.status
+      );
 
+    if (segmentsChanged) {
       dispatch({ type: 'SET_SEGMENTS', payload: sortedSegments });
     }
   }, [readyWaypointIdsKey, segmentPairsKey]);
