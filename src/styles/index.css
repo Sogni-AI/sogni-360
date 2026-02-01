@@ -3484,16 +3484,27 @@ html, body {
 }
 
 .review-carousel-wrap::-webkit-scrollbar {
-  height: 6px;
+  height: 8px;
 }
 
 .review-carousel-wrap::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
 }
 
 .review-carousel-wrap::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+
+.review-carousel-wrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Firefox scrollbar - always visible */
+.review-carousel-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.08);
 }
 
 /* Card - Clean & Uniform - Expands to fill vertical space */
@@ -3558,26 +3569,45 @@ html, body {
   color: #60a5fa;
 }
 
-/* Drag Handle */
+/* Drag Handle - Touch-friendly sizing */
 .review-card-drag-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: rgba(255, 255, 255, 0.4);
+  width: 44px;
+  height: 44px;
+  margin: -10px;
+  margin-right: -4px;
+  color: rgba(255, 255, 255, 0.5);
   cursor: grab;
-  border-radius: 4px;
+  border-radius: 8px;
   transition: color 0.15s, background 0.15s;
+  touch-action: none; /* Prevent scroll interference on touch */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.review-card-drag-handle svg {
+  width: 20px;
+  height: 20px;
 }
 
 .review-card-drag-handle:hover {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
   background: rgba(255, 255, 255, 0.1);
 }
 
 .review-card-drag-handle:active {
   cursor: grabbing;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Mobile: Make drag handle more visible */
+@media (max-width: 767px) {
+  .review-card-drag-handle {
+    color: rgba(255, 255, 255, 0.6);
+  }
 }
 
 /* Delete Button */
@@ -4260,7 +4290,13 @@ html, body {
   height: auto;
   object-fit: contain; /* Preserve aspect ratio */
   display: block;
-  background: rgba(0, 0, 0, 0.3);
+  transition: opacity 0.2s ease;
+}
+
+/* Hide video controls and overlay while loading */
+.transition-video-wrap.loading .video-corner-play-btn,
+.transition-video-wrap.loading .transition-ready-badge {
+  opacity: 0;
 }
 
 /* Play overlay styles */
@@ -6259,7 +6295,7 @@ html, body {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .fullscreen-video-container {
@@ -6277,7 +6313,7 @@ html, body {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .fullscreen-play-btn {

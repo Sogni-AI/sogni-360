@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import type { Segment } from '../types';
 import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
+import { useLazyLoad } from '../hooks/useLazyLoad';
 
 interface TransitionVideoCardProps {
   segment: Segment;
@@ -47,10 +48,19 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
-  // Autoplay videos when they become ready
+  // Lazy load video only when card is visible in viewport
+  const { ref: cardRef, isVisible } = useLazyLoad({ rootMargin: '100px', once: true });
+
+  // Reset videoLoaded when video URL changes
   useEffect(() => {
-    if (segment.status === 'ready' && segment.videoUrl && videoRef.current) {
+    setVideoLoaded(false);
+  }, [segment.videoUrl]);
+
+  // Autoplay videos when they become ready and visible
+  useEffect(() => {
+    if (segment.status === 'ready' && segment.videoUrl && videoRef.current && isVisible) {
       // Small delay to ensure video element is mounted
       const timer = setTimeout(() => {
         videoRef.current?.play().catch(() => {
@@ -60,7 +70,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [segment.status, segment.videoUrl]);
+  }, [segment.status, segment.videoUrl, isVisible]);
 
   // Handle play/pause toggle
   const handleVideoToggle = useCallback(() => {
@@ -79,8 +89,11 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   const handlePlay = useCallback(() => setIsPaused(false), []);
   const handlePause = useCallback(() => setIsPaused(true), []);
 
+  // Track when video has loaded enough to display
+  const handleVideoLoaded = useCallback(() => setVideoLoaded(true), []);
+
   return (
-    <div className="transition-card">
+    <div ref={cardRef} className="transition-card">
       {/* Card Header */}
       <div className="transition-card-header">
         <span className="transition-card-title">Transition {index + 1}</span>
@@ -118,18 +131,20 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
         {segment.status === 'ready' && segment.videoUrl ? (
           /* Ready - show video with autoplay, tap to open fullscreen */
           <div
-            className="transition-video-wrap"
+            className={`transition-video-wrap ${!videoLoaded ? 'loading' : ''}`}
             onClick={() => setShowFullscreen(true)}
             style={{ aspectRatio: sourceAspectRatio }}
           >
             <video
               ref={videoRef}
-              src={segment.videoUrl}
+              src={isVisible ? segment.videoUrl : undefined}
               loop
               muted
               playsInline
               onPlay={handlePlay}
               onPause={handlePause}
+              onLoadedData={handleVideoLoaded}
+              style={{ opacity: videoLoaded ? 1 : 0 }}
             />
             {/* Corner play/pause button */}
             <button
@@ -150,12 +165,6 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 </svg>
               )}
             </button>
-            {/* Expand hint icon */}
-            <div className="video-expand-hint">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-              </svg>
-            </div>
             <div className="transition-ready-badge">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -168,7 +177,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
             {/* Thumbnails - stacked for landscape, side by side for portrait */}
             <div className={`transition-thumbs-row ${thumbAspect > 1 ? 'stacked' : ''}`}>
               <div className="transition-thumb" style={{ aspectRatio: thumbAspect }}>
-                {fromImageUrl && <img src={fromImageUrl} alt="From" />}
+                {fromImageUrl && <img src={fromImageUrl} alt="From" loading="lazy" />}
                 <span className="thumb-label">From</span>
               </div>
               <div className="transition-arrow">
@@ -177,7 +186,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 </svg>
               </div>
               <div className="transition-thumb" style={{ aspectRatio: thumbAspect }}>
-                {toImageUrl && <img src={toImageUrl} alt="To" />}
+                {toImageUrl && <img src={toImageUrl} alt="To" loading="lazy" />}
                 <span className="thumb-label">To</span>
               </div>
             </div>

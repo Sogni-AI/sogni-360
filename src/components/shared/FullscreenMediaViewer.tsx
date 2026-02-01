@@ -121,10 +121,6 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
         </div>
       )}
 
-      {/* Tap to close hint for images */}
-      {type === 'image' && (
-        <div className="fullscreen-hint">Tap anywhere to close</div>
-      )}
     </div>
   );
 };

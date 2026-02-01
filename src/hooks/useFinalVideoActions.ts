@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import { concatenateVideos } from '../utils/video-concatenation';
 import { loadAudioAsBuffer } from '../utils/audioUtils';
+import { ensureM4AFormat, needsTranscoding } from '../utils/audioTranscoder';
 import { trackDownload, trackShare, trackVideoExport } from '../utils/analytics';
 import { saveStitchedVideo, loadStitchedVideo } from '../utils/videoCache';
 import type { MusicSelection } from '../types';
@@ -68,7 +69,15 @@ export function useFinalVideoActions({
           : withMusic.presetUrl;
 
         if (audioUrl) {
-          const buffer = await loadAudioAsBuffer(audioUrl);
+          let buffer = await loadAudioAsBuffer(audioUrl);
+
+          // Transcode MP3/WAV to M4A for MP4 muxing compatibility
+          if (needsTranscoding(buffer)) {
+            setStitchProgress('Transcoding audio...');
+            const filename = withMusic.file?.name || 'audio.mp3';
+            buffer = await ensureM4AFormat(buffer, filename);
+          }
+
           audioOptions = {
             buffer,
             startOffset: withMusic.startOffset
