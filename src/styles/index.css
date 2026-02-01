@@ -6200,3 +6200,269 @@ html, body {
     padding: 0.5rem;
   }
 }
+
+/* =====================================================
+   FULLSCREEN MEDIA VIEWER
+   ===================================================== */
+
+.fullscreen-media-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fullscreen-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.fullscreen-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.fullscreen-close-btn:active {
+  transform: scale(0.95);
+}
+
+.fullscreen-media-content {
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.fullscreen-video-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fullscreen-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.fullscreen-play-btn {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  color: #0f1419;
+  transition: transform 0.2s ease;
+}
+
+.fullscreen-video-container:hover .fullscreen-play-btn {
+  transform: scale(1.1);
+}
+
+.fullscreen-hint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  pointer-events: none;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .fullscreen-close-btn {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 44px;
+    height: 44px;
+  }
+
+  .fullscreen-media-content {
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100vh - 1rem);
+  }
+
+  .fullscreen-play-btn {
+    width: 64px;
+    height: 64px;
+  }
+
+  .fullscreen-hint {
+    bottom: 1.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* =====================================================
+   INLINE VIDEO PLAY/PAUSE BUTTON (corner button)
+   ===================================================== */
+
+.video-corner-play-btn {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.video-corner-play-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.05);
+}
+
+.video-corner-play-btn:active {
+  transform: scale(0.95);
+}
+
+.video-corner-play-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Fullscreen expand button in corner */
+.video-expand-hint {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.video-expand-hint svg {
+  width: 16px;
+  height: 16px;
+}
+
+.transition-video-wrap:hover .video-expand-hint {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .video-expand-hint {
+    opacity: 0.7;
+  }
+}
+
+/* Clickable image indicator */
+.review-card-img.clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.review-card-img.clickable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.2s ease;
+  pointer-events: none;
+}
+
+.review-card-img.clickable:hover::after {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.image-expand-hint {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.image-expand-hint svg {
+  width: 16px;
+  height: 16px;
+}
+
+.review-card-img.clickable:hover .image-expand-hint {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .review-card-img.clickable .image-expand-hint {
+    opacity: 0.7;
+  }
+}

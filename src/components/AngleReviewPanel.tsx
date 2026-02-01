@@ -16,6 +16,7 @@ import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 import EnhancePromptPopup from './shared/EnhancePromptPopup';
 import AddAnglePopup from './AddAnglePopup';
+import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
 import { trackDownload } from '../utils/analytics';
 import { ensureDataUrl } from '../utils/imageUtils';
 
@@ -61,6 +62,9 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   // Add angle popup state
   const [showAddAnglePopup, setShowAddAnglePopup] = useState(false);
   const [insertAfterIndex, setInsertAfterIndex] = useState(-1);
+
+  // Fullscreen image viewer state
+  const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null);
 
   // Scroll hint state
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -824,7 +828,14 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               </div>
 
               {/* Image - Expands to fill available vertical space */}
-              <div className="review-card-img">
+              <div
+                className={`review-card-img ${waypoint.status === 'ready' && waypoint.imageUrl ? 'clickable' : ''}`}
+                onClick={() => {
+                  if (waypoint.status === 'ready' && waypoint.imageUrl) {
+                    setFullscreenImageUrl(waypoint.imageUrl);
+                  }
+                }}
+              >
                 {waypoint.imageUrl ? (
                   <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} />
                 ) : (
@@ -862,11 +873,21 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                 )}
 
                 {waypoint.status === 'ready' && (
-                  <div className="review-card-check">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
+                  <>
+                    <div className="review-card-check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    {/* Expand hint for clickable images */}
+                    {waypoint.imageUrl && (
+                      <div className="image-expand-hint">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                        </svg>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1144,6 +1165,15 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         onInsertAngle={handleInsertAngle}
         onInsertAngles={handleInsertAngles}
       />
+
+      {/* Fullscreen Image Viewer */}
+      {fullscreenImageUrl && (
+        <FullscreenMediaViewer
+          type="image"
+          src={fullscreenImageUrl}
+          onClose={() => setFullscreenImageUrl(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import type { Segment } from '../types';
+import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
 
 interface TransitionVideoCardProps {
   segment: Segment;
@@ -45,6 +46,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   const canDelete = isLastSegment && totalSegments > 1;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [showFullscreen, setShowFullscreen] = useState(false);
 
   // Autoplay videos when they become ready
   useEffect(() => {
@@ -114,10 +116,10 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
       {/* Preview Area */}
       <div className="transition-card-preview">
         {segment.status === 'ready' && segment.videoUrl ? (
-          /* Ready - show video with autoplay */
+          /* Ready - show video with autoplay, tap to open fullscreen */
           <div
             className="transition-video-wrap"
-            onClick={handleVideoToggle}
+            onClick={() => setShowFullscreen(true)}
             style={{ aspectRatio: sourceAspectRatio }}
           >
             <video
@@ -129,24 +131,31 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
               onPlay={handlePlay}
               onPause={handlePause}
             />
-            {/* Show play button overlay when paused */}
-            {isPaused && (
-              <div className="video-play-overlay">
-                <div className="video-play-btn">
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-              </div>
-            )}
-            {/* Show pause indicator when playing (tap to pause hint) */}
-            {!isPaused && (
-              <div className="video-playing-indicator">
+            {/* Corner play/pause button */}
+            <button
+              className="video-corner-play-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleVideoToggle();
+              }}
+              aria-label={isPaused ? 'Play' : 'Pause'}
+            >
+              {isPaused ? (
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              ) : (
                 <svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
                 </svg>
-              </div>
-            )}
+              )}
+            </button>
+            {/* Expand hint icon */}
+            <div className="video-expand-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              </svg>
+            </div>
             <div className="transition-ready-badge">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -271,6 +280,15 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Fullscreen video viewer */}
+      {showFullscreen && segment.videoUrl && (
+        <FullscreenMediaViewer
+          type="video"
+          src={segment.videoUrl}
+          onClose={() => setShowFullscreen(false)}
+        />
+      )}
     </div>
   );
 };
