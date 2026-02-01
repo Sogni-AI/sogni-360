@@ -224,11 +224,11 @@ export const CAMERA_PRESETS = [
 ] as const;
 
 // Maximum number of angles for multi-angle mode
-export const MAX_ANGLES = 16;
+export const MAX_ANGLES = 64;
 
-// Maximum waypoints for Sogni 360 (2-16 waypoints per project)
+// Maximum waypoints for Sogni 360 (2-64 waypoints per project)
 export const MIN_WAYPOINTS = 2;
-export const MAX_WAYPOINTS = 16;
+export const MAX_WAYPOINTS = 64;
 
 // Multi-angle preset templates for 360 experience
 export const MULTI_ANGLE_PRESETS: MultiAnglePreset[] = [

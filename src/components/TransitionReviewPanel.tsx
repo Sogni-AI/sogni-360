@@ -1,7 +1,8 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import type { Segment } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 import {
   getAzimuthConfig,
   getElevationConfig
@@ -41,6 +42,103 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
   const waypoints = currentProject?.waypoints || [];
   const segments = currentProject?.segments || [];
+
+  // Get ready waypoints (with images)
+  const readyWaypoints = useMemo(() => {
+    return waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
+  }, [waypoints]);
+
+  // Create stable keys for detecting changes (primitive strings for useEffect deps)
+  const readyWaypointIdsKey = useMemo(() => {
+    return readyWaypoints.map(wp => wp.id).join(',');
+  }, [readyWaypoints]);
+
+  const segmentPairsKey = useMemo(() => {
+    return segments.map(s => `${s.fromWaypointId}:${s.toWaypointId}`).join(',');
+  }, [segments]);
+
+  // Synchronize segments with waypoints when new ready waypoints are added
+  // This ensures that if user goes back to Render Angles, adds more waypoints,
+  // then returns here, the new waypoint transitions appear as pending slots
+  // Also updates existing segments if their toWaypointId is no longer correct
+  useEffect(() => {
+    if (readyWaypoints.length < 2 || segments.length === 0) return;
+
+    // Build a map of expected transitions: fromId -> toId
+    const expectedToMap = new Map<string, string>();
+    for (let i = 0; i < readyWaypoints.length; i++) {
+      const fromWp = readyWaypoints[i];
+      const toWp = readyWaypoints[(i + 1) % readyWaypoints.length];
+      expectedToMap.set(fromWp.id, toWp.id);
+    }
+
+    // Track which fromWaypointIds we've handled
+    const handledFromIds = new Set<string>();
+    let needsUpdate = false;
+
+    // Update existing segments if their toWaypointId is now incorrect
+    const updatedSegments = segments.map(segment => {
+      const expectedToId = expectedToMap.get(segment.fromWaypointId);
+
+      // If this segment's fromWaypointId is still valid
+      if (expectedToId !== undefined) {
+        handledFromIds.add(segment.fromWaypointId);
+
+        // If toWaypointId doesn't match expected, update it
+        if (segment.toWaypointId !== expectedToId) {
+          needsUpdate = true;
+          return {
+            ...segment,
+            toWaypointId: expectedToId,
+            // Keep the segment but it now needs regeneration since destination changed
+            // Don't change status if it was already pending or failed
+            status: segment.status === 'ready' || segment.status === 'generating'
+              ? 'pending' as const
+              : segment.status
+          };
+        }
+      }
+      return segment;
+    });
+
+    // Filter out segments whose fromWaypointId no longer exists in ready waypoints
+    const validSegments = updatedSegments.filter(segment =>
+      expectedToMap.has(segment.fromWaypointId)
+    );
+
+    if (validSegments.length !== updatedSegments.length) {
+      needsUpdate = true;
+    }
+
+    // Create new segments for any missing fromWaypointIds
+    const newSegments: Segment[] = [];
+    for (const [fromId, toId] of expectedToMap) {
+      if (!handledFromIds.has(fromId)) {
+        needsUpdate = true;
+        newSegments.push({
+          id: uuidv4(),
+          fromWaypointId: fromId,
+          toWaypointId: toId,
+          status: 'pending' as const,
+          versions: []
+        });
+      }
+    }
+
+    // Only dispatch if there are actual changes
+    if (needsUpdate) {
+      const allSegments = [...validSegments, ...newSegments];
+
+      // Sort segments to match the waypoint order
+      const sortedSegments = allSegments.sort((a, b) => {
+        const aFromIndex = readyWaypoints.findIndex(wp => wp.id === a.fromWaypointId);
+        const bFromIndex = readyWaypoints.findIndex(wp => wp.id === b.fromWaypointId);
+        return aFromIndex - bFromIndex;
+      });
+
+      dispatch({ type: 'SET_SEGMENTS', payload: sortedSegments });
+    }
+  }, [readyWaypointIdsKey, segmentPairsKey]);
 
   // Get waypoint by ID
   const getWaypoint = (id: string) => waypoints.find(wp => wp.id === id);
