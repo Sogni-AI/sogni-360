@@ -702,18 +702,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
           const isDragOver = dragOverId === waypoint.id;
           return (
             <React.Fragment key={waypoint.id}>
-              {/* Add button before first card */}
-              {index === 0 && (
-                <button
-                  className="review-add-angle-btn"
-                  onClick={() => handleAddAngleClick(-1)}
-                  title="Add angle before"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              )}
               <div
                 className={`review-card-clean ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
                 draggable
