@@ -165,6 +165,7 @@ export type Sogni360Action =
   | { type: 'SET_SOURCE_IMAGE'; payload: { url: string; dimensions: { width: number; height: number } } }
   | { type: 'ADD_WAYPOINT'; payload: Waypoint }
   | { type: 'INSERT_WAYPOINT'; payload: { afterIndex: number; waypoint: Waypoint } }
+  | { type: 'INSERT_WAYPOINTS'; payload: { afterIndex: number; waypoints: Waypoint[] } }
   | { type: 'SET_WAYPOINTS'; payload: Waypoint[] }
   | { type: 'REMOVE_WAYPOINT'; payload: string }
   | { type: 'UPDATE_WAYPOINT'; payload: { id: string; updates: Partial<Waypoint> } }

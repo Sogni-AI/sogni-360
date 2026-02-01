@@ -10,6 +10,7 @@ interface AddAnglePopupProps {
   insertAfterIndex: number;
   sourceImageDimensions: { width: number; height: number };
   onInsertAngle: (waypoint: Waypoint) => void;
+  onInsertAngles?: (waypoints: Waypoint[]) => void;
 }
 
 type Mode = 'camera' | 'upload';
@@ -19,7 +20,8 @@ const AddAnglePopup: React.FC<AddAnglePopupProps> = ({
   onClose,
   insertAfterIndex,
   sourceImageDimensions,
-  onInsertAngle
+  onInsertAngle,
+  onInsertAngles
 }) => {
   const [mode, setMode] = useState<Mode>('camera');
 
@@ -27,6 +29,16 @@ const AddAnglePopup: React.FC<AddAnglePopupProps> = ({
 
   const handleInsertAngle = (waypoint: Waypoint) => {
     onInsertAngle(waypoint);
+    onClose();
+  };
+
+  const handleInsertAngles = (waypoints: Waypoint[]) => {
+    if (onInsertAngles) {
+      onInsertAngles(waypoints);
+    } else {
+      // Fallback if batch handler not provided
+      waypoints.forEach((wp) => onInsertAngle(wp));
+    }
     onClose();
   };
 
@@ -75,6 +87,7 @@ const AddAnglePopup: React.FC<AddAnglePopupProps> = ({
               insertAfterIndex={insertAfterIndex}
               sourceImageDimensions={sourceImageDimensions}
               onInsertAngle={handleInsertAngle}
+              onInsertAngles={handleInsertAngles}
             />
           )}
         </div>

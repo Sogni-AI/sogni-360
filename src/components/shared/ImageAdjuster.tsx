@@ -1,11 +1,102 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './ImageAdjuster.css';
 
+export interface AdjustmentParams {
+  position: { x: number; y: number };
+  scale: number;
+  containerSize: { width: number; height: number };
+}
+
 interface ImageAdjusterProps {
   imageUrl: string;
   targetDimensions: { width: number; height: number };
   onConfirm: (blob: Blob) => void;
   onCancel: () => void;
+  /** Optional callback that also returns adjustment params for applying to other images */
+  onConfirmWithParams?: (blob: Blob, params: AdjustmentParams) => void;
+}
+
+/**
+ * Apply adjustment params to an image and return a processed blob.
+ * Used to apply the same adjustments from first image to subsequent images.
+ */
+export async function applyAdjustmentToImage(
+  imageUrl: string,
+  targetDimensions: { width: number; height: number },
+  params: AdjustmentParams
+): Promise<Blob> {
+  const { position, scale, containerSize } = params;
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetDimensions.width;
+      canvas.height = targetDimensions.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Fill with black background
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, targetDimensions.width, targetDimensions.height);
+
+      // Calculate image dimensions to fit contain-style in container
+      const imageAspect = image.naturalWidth / image.naturalHeight;
+      const canvasAspect = targetDimensions.width / targetDimensions.height;
+
+      let drawWidth: number, drawHeight: number;
+      if (imageAspect > canvasAspect) {
+        drawWidth = targetDimensions.width;
+        drawHeight = targetDimensions.width / imageAspect;
+      } else {
+        drawHeight = targetDimensions.height;
+        drawWidth = targetDimensions.height * imageAspect;
+      }
+
+      // Calculate scaling from screen to canvas coordinates
+      const screenToCanvasX = targetDimensions.width / containerSize.width;
+      const screenToCanvasY = targetDimensions.height / containerSize.height;
+
+      // Apply scale
+      drawWidth *= scale;
+      drawHeight *= scale;
+
+      // Center offset after scaling
+      const scaledOffsetX = (targetDimensions.width - drawWidth) / 2;
+      const scaledOffsetY = (targetDimensions.height - drawHeight) / 2;
+
+      // Apply position
+      const adjustedX = scaledOffsetX + position.x * screenToCanvasX;
+      const adjustedY = scaledOffsetY + position.y * screenToCanvasY;
+
+      ctx.drawImage(image, adjustedX, adjustedY, drawWidth, drawHeight);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        },
+        'image/jpeg',
+        0.92
+      );
+    };
+
+    image.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+
+    image.src = imageUrl;
+  });
 }
 
 /**
@@ -16,7 +107,8 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
   imageUrl,
   targetDimensions,
   onConfirm,
-  onCancel
+  onCancel,
+  onConfirmWithParams
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -258,7 +350,16 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
 
     try {
       const blob = await processImage();
-      onConfirm(blob);
+      if (onConfirmWithParams && containerRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        onConfirmWithParams(blob, {
+          position,
+          scale,
+          containerSize: { width: containerRect.width, height: containerRect.height }
+        });
+      } else {
+        onConfirm(blob);
+      }
     } catch (error) {
       console.error('Failed to process image:', error);
       setIsProcessing(false);

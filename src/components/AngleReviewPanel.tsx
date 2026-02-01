@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import type { Waypoint } from '../types';
@@ -62,6 +62,9 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const [showAddAnglePopup, setShowAddAnglePopup] = useState(false);
   const [insertAfterIndex, setInsertAfterIndex] = useState(-1);
 
+  // Scroll hint state
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
   // Reference image selection for regeneration (waypointId -> 'original' | otherWaypointId)
   const [referenceSelections, setReferenceSelections] = useState<Record<string, string>>({});
   // Ref to track current selections for use in memoized callbacks
@@ -101,6 +104,41 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   };
 
   const waypoints = currentProject?.waypoints || [];
+
+  // Check if we should show scroll hint (only when at start AND there's overflow)
+  const checkScrollIndicators = useCallback(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = carousel;
+    const hasOverflow = scrollWidth > clientWidth + 10;
+    const isAtStart = scrollLeft < 10;
+
+    // Only show hint when at the start and there's more content to see
+    // Once user starts scrolling, they know they can scroll - hide the hint
+    setCanScrollRight(hasOverflow && isAtStart);
+  }, []);
+
+  // Set up scroll listener and initial check
+  useEffect(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    // Initial check
+    checkScrollIndicators();
+
+    // Listen for scroll events
+    carousel.addEventListener('scroll', checkScrollIndicators);
+
+    // Also check on resize
+    const resizeObserver = new ResizeObserver(checkScrollIndicators);
+    resizeObserver.observe(carousel);
+
+    return () => {
+      carousel.removeEventListener('scroll', checkScrollIndicators);
+      resizeObserver.disconnect();
+    };
+  }, [waypoints.length]); // Re-run when waypoints change
   // Ref to track current waypoints for use in memoized callbacks
   const waypointsRef = useRef(waypoints);
   waypointsRef.current = waypoints;
@@ -390,6 +428,18 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       payload: { afterIndex: insertAfterIndex, waypoint }
     });
     showToast({ message: 'Angle added', type: 'success' });
+    setShowAddAnglePopup(false);
+  }, [dispatch, insertAfterIndex, showToast]);
+
+  const handleInsertAngles = useCallback((waypoints: Waypoint[]) => {
+    dispatch({
+      type: 'INSERT_WAYPOINTS',
+      payload: { afterIndex: insertAfterIndex, waypoints }
+    });
+    showToast({
+      message: `${waypoints.length} angles added`,
+      type: 'success'
+    });
     setShowAddAnglePopup(false);
   }, [dispatch, insertAfterIndex, showToast]);
 
@@ -968,6 +1018,13 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         })}
       </div>
 
+      {/* Scroll hint - only show when there's more content to the right */}
+      {canScrollRight && (
+        <div className="review-scroll-hint">
+          Swipe to see more →
+        </div>
+      )}
+
       {/* Footer */}
       <div className="review-footer-bar">
         <div className="review-status-tags">
@@ -1085,6 +1142,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         insertAfterIndex={insertAfterIndex}
         sourceImageDimensions={currentProject?.sourceImageDimensions || { width: 896, height: 1152 }}
         onInsertAngle={handleInsertAngle}
+        onInsertAngles={handleInsertAngles}
       />
     </div>
   );

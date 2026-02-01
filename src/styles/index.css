@@ -3442,6 +3442,24 @@ html, body {
   height: 20px;
 }
 
+/* Scroll hint text */
+.review-scroll-hint {
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.5);
+  animation: fade-hint 2s ease-in-out infinite;
+}
+
+@keyframes fade-hint {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 /* Carousel - Cards expand to fill vertical space */
 .review-carousel-wrap {
   flex: 1;
