@@ -64,7 +64,10 @@ export function useCameraPosition(azimuthAngle: number, elevationAngle: number) 
     const eyeLevelOffset = -8;
     const elevationOffset = -elevationAngle * 0.4 + eyeLevelOffset;
 
-    return { x, y: baseY + elevationOffset };
+    // Additional offset for low-angle shots to make the camera position more visually distinct
+    const lowAngleBoost = elevationAngle < 0 ? 6 : 0;
+
+    return { x, y: baseY + elevationOffset + lowAngleBoost };
   }, [azimuthAngle, elevationAngle]);
 }
 
