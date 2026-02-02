@@ -3,21 +3,30 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-An immersive **360° orbital portrait generator** powered by AI. Upload a portrait, select camera angles, and generate a seamless rotating 3D-like experience with smooth video transitions between each perspective—all without downloading models or needing a GPU.
+Create stunning **360° orbital videos** with cutting-edge AI. The ultimate tool for storytellers—simple and intuitive with powerful options for pros. Upload any image, select camera angles, and generate seamless rotating videos with smooth AI transitions. Powered by **Qwen Image Edit 2511** and the **Multiple Angles LoRA**. No downloads or GPU required.
+
+**Popular Use Cases:**
+- **Action Sports** - BMX, skateboarding, surfing, motocross freeze-frames from every angle
+- **Vehicles** - Cars, motorcycles, bikes with cinematic camera sweeps
+- **Travel & Social Media** - Cinematic travel videos perfect for Instagram, TikTok, YouTube
+- **Portraits & Characters** - Classic 360° character turnarounds
+- **Architecture & Interiors** - Room tours, real estate, 3D space visualization
+- **Product Photography** - E-commerce spins, detailed product views
+- **Storytelling** - Scene exploration, visual narratives with perspective shifts
 
 **Key Capabilities:**
 - 🔄 **96 Camera Angles** via Multiple Angles LoRA (8 azimuths × 4 elevations × 3 distances)
 - 🎬 **Seamless Transitions** with AI-generated video segments between angles
 - 📱 **Full-Screen Immersive** experience on desktop and mobile
 - ⚡ **Batch Generation** of all angles in parallel
-- 🎯 **Smart Presets** for common orbital patterns (360° rotation, zoom montage, portrait trio)
+- 🎯 **Smart Presets** for common orbital patterns (360° rotation, zoom montage, dynamic angles)
 
 This is a demo "SuperApp" powered by the Sogni Client SDK, showcasing the [Sogni Supernet](https://sogni.ai) dePIN creative AI inference network. Fork it, learn from it, or build your own Sogni-powered application.
 
 Live demo → **https://360.sogni.ai**
 
 <div align="center">
-  <img alt="Sogni 360 – Create immersive 360° orbital portraits" src="docs/assets/sogni-360-hero.jpg" width="100%"/>
+  <img alt="Sogni 360 – Create immersive 360° orbital videos" src="docs/assets/sogni-360-hero.jpg" width="100%"/>
 </div>
 
 ---
@@ -26,7 +35,7 @@ Live demo → **https://360.sogni.ai**
 
 ### 🔄 Camera Angle Generation
 
-**Multiple Angles LoRA** with Qwen Image Edit 2511 enables re-rendering portraits from any perspective:
+**Multiple Angles LoRA** with Qwen Image Edit 2511 enables re-rendering any image from any perspective:
 
 | Dimension | Options | Description |
 |-----------|---------|-------------|
@@ -45,7 +54,7 @@ Quick-start templates for common 360° experiences:
 | **Simple Zoom Out** | 2 | Original + zoomed out view |
 | **Zoom Out 360** | 5 | Full rotation at eye level |
 | **Zoom Montage** | 7 | Dynamic angles with varied heights |
-| **Portrait Trio** | 4 | Classic portrait variations |
+| **Portrait Trio** | 4 | Classic angle variations |
 
 ### 🎬 Video Transitions
 
@@ -177,7 +186,7 @@ sogni-360/
 
 ### Basic Workflow
 
-1. **Upload** a portrait image (drag-drop or click)
+1. **Upload** any image (drag-drop or click)
 2. **Select angles** using presets or custom configuration
 3. **Generate** all angles in batch (parallel processing)
 4. **Review** and regenerate any unsatisfactory angles

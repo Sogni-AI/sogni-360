@@ -439,13 +439,21 @@ Key principles:
 
 ## Project Overview
 
-Sogni 360 is a "SuperApp" demo application for sogni.ai that creates immersive 360° orbital portraits. It leverages the Sogni Supernet dePIN creative AI inference network via the Multiple Angles LoRA to generate character/environment perspective changes from a single portrait image.
+Sogni 360 is a "SuperApp" demo application for sogni.ai that creates stunning 360° orbital videos. It leverages cutting-edge AI models—**Qwen Image Edit 2511** and the **Multiple Angles LoRA**—via the Sogni Supernet dePIN creative AI inference network to generate perspective changes and smooth video transitions from any image: action sports, vehicles, portraits, landscapes, interiors, and more.
+
+**Popular Use Cases:**
+- Action sports (BMX, skateboarding, surfing) - freeze-frame moments from every angle
+- Vehicles (cars, motorcycles, bikes) - cinematic camera sweeps
+- Portraits & characters - classic 360° turnarounds
+- Architecture & interiors - room tours, real estate visualization
+- Product photography - e-commerce spins
+- Storytelling - scene exploration with perspective shifts
 
 **Product Vision:**
 - Full-screen, no-scrollbar immersive experience on desktop and mobile
-- Users upload a portrait, select camera angles (from 96 possible orientations), batch render all angles
+- Users upload any image, select camera angles (from 96 possible orientations), batch render all angles
 - Video transitions are generated between adjacent waypoints, creating seamless loops
-- The experience should feel like rotating a 3D character with smooth video transitions on each click/swipe
+- The experience should feel like rotating a 3D subject with smooth video transitions on each click/swipe
 - First-time users see a pre-rendered demo experience showing how the app works
 
 **Camera Angle System:**

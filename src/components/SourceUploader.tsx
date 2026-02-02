@@ -105,7 +105,7 @@ const SourceUploader: React.FC = () => {
         <div className="uploader-frame">
           <div className="text-center mb-8">
             <h1 className="uploader-title">Sogni 360</h1>
-            <p className="uploader-subtitle">Create immersive 360° orbital portraits</p>
+            <p className="uploader-subtitle">Create immersive 360° orbital videos</p>
           </div>
 
           <div className="upload-area-wrapper">
