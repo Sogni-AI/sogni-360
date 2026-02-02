@@ -100,6 +100,7 @@ class ApiClient {
     imageModel?: string;
     imageSteps?: number;
     imageGuidance?: number;
+    outputFormat?: 'jpg' | 'png';
   }): Promise<{ projectId: string; clientAppId: string }> {
     const response = await this.fetch<{
       success: boolean;
@@ -122,6 +123,7 @@ class ApiClient {
         imageModel: params.imageModel,
         imageSteps: params.imageSteps,
         imageGuidance: params.imageGuidance,
+        outputFormat: params.outputFormat || 'jpg',
       }),
     });
 

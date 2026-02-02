@@ -194,7 +194,8 @@ router.post('/generate-angle', ensureSessionId, async (req, res) => {
       // Image quality settings (from advanced settings)
       imageModel = 'qwen_image_edit_2511_fp8_lightning',
       imageSteps = 8,
-      imageGuidance = 1
+      imageGuidance = 1,
+      outputFormat = 'jpg'
     } = req.body;
 
     if (!contextImage || !azimuthPrompt || !elevationPrompt || !distancePrompt) {
@@ -236,7 +237,7 @@ router.post('/generate-angle', ensureSessionId, async (req, res) => {
     }
 
     // Build project parameters using user's quality settings
-    console.log(`[${localProjectId}] Using settings: model=${imageModel}, steps=${imageSteps}, guidance=${imageGuidance}`);
+    console.log(`[${localProjectId}] Using settings: model=${imageModel}, steps=${imageSteps}, guidance=${imageGuidance}, format=${outputFormat}`);
     const projectParams = {
       selectedModel: imageModel,
       positivePrompt: fullPrompt,
@@ -248,7 +249,7 @@ router.post('/generate-angle', ensureSessionId, async (req, res) => {
       inferenceSteps: imageSteps,
       promptGuidance: imageGuidance,
       tokenType: tokenType,
-      outputFormat: 'jpg',
+      outputFormat: outputFormat,
       sampler: 'euler',
       scheduler: 'simple',
       loras: ['multiple_angles'],

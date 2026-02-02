@@ -12,7 +12,11 @@
 import { api } from './api';
 import { isFrontendMode, getSogniClient } from './frontend';
 import type { Waypoint, GenerationProgressEvent } from '../types';
-import { CAMERA_ANGLE_LORA, buildCameraAnglePrompt } from '../constants/cameraAngleSettings';
+import {
+  CAMERA_ANGLE_LORA,
+  buildCameraAnglePrompt,
+  getModelSamplerScheduler,
+} from '../constants/cameraAngleSettings';
 import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 import { fetchS3AsBlob } from '../utils/s3FetchWithFallback';
 
@@ -126,7 +130,7 @@ async function generateWithFrontendSDK(
 
   // Get current image quality settings
   const advancedSettings = getAdvancedSettings();
-  console.log(`[Generator-SDK] Using image settings: model=${advancedSettings.imageModel}, steps=${advancedSettings.imageSteps}, guidance=${advancedSettings.imageGuidance}`);
+  console.log(`[Generator-SDK] Using image settings: model=${advancedSettings.imageModel}, steps=${advancedSettings.imageSteps}, guidance=${advancedSettings.imageGuidance}, format=${advancedSettings.outputFormat}`);
 
   // Build the camera angle prompt
   const prompt = buildCameraAnglePrompt(
@@ -138,6 +142,9 @@ async function generateWithFrontendSDK(
 
   // Convert source image to blob (SDK expects InputMedia: File | Buffer | Blob)
   const contextImageBlob = await imageUrlToBlob(sourceImageUrl);
+
+  // Get model-specific sampler/scheduler (standard model uses dpmpp_2m/beta to reduce moire)
+  const { sampler, scheduler } = getModelSamplerScheduler(advancedSettings.imageModel);
 
   // Create project options matching backend implementation
   const projectOptions = {
@@ -153,10 +160,10 @@ async function generateWithFrontendSDK(
     guidance: advancedSettings.imageGuidance,
     numberOfMedia: 1,
     numberOfPreviews: 5,
-    sampler: 'euler' as const,
-    scheduler: 'simple' as const,
+    sampler,
+    scheduler,
     disableNSFWFilter: true,
-    outputFormat: 'jpg' as const,
+    outputFormat: advancedSettings.outputFormat as 'jpg' | 'png',
     tokenType: tokenType,
     contextImages: [contextImageBlob],
     loras: [...CAMERA_ANGLE_LORA.loras],
@@ -278,7 +285,7 @@ async function generateWithBackendAPI(
 
   // Get current image quality settings
   const advancedSettings = getAdvancedSettings();
-  console.log(`[Generator-API] Using image settings: model=${advancedSettings.imageModel}, steps=${advancedSettings.imageSteps}, guidance=${advancedSettings.imageGuidance}`);
+  console.log(`[Generator-API] Using image settings: model=${advancedSettings.imageModel}, steps=${advancedSettings.imageSteps}, guidance=${advancedSettings.imageGuidance}, format=${advancedSettings.outputFormat}`);
 
   // Start generation via backend
   const { projectId } = await api.generateAngle({
@@ -292,7 +299,8 @@ async function generateWithBackendAPI(
     loraStrength,
     imageModel: advancedSettings.imageModel,
     imageSteps: advancedSettings.imageSteps,
-    imageGuidance: advancedSettings.imageGuidance
+    imageGuidance: advancedSettings.imageGuidance,
+    outputFormat: advancedSettings.outputFormat
   });
 
   // Subscribe to progress events via SSE

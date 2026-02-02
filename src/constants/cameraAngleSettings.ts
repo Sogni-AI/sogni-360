@@ -35,6 +35,8 @@ export interface ModelConfig {
     default: number;
     decimals: number;
   };
+  sampler: string;
+  scheduler: string;
   benchmark: number; // seconds
   costUsd: number; // per render
 }
@@ -46,6 +48,8 @@ export const IMAGE_MODELS: Record<ImageModelId, ModelConfig> = {
     description: 'Fast generation',
     steps: { min: 4, max: 8, default: 4 },
     guidance: { min: 0.6, max: 1.6, default: 1, decimals: 1 },
+    sampler: 'euler',
+    scheduler: 'simple',
     benchmark: 179,
     costUsd: 0.0104
   },
@@ -55,6 +59,8 @@ export const IMAGE_MODELS: Record<ImageModelId, ModelConfig> = {
     description: 'Higher quality',
     steps: { min: 20, max: 50, default: 20 },
     guidance: { min: 2.5, max: 5, default: 4, decimals: 1 },
+    sampler: 'euler',
+    scheduler: 'simple',
     benchmark: 358,
     costUsd: 0.0207
   }
@@ -159,6 +165,18 @@ export const CAMERA_ANGLE_DEFAULTS = {
   sampler: 'euler',
   scheduler: 'simple'
 } as const;
+
+/**
+ * Get sampler and scheduler for a specific model
+ * Standard model uses dpmpp_2m/beta to reduce moire patterns
+ */
+export function getModelSamplerScheduler(modelId: ImageModelId): { sampler: string; scheduler: string } {
+  const model = IMAGE_MODELS[modelId];
+  return {
+    sampler: model?.sampler || 'euler',
+    scheduler: model?.scheduler || 'simple'
+  };
+}
 
 // Azimuth options (8 horizontal camera positions)
 export const AZIMUTHS = [

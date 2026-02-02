@@ -2609,6 +2609,9 @@ html, body {
   font-weight: 600;
   color: white;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .config-main-subtitle {
@@ -2617,12 +2620,52 @@ html, body {
   margin: 0.125rem 0 0 0;
 }
 
+/* Settings cog button in titles */
+.title-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.title-settings-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.title-settings-btn:active {
+  transform: scale(0.95);
+}
+
+.title-settings-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 767px) {
   .config-main-title {
     font-size: 1rem;
   }
   .config-main-subtitle {
     font-size: 0.75rem;
+  }
+  .title-settings-btn {
+    width: 26px;
+    height: 26px;
+  }
+  .title-settings-btn svg {
+    width: 14px;
+    height: 14px;
   }
 }
 
@@ -3533,6 +3576,9 @@ html, body {
   font-weight: 600;
   color: white;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .review-main-subtitle {
@@ -5660,6 +5706,9 @@ html, body {
   font-size: 1.125rem;
   font-weight: 600;
   color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 @media (max-width: 480px) {

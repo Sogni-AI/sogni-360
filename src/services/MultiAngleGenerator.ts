@@ -25,7 +25,8 @@ import {
   CAMERA_ANGLE_LORA,
   getAzimuthConfig,
   getElevationConfig,
-  getDistanceConfig
+  getDistanceConfig,
+  getModelSamplerScheduler
 } from '../constants/cameraAngleSettings';
 import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
@@ -162,8 +163,8 @@ async function generateSingleAngle(
       tokenType: params.tokenType,
       loras: CAMERA_ANGLE_LORA.loras,  // LoRA IDs (resolved to filenames by worker)
       loraStrengths: [params.loraStrength || CAMERA_ANGLE_LORA.defaultStrength],
-      sampler: 'euler',
-      scheduler: 'simple',
+      sampler: getModelSamplerScheduler(advancedSettings.imageModel || CAMERA_ANGLE_MODEL).sampler,
+      scheduler: getModelSamplerScheduler(advancedSettings.imageModel || CAMERA_ANGLE_MODEL).scheduler,
       outputFormat: params.outputFormat || 'jpg'
     };
 

@@ -73,6 +73,9 @@ export type TransitionQuality = 'fast' | 'balanced' | 'quality' | 'pro';
 // Image model types
 export type ImageModelId = 'qwen_image_edit_2511_fp8_lightning' | 'qwen_image_edit_2511_fp8';
 
+// Image output format
+export type OutputFormat = 'jpg' | 'png';
+
 // Photo quality tier type (re-export from constants for convenience)
 export type { PhotoQualityTier } from '../constants/cameraAngleSettings';
 

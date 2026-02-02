@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { ImageModelId, VideoQualityPreset } from '../types';
+import type { ImageModelId, VideoQualityPreset, OutputFormat } from '../types';
 import {
   IMAGE_MODELS,
   getModelConfig,
@@ -25,6 +25,7 @@ export interface AdvancedSettings {
   photoQuality: PhotoQualityTier;
   videoQuality: VideoQualityPreset;
   videoNegativePrompt: string;
+  outputFormat: OutputFormat;
 }
 
 const getDefaultSettings = (): AdvancedSettings => {
@@ -36,9 +37,18 @@ const getDefaultSettings = (): AdvancedSettings => {
     imageGuidance: balancedPreset.guidance,
     photoQuality: 'balanced',
     videoQuality: 'balanced',
-    videoNegativePrompt: DEFAULT_VIDEO_NEGATIVE_PROMPT
+    videoNegativePrompt: DEFAULT_VIDEO_NEGATIVE_PROMPT,
+    outputFormat: 'jpg' // Default to JPG (smaller files, web-compatible)
   };
 };
+
+/**
+ * Get recommended output format for a quality tier
+ * Higher quality tiers (quality/pro) recommend PNG for lossless output
+ */
+function getRecommendedOutputFormat(quality: PhotoQualityTier): OutputFormat {
+  return quality === 'quality' || quality === 'pro' ? 'png' : 'jpg';
+}
 
 const loadSettings = (): AdvancedSettings => {
   try {
@@ -76,7 +86,12 @@ const loadSettings = (): AdvancedSettings => {
         ? parsed.videoNegativePrompt
         : defaults.videoNegativePrompt;
 
-      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance, photoQuality, videoQuality, videoNegativePrompt };
+      // Validate output format
+      const outputFormat = parsed.outputFormat === 'png' || parsed.outputFormat === 'jpg'
+        ? parsed.outputFormat
+        : defaults.outputFormat;
+
+      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance, photoQuality, videoQuality, videoNegativePrompt, outputFormat };
     }
   } catch {
     // Ignore parse errors
@@ -140,12 +155,15 @@ export function useAdvancedSettings() {
 
   const setPhotoQuality = useCallback((quality: PhotoQualityTier) => {
     const preset = PHOTO_QUALITY_PRESETS[quality];
+    // Auto-switch to PNG for quality/pro tiers (lossless output)
+    const recommendedFormat = getRecommendedOutputFormat(quality);
     globalSettings = {
       ...globalSettings,
       imageModel: preset.model,
       imageSteps: preset.steps,
       imageGuidance: preset.guidance,
-      photoQuality: quality
+      photoQuality: quality,
+      outputFormat: recommendedFormat
     };
     saveSettings(globalSettings);
     notifyListeners();
@@ -164,6 +182,15 @@ export function useAdvancedSettings() {
     globalSettings = {
       ...globalSettings,
       videoNegativePrompt: prompt
+    };
+    saveSettings(globalSettings);
+    notifyListeners();
+  }, []);
+
+  const setOutputFormat = useCallback((format: OutputFormat) => {
+    globalSettings = {
+      ...globalSettings,
+      outputFormat: format
     };
     saveSettings(globalSettings);
     notifyListeners();
@@ -215,6 +242,7 @@ export function useAdvancedSettings() {
     setPhotoQuality,
     setVideoQuality,
     setVideoNegativePrompt,
+    setOutputFormat,
     resetToDefaults,
     getCurrentModelConfig,
     modelConfigs: IMAGE_MODELS,

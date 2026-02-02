@@ -13,7 +13,7 @@ import React, { useCallback, useState } from 'react';
 import { useAdvancedSettings } from '../../hooks/useAdvancedSettings';
 import { PHOTO_QUALITY_PRESETS, type PhotoQualityTier } from '../../constants/cameraAngleSettings';
 import { VIDEO_QUALITY_PRESETS, type VideoQualityPreset } from '../../constants/videoSettings';
-import type { ImageModelId } from '../../types';
+import type { ImageModelId, OutputFormat } from '../../types';
 import '../../styles/components/AdvancedSettingsPopup.css';
 
 interface AdvancedSettingsPopupProperties {
@@ -33,6 +33,7 @@ export default function AdvancedSettingsPopup({
     setPhotoQuality,
     setVideoQuality,
     setVideoNegativePrompt,
+    setOutputFormat,
     resetToDefaults,
     getCurrentModelConfig,
     modelConfigs,
@@ -65,6 +66,10 @@ export default function AdvancedSettingsPopup({
   const handleVideoNegativePromptChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setVideoNegativePrompt(event.target.value);
   }, [setVideoNegativePrompt]);
+
+  const handleOutputFormatChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    setOutputFormat(event.target.value as OutputFormat);
+  }, [setOutputFormat]);
 
   const handleResetVideoNegativePrompt = useCallback(() => {
     setVideoNegativePrompt(defaultVideoNegativePrompt);
@@ -239,6 +244,23 @@ export default function AdvancedSettingsPopup({
                     <span>{currentModelConfig.guidance.max}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Output Format */}
+              <div className="settings-section">
+                <label className="settings-label">Output Format</label>
+                <p className="settings-description">
+                  PNG is lossless (larger files), JPG is compressed (smaller files).
+                  Auto-switches to PNG for High Quality and Pro tiers.
+                </p>
+                <select
+                  className="settings-select"
+                  value={settings.outputFormat}
+                  onChange={handleOutputFormatChange}
+                >
+                  <option value="jpg">JPG (Smaller files, web-optimized)</option>
+                  <option value="png">PNG (Lossless, larger files)</option>
+                </select>
               </div>
 
               {/* Video Negative Prompt */}
