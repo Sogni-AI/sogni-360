@@ -27,7 +27,7 @@ interface VideoCostEstimationParams {
   quality?: VideoQualityPreset;
   /** Video duration in seconds */
   duration?: number;
-  /** Frames per second (default: 16) */
+  /** Frames per second for output video (default: 32 for smooth playback) */
   fps?: number;
   /** Whether estimation is enabled */
   enabled?: boolean;
@@ -72,6 +72,8 @@ async function fetchVideoCostEstimate(
 ): Promise<VideoEstimateResponse> {
   const url = `https://socket.sogni.ai/api/v1/job-video/estimate/${tokenType}/${encodeURIComponent(modelId)}/${width}/${height}/${frames}/${fps}/${steps}/${jobCount}`;
 
+  console.log(`[VideoCostEstimation] Fetching estimate with fps=${fps}, frames=${frames}`);
+
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to get video cost estimate: ${response.statusText}`);
@@ -103,6 +105,7 @@ export function useVideoCostEstimation(params: VideoCostEstimationParams): Video
     tokenType = 'spark'
   } = params;
 
+  // Calculate frames at 16fps base rate (worker interpolates to target fps)
   const frames = calculateVideoFrames(duration);
 
   const fetchCost = useCallback(async () => {

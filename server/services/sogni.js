@@ -386,11 +386,13 @@ export async function generateVideo(client, params, progressCallback, localProje
   console.log('[VIDEO] Starting video generation with params:', {
     model: params.selectedModel,
     frames: params.frames,
+    fps: params.fps,
     width: params.width,
     height: params.height,
     shift: params.shift,
     guidance: params.promptGuidance
   });
+  console.log(`[VIDEO] FPS: ${params.fps || 32} (worker will interpolate from 16fps base to ${params.fps || 32}fps output)`);
 
   const projectOptions = {
     type: 'video',
@@ -428,6 +430,13 @@ export async function generateVideo(client, params, progressCallback, localProje
       : new Uint8Array(params.referenceImageEnd);
     projectOptions.referenceImageEnd = refImgEnd;
   }
+
+  // Log full project options for debugging (mask binary data)
+  console.log('[VIDEO] Full project options:', JSON.stringify({
+    ...projectOptions,
+    referenceImage: projectOptions.referenceImage ? `[Buffer ${projectOptions.referenceImage.length} bytes]` : undefined,
+    referenceImageEnd: projectOptions.referenceImageEnd ? `[Buffer ${projectOptions.referenceImageEnd.length} bytes]` : undefined
+  }, null, 2));
 
   // Create project
   const project = await client.projects.create(projectOptions);

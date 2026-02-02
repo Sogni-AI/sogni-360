@@ -149,10 +149,12 @@ async function generateWithFrontendSDK(
   // Calculate video dimensions preserving aspect ratio
   const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
 
-  // Calculate frames from duration
+  // Calculate frames at 16fps base rate (worker interpolates to target fps)
   const frames = calculateVideoFrames(duration);
 
-  console.log(`[TransitionGenerator-SDK] Video: ${videoDimensions.width}x${videoDimensions.height}, frames: ${frames}`);
+  console.log(`[TransitionGenerator-SDK] Video: ${videoDimensions.width}x${videoDimensions.height}`);
+  console.log(`[TransitionGenerator-SDK] Frames: ${frames} (at 16fps base rate)`);
+  console.log(`[TransitionGenerator-SDK] Output FPS: ${DEFAULT_VIDEO_SETTINGS.fps} (worker will interpolate from 16fps to ${DEFAULT_VIDEO_SETTINGS.fps}fps)`);
 
   // Convert images to blobs
   const [fromBlob, toBlob] = await Promise.all([
@@ -186,6 +188,13 @@ async function generateWithFrontendSDK(
     referenceImage: fromBlob,
     referenceImageEnd: toBlob
   };
+
+  // Log full project options for debugging (mask binary data)
+  console.log('[TransitionGenerator-SDK] Full project options:', JSON.stringify({
+    ...projectOptions,
+    referenceImage: `[Blob ${fromBlob.size} bytes]`,
+    referenceImageEnd: `[Blob ${toBlob.size} bytes]`
+  }, null, 2));
 
   // Create project
   const project = await client.projects.create(projectOptions);
@@ -313,10 +322,12 @@ async function generateWithBackendAPI(
   // Calculate video dimensions preserving aspect ratio
   const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
 
-  // Calculate frames from duration
+  // Calculate frames at 16fps base rate (worker interpolates to target fps)
   const frames = calculateVideoFrames(duration);
 
-  console.log(`[TransitionGenerator-API] Video dimensions: ${videoDimensions.width}x${videoDimensions.height}`);
+  console.log(`[TransitionGenerator-API] Video: ${videoDimensions.width}x${videoDimensions.height}`);
+  console.log(`[TransitionGenerator-API] Frames: ${frames} (at 16fps base rate)`);
+  console.log(`[TransitionGenerator-API] Output FPS: ${DEFAULT_VIDEO_SETTINGS.fps} (worker will interpolate from 16fps to ${DEFAULT_VIDEO_SETTINGS.fps}fps)`);
 
   // Start generation via API
   // Pass shift and guidance from quality config (model-specific optimal values)

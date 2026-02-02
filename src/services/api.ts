@@ -179,8 +179,8 @@ class ApiClient {
         negativePrompt: params.negativePrompt || '',
         width: params.width || 720,  // Default to 720p if not specified
         height: params.height || 720,
-        frames: params.frames || 49,
-        fps: params.fps || 32,  // Output video FPS (32fps for smooth playback)
+        frames: params.frames || 25,  // Default: 1.5s at 16fps base rate
+        fps: params.fps || 32,  // Output fps (worker interpolates from 16fps base)
         steps: params.steps || 4,
         shift: params.shift,  // Model-specific motion intensity
         guidance: params.guidance,  // Model-specific guidance scale

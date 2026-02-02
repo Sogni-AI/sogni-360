@@ -131,6 +131,68 @@ This solution can be copied to other projects (e.g., Photobooth):
 
 ---
 
+## 🚨 CRITICAL: Video Generation Frame Rate (16fps Base + Interpolation)
+
+**UNDERSTAND THIS BEFORE MODIFYING VIDEO GENERATION CODE.**
+
+### How Video FPS Works
+
+The video model (WAN 2.2) **ALWAYS generates frames at 16fps base rate**. The `fps` parameter controls worker-side interpolation AFTER generation:
+
+1. **Frame count is ALWAYS calculated at 16fps base rate:**
+   ```typescript
+   // CORRECT: Always use 16fps for frame calculation
+   const BASE_FPS = 16;
+   const frames = Math.round(BASE_FPS * duration) + 1;
+   // For 1.5 seconds: 16 * 1.5 + 1 = 25 frames
+   ```
+
+2. **The `fps` parameter tells the worker to interpolate:**
+   - `fps: 16` → No interpolation, output matches generated frames
+   - `fps: 32` → Worker interpolates 25 frames → ~49 frames for smooth playback
+
+3. **Duration calculation:**
+   - Generated frames: 25 (at 16fps base)
+   - Output at 32fps: Worker interpolates to ~49 frames
+   - Final duration: Still ~1.5 seconds, but smoother playback
+
+### ⚠️ CRITICAL MISTAKES TO AVOID
+
+1. **NEVER calculate frames based on output fps:**
+   ```typescript
+   // ❌ WRONG - Do NOT do this!
+   const frames = Math.round(duration * outputFps) + 1;
+
+   // ✅ CORRECT - Always use 16fps base
+   const BASE_FPS = 16;
+   const frames = Math.round(BASE_FPS * duration) + 1;
+   ```
+
+2. **NEVER change frame count when fps setting changes:**
+   - Changing fps from 16 to 32 should NOT double the frame count
+   - Frame count is determined by duration only (at 16fps base)
+
+3. **The worker handles interpolation:**
+   - Pass frames calculated at 16fps
+   - Pass desired output fps (16 or 32)
+   - Worker does the interpolation automatically
+
+### Code Reference
+
+See `src/constants/videoSettings.ts`:
+- `calculateVideoFrames(duration)` - Always uses BASE_FPS=16
+- `DEFAULT_VIDEO_SETTINGS.fps = 32` - Output fps (after interpolation)
+- `DEFAULT_VIDEO_SETTINGS.frames = 25` - For 1.5s at 16fps base
+
+### Debugging 16fps Output
+
+If videos are outputting at 16fps instead of 32fps:
+1. Verify `fps: 32` is being passed to the SDK/API
+2. Check worker logs for interpolation errors
+3. Verify video metadata after download (not just during playback)
+
+---
+
 ## 🚨 FILE SIZE LIMIT: 300 LINES MAX
 
 **No code file should exceed 300 lines.** Break large files into smaller, focused modules.

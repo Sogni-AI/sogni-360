@@ -81,7 +81,7 @@ export type VideoResolution = keyof typeof VIDEO_RESOLUTIONS;
 export const DEFAULT_VIDEO_SETTINGS = {
   resolution: '720p' as VideoResolution,
   quality: 'balanced' as VideoQualityPreset,
-  frames: 25, // 1.5 seconds at 16fps base generation rate (32fps playback for smoothness)
+  frames: 25, // 1.5 seconds at 16fps base generation rate (worker interpolates to 32fps)
   fps: 32,
   duration: 1.5 // 1.5 seconds per transition
 };
@@ -98,9 +98,9 @@ export const DEFAULT_VIDEO_NEGATIVE_PROMPT =
 
 // Video generation config
 export const VIDEO_CONFIG = {
-  // Default frames for 1.5-second transition at 16fps base generation rate
+  // Default frames for 1.5-second transition at 16fps base rate (worker interpolates to target fps)
   defaultFrames: 25,
-  // Frames per second options (affects playback smoothness, not frame count)
+  // Frames per second options (output fps after worker interpolation)
   fpsOptions: [16, 32] as const,
   defaultFps: 32,
   // Duration range in seconds for 360 transitions
@@ -108,7 +108,7 @@ export const VIDEO_CONFIG = {
   maxDuration: 8,
   durationStep: 0.5,
   defaultDuration: 1.5,
-  // Frame range limits (1s = 17 frames, 8s = 129 frames at BASE_FPS 16)
+  // Frame range limits at 16fps base rate (1s = 17 frames, 8s = 129 frames)
   minFrames: 17,
   maxFrames: 129,
   // Dimension must be divisible by this value
@@ -156,14 +156,20 @@ export function calculateVideoDuration(frames: number = VIDEO_CONFIG.defaultFram
 }
 
 /**
- * Calculate frames based on duration (fps is NOT used - it's for playback interpolation only)
- * Formula: 16 * duration + 1 (16fps is the base generation rate)
- * The fps parameter passed to the API only affects playback smoothness, not frame count
+ * Calculate frames based on duration at 16fps BASE generation rate.
+ * Formula: 16 * duration + 1
+ *
+ * IMPORTANT: The video model ALWAYS generates at 16fps base rate.
+ * The fps parameter passed to the API only controls worker-side interpolation
+ * AFTER the frames are generated. When fps=32 is requested, the worker
+ * interpolates the 16fps frames to produce smooth 32fps output.
+ *
+ * For 1.5 seconds: 16 * 1.5 + 1 = 25 frames (at 16fps base)
+ * Worker then interpolates to ~49 frames at 32fps output
  */
 export function calculateVideoFrames(duration: number = VIDEO_CONFIG.defaultDuration): number {
-  // Use constant 16fps base for frame calculation regardless of playback fps setting
-  const BASE_FPS = 16;
-  return BASE_FPS * duration + 1;
+  const BASE_FPS = 16; // Model always generates at 16fps
+  return Math.round(BASE_FPS * duration) + 1;
 }
 
 /**
