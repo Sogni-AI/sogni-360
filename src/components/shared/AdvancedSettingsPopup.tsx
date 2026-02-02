@@ -32,9 +32,11 @@ export default function AdvancedSettingsPopup({
     setGuidance,
     setPhotoQuality,
     setVideoQuality,
+    setVideoNegativePrompt,
     resetToDefaults,
     getCurrentModelConfig,
-    modelConfigs
+    modelConfigs,
+    defaultVideoNegativePrompt
   } = useAdvancedSettings();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -59,6 +61,14 @@ export default function AdvancedSettingsPopup({
   const handleGuidanceChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setGuidance(Number.parseFloat(event.target.value));
   }, [setGuidance]);
+
+  const handleVideoNegativePromptChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setVideoNegativePrompt(event.target.value);
+  }, [setVideoNegativePrompt]);
+
+  const handleResetVideoNegativePrompt = useCallback(() => {
+    setVideoNegativePrompt(defaultVideoNegativePrompt);
+  }, [setVideoNegativePrompt, defaultVideoNegativePrompt]);
 
   const handleOverlayClick = useCallback((event: React.MouseEvent) => {
     if (event.target === event.currentTarget) {
@@ -229,6 +239,32 @@ export default function AdvancedSettingsPopup({
                     <span>{currentModelConfig.guidance.max}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Video Negative Prompt */}
+              <div className="settings-section">
+                <div className="settings-label-row">
+                  <label className="settings-label">Video Negative Prompt</label>
+                  {settings.videoNegativePrompt !== defaultVideoNegativePrompt && (
+                    <button
+                      className="reset-field-button"
+                      onClick={handleResetVideoNegativePrompt}
+                      title="Reset to default"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <p className="settings-description">
+                  Things to avoid in video transitions. Default is in Chinese (recommended for WAN model).
+                </p>
+                <textarea
+                  className="settings-textarea"
+                  value={settings.videoNegativePrompt}
+                  onChange={handleVideoNegativePromptChange}
+                  rows={3}
+                  placeholder="Enter negative prompt for video generation..."
+                />
               </div>
             </>
           )}

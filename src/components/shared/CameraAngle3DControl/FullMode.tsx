@@ -163,13 +163,17 @@ const FullMode: React.FC<FullModeProps> = ({
       flexDirection: 'column',
       gap: isMobilePortrait ? '10px' : '12px',
       padding: isMobilePortrait ? '12px' : '14px',
-      background: COLORS.darkGray,
-      borderRadius: '14px',
-      border: `1px solid ${COLORS.border}`,
+      background: 'linear-gradient(145deg, rgba(45, 48, 55, 0.95) 0%, rgba(25, 28, 32, 0.98) 100%)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderRadius: '16px',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderTopColor: 'rgba(255, 255, 255, 0.15)',
       overflow: 'hidden',
       width: 'fit-content',
       maxWidth: '100%',
-      margin: '0 auto'
+      margin: '0 auto',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
     }}>
       {/* Main Control Area - Height buttons on left, Orbital on right */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -188,10 +192,12 @@ const FullMode: React.FC<FullModeProps> = ({
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            background: COLORS.surfaceLight,
-            borderRadius: '8px',
-            padding: '3px',
-            gap: '2px'
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+            borderRadius: '10px',
+            padding: '4px',
+            gap: '2px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)'
           }}>
             {elevationsReversed.map((el) => {
               const isSelected = el.key === elevation;
@@ -204,16 +210,19 @@ const FullMode: React.FC<FullModeProps> = ({
                   onClick={() => onElevationChange(el.key)}
                   style={{
                     padding: isMobilePortrait ? '5px 8px' : '6px 10px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                    color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
+                    borderRadius: '8px',
+                    border: isSelected ? '1px solid rgba(102, 126, 234, 0.5)' : '1px solid transparent',
+                    background: isSelected
+                      ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.15) 100%)'
+                      : 'transparent',
+                    color: isSelected ? '#c4b5fd' : COLORS.textMuted,
                     cursor: 'pointer',
                     fontSize: '11px',
                     fontWeight: isSelected ? '600' : '500',
-                    transition: 'all 0.15s ease',
+                    transition: 'all 0.2s ease',
                     minWidth: isMobilePortrait ? '36px' : '40px',
-                    textTransform: 'lowercase'
+                    textTransform: 'lowercase',
+                    boxShadow: isSelected ? '0 2px 8px rgba(102, 126, 234, 0.2)' : 'none'
                   }}
                   title={el.label}
                 >
@@ -283,11 +292,11 @@ const FullMode: React.FC<FullModeProps> = ({
             <button
               onClick={(e) => { e.stopPropagation(); rotateCamera('ccw'); }}
               style={{
-                width: '22px',
-                height: '22px',
+                width: '24px',
+                height: '24px',
                 borderRadius: '50%',
-                border: `1px solid ${COLORS.border}`,
-                background: 'rgba(30, 30, 30, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%)',
                 color: COLORS.textSecondary,
                 cursor: 'pointer',
                 display: 'flex',
@@ -296,7 +305,8 @@ const FullMode: React.FC<FullModeProps> = ({
                 fontSize: '12px',
                 transition: 'all 0.2s ease',
                 fontWeight: '500',
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
               }}
               title="Rotate camera left"
             >
@@ -314,11 +324,11 @@ const FullMode: React.FC<FullModeProps> = ({
             <button
               onClick={(e) => { e.stopPropagation(); rotateCamera('cw'); }}
               style={{
-                width: '22px',
-                height: '22px',
+                width: '24px',
+                height: '24px',
                 borderRadius: '50%',
-                border: `1px solid ${COLORS.border}`,
-                background: 'rgba(30, 30, 30, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%)',
                 color: COLORS.textSecondary,
                 cursor: 'pointer',
                 display: 'flex',
@@ -327,7 +337,8 @@ const FullMode: React.FC<FullModeProps> = ({
                 fontSize: '12px',
                 transition: 'all 0.2s ease',
                 fontWeight: '500',
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
               }}
               title="Rotate camera right"
             >
@@ -339,7 +350,15 @@ const FullMode: React.FC<FullModeProps> = ({
 
       {/* Distance buttons - compact row */}
       <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', background: COLORS.surfaceLight, borderRadius: '8px', padding: '3px', gap: '2px' }}>
+        <div style={{
+          display: 'flex',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+          borderRadius: '10px',
+          padding: '4px',
+          gap: '2px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+        }}>
           {DISTANCES.map((dist) => {
             const isSelected = dist.key === distance;
             const label = dist.key === 'close-up' ? 'close' : dist.key === 'medium' ? 'medium' : 'wide';
@@ -349,15 +368,18 @@ const FullMode: React.FC<FullModeProps> = ({
                 onClick={() => onDistanceChange(dist.key)}
                 style={{
                   padding: isMobilePortrait ? '5px 12px' : '6px 16px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                  color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
+                  borderRadius: '8px',
+                  border: isSelected ? '1px solid rgba(102, 126, 234, 0.5)' : '1px solid transparent',
+                  background: isSelected
+                    ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.15) 100%)'
+                    : 'transparent',
+                  color: isSelected ? '#c4b5fd' : COLORS.textMuted,
                   cursor: 'pointer',
                   fontSize: '11px',
                   fontWeight: isSelected ? '600' : '500',
-                  transition: 'all 0.15s ease',
-                  textTransform: 'lowercase'
+                  transition: 'all 0.2s ease',
+                  textTransform: 'lowercase',
+                  boxShadow: isSelected ? '0 2px 8px rgba(102, 126, 234, 0.2)' : 'none'
                 }}
                 title={dist.label}
               >
@@ -372,13 +394,14 @@ const FullMode: React.FC<FullModeProps> = ({
       <div style={{
         textAlign: 'center',
         padding: isMobilePortrait ? '4px 10px' : '8px 14px',
-        background: COLORS.surfaceLight,
-        borderRadius: '8px',
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)',
+        borderRadius: '10px',
         fontSize: '11px',
         fontWeight: '500',
         color: COLORS.textSecondary,
         textTransform: 'lowercase',
-        letterSpacing: '0.3px'
+        letterSpacing: '0.3px',
+        border: '1px solid rgba(255, 255, 255, 0.08)'
       }}>
         {currentAzimuth.label.toLowerCase()} · {currentElevation.label.toLowerCase()} · {distance}
       </div>

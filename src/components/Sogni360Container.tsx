@@ -802,7 +802,7 @@ const Sogni360Container: React.FC = () => {
 
       {/* Generating state overlay */}
       {isGenerating && !showWaypointEditor && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-[15]">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-[15]">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <h2 className="text-xl font-bold text-white mb-2">Generating Angles</h2>
@@ -847,7 +847,7 @@ const Sogni360Container: React.FC = () => {
 
       {/* Transition Config Panel */}
       {showTransitionConfig && (
-        <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <TransitionConfigPanel
             onClose={() => dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: false })}
             onStartGeneration={handleStartTransitionGeneration}

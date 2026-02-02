@@ -23,17 +23,19 @@ export interface CameraAngle3DControlProps {
 }
 
 export const COLORS = {
-  accent: '#3B82F6',
-  accentSoft: '#2563EB',
+  accent: '#667eea',
+  accentSoft: '#764ba2',
   black: '#000000',
   white: '#FFFFFF',
-  textPrimary: 'rgba(255, 255, 255, 0.9)',
-  textSecondary: 'rgba(255, 255, 255, 0.55)',
-  textMuted: 'rgba(255, 255, 255, 0.35)',
-  darkGray: 'rgba(40, 40, 42, 0.98)',
-  surfaceLight: 'rgba(255, 255, 255, 0.06)',
-  border: 'rgba(255, 255, 255, 0.1)',
-  accentGlow: 'rgba(59, 130, 246, 0.4)'
+  textPrimary: 'rgba(255, 255, 255, 0.95)',
+  textSecondary: 'rgba(255, 255, 255, 0.65)',
+  textMuted: 'rgba(255, 255, 255, 0.4)',
+  darkGray: 'rgba(30, 32, 38, 0.95)',
+  surfaceLight: 'rgba(255, 255, 255, 0.08)',
+  surfaceGlass: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%)',
+  border: 'rgba(255, 255, 255, 0.15)',
+  borderLight: 'rgba(255, 255, 255, 0.22)',
+  accentGlow: 'rgba(102, 126, 234, 0.5)'
 };
 
 export function getPositionForAngle(angle: number) {

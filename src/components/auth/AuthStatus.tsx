@@ -9,6 +9,9 @@ import AdvancedSettingsPopup from '../shared/AdvancedSettingsPopup';
 import { getAuthButtonText, getDefaultModalMode, markAsVisited } from '../../utils/visitorTracking';
 import '../../styles/components/AuthStatus.css';
 
+// App version - update this when making changes to verify updates are being applied
+const APP_VERSION = '1.1.2';
+
 // Helper to format time remaining
 const formatTimeRemaining = (ms: number): string => {
   const hours = Math.floor(ms / (1000 * 60 * 60));
@@ -452,6 +455,19 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
                   >
                     {isLoading ? 'logging out...' : 'logout'}
                   </button>
+                </div>
+
+                {/* Version Number */}
+                <div style={{
+                  marginTop: '12px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                  textAlign: 'center',
+                  fontSize: '10px',
+                  color: 'rgba(255, 255, 255, 0.3)',
+                  fontFamily: 'monospace'
+                }}>
+                  v{APP_VERSION}
                 </div>
               </div>
             </div>

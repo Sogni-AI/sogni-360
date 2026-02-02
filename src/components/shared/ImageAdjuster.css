@@ -3,7 +3,9 @@
 .image-adjuster-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,9 +14,10 @@
 }
 
 .image-adjuster-modal {
-  background: #1a1a2e;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(3, 7, 18, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
@@ -175,25 +178,28 @@
 .image-adjuster-slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
-  background: #a855f7;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 3px solid #fff;
   border-radius: 50%;
   cursor: pointer;
-  transition: background 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
 }
 
 .image-adjuster-slider input[type="range"]::-webkit-slider-thumb:hover {
-  background: #c084fc;
+  transform: scale(1.1);
 }
 
 .image-adjuster-slider input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  background: #a855f7;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 3px solid #fff;
   border-radius: 50%;
   cursor: pointer;
-  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .image-adjuster-footer {

@@ -86,6 +86,16 @@ export const DEFAULT_VIDEO_SETTINGS = {
   duration: 1.5 // 1.5 seconds per transition
 };
 
+// Default negative prompt for video generation (WAN 2.1/2.2 I2V)
+// Keep in Chinese as the model was trained with Chinese negative prompts
+// Translation: garish colors, overexposure, static, blurry details, subtitles, style, artwork,
+// painting, frame, still, overall gray, worst quality, low quality, JPEG artifacts, ugly,
+// incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured,
+// malformed limbs, fused fingers, static frame, cluttered background, three legs,
+// many people in background, walking backwards
+export const DEFAULT_VIDEO_NEGATIVE_PROMPT =
+  '色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走';
+
 // Video generation config
 export const VIDEO_CONFIG = {
   // Default frames for 1.5-second transition at 16fps base generation rate

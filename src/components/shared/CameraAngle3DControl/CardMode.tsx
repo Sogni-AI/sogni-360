@@ -62,15 +62,19 @@ const CardMode: React.FC<CardModeProps> = ({
       display: 'flex',
       flexDirection: 'column',
       gap: '6px',
-      padding: '8px',
-      background: COLORS.darkGray,
-      borderRadius: '12px',
-      border: `1px solid ${COLORS.border}`,
+      padding: '10px',
+      background: 'linear-gradient(145deg, rgba(45, 48, 55, 0.95) 0%, rgba(25, 28, 32, 0.98) 100%)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      borderRadius: '14px',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderTopColor: 'rgba(255, 255, 255, 0.15)',
       width: 'fit-content',
       maxWidth: '100%',
       height: 'fit-content',
       overflow: 'hidden',
-      margin: '0 auto'
+      margin: '0 auto',
+      boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
     }}>
       {/* Main row: Height | Orbital - flex: 1 to fill available space */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flex: 1 }}>
@@ -78,11 +82,12 @@ const CardMode: React.FC<CardModeProps> = ({
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          background: COLORS.surfaceLight,
-          borderRadius: '6px',
-          padding: '2px',
-          gap: '1px',
-          flexShrink: 0
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+          borderRadius: '8px',
+          padding: '3px',
+          gap: '2px',
+          flexShrink: 0,
+          border: '1px solid rgba(255, 255, 255, 0.08)'
         }}>
           {elevationsReversed.map((el) => {
             const isSelected = el.key === elevation;
@@ -94,17 +99,19 @@ const CardMode: React.FC<CardModeProps> = ({
                 key={el.key}
                 onClick={() => onElevationChange(el.key)}
                 style={{
-                  padding: '3px 4px',
-                  borderRadius: '4px',
-                  border: 'none',
-                  background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                  color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
+                  padding: '4px 6px',
+                  borderRadius: '6px',
+                  border: isSelected ? '1px solid rgba(102, 126, 234, 0.5)' : '1px solid transparent',
+                  background: isSelected
+                    ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.15) 100%)'
+                    : 'transparent',
+                  color: isSelected ? '#c4b5fd' : COLORS.textMuted,
                   cursor: 'pointer',
                   fontSize: '10px',
                   fontWeight: isSelected ? '600' : '500',
                   transition: 'all 0.15s ease',
                   minWidth: '28px',
-                  minHeight: '20px'
+                  minHeight: '22px'
                 }}
               >
                 {label}
@@ -245,11 +252,11 @@ const CardMode: React.FC<CardModeProps> = ({
             <button
               onClick={() => rotateCamera('ccw')}
               style={{
-                width: '18px',
-                height: '18px',
+                width: '20px',
+                height: '20px',
                 borderRadius: '50%',
-                border: `1px solid ${COLORS.border}`,
-                background: 'rgba(30, 30, 30, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%)',
                 color: COLORS.textSecondary,
                 cursor: 'pointer',
                 display: 'flex',
@@ -257,7 +264,8 @@ const CardMode: React.FC<CardModeProps> = ({
                 justifyContent: 'center',
                 fontSize: '10px',
                 padding: 0,
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)'
               }}
               title="Rotate left"
             >
@@ -275,11 +283,11 @@ const CardMode: React.FC<CardModeProps> = ({
             <button
               onClick={() => rotateCamera('cw')}
               style={{
-                width: '18px',
-                height: '18px',
+                width: '20px',
+                height: '20px',
                 borderRadius: '50%',
-                border: `1px solid ${COLORS.border}`,
-                background: 'rgba(30, 30, 30, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%)',
                 color: COLORS.textSecondary,
                 cursor: 'pointer',
                 display: 'flex',
@@ -287,7 +295,8 @@ const CardMode: React.FC<CardModeProps> = ({
                 justifyContent: 'center',
                 fontSize: '10px',
                 padding: 0,
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)'
               }}
               title="Rotate right"
             >
@@ -300,10 +309,11 @@ const CardMode: React.FC<CardModeProps> = ({
       {/* Distance row */}
       <div style={{
         display: 'flex',
-        background: COLORS.surfaceLight,
-        borderRadius: '6px',
-        padding: '2px',
-        gap: '2px'
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+        borderRadius: '8px',
+        padding: '3px',
+        gap: '2px',
+        border: '1px solid rgba(255, 255, 255, 0.08)'
       }}>
         {DISTANCES.map((d) => {
           const isSelected = d.key === distance;
@@ -315,16 +325,18 @@ const CardMode: React.FC<CardModeProps> = ({
               onClick={() => onDistanceChange(d.key)}
               style={{
                 flex: 1,
-                padding: '3px 2px',
-                borderRadius: '4px',
-                border: 'none',
-                background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                color: isSelected ? COLORS.textPrimary : COLORS.textMuted,
+                padding: '4px 2px',
+                borderRadius: '6px',
+                border: isSelected ? '1px solid rgba(102, 126, 234, 0.5)' : '1px solid transparent',
+                background: isSelected
+                  ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.15) 100%)'
+                  : 'transparent',
+                color: isSelected ? '#c4b5fd' : COLORS.textMuted,
                 cursor: 'pointer',
                 fontSize: '10px',
                 fontWeight: isSelected ? '600' : '500',
                 transition: 'all 0.15s ease',
-                minHeight: '20px'
+                minHeight: '22px'
               }}
             >
               {label}

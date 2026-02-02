@@ -352,6 +352,50 @@ Before implementing any feature, ask:
 
 ## Design System Standards
 
+### 🎨 Visual Design Language: "Liquid Glass"
+
+**This app follows a premium visual style inspired by DJI.com, GoPro, and Apple's Liquid Glass aesthetic.**
+
+Key principles:
+- **Frosted glass effects** - Use `backdrop-filter: blur(16-24px)` with semi-transparent backgrounds
+- **Subtle transparency** - Backgrounds at 0.85-0.95 opacity, borders at 0.1-0.2 opacity
+- **Soft gradients** - Subtle color transitions, never harsh or flat
+- **Generous rounded corners** - 16-24px for modals/cards, 8-12px for buttons/inputs
+- **Depth through layering** - Multiple translucent layers create visual hierarchy
+- **Clean minimalism** - Ample whitespace, clear typography, no visual clutter
+- **Premium feel** - Every element should feel intentional and polished
+
+**Color Palette:**
+- Primary gradient: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)` (indigo to purple)
+- Dark backgrounds: `rgba(20-30, 20-30, 30-40, 0.95-0.98)`
+- Glass surfaces: `rgba(255, 255, 255, 0.03-0.08)` with blur
+- Borders: `rgba(255, 255, 255, 0.08-0.15)`
+- Text: White at 1.0 for headings, 0.7-0.85 for body, 0.5-0.6 for muted
+
+**Modal/Card Pattern:**
+```css
+.glass-card {
+  background: linear-gradient(135deg, rgba(30, 30, 40, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+```
+
+**Button Pattern:**
+```css
+.primary-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+.secondary-button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+```
+
 ### Typography
 - **Minimum body text**: 12px (0.75rem)
 - **Button/label text**: 14px (0.875rem) minimum

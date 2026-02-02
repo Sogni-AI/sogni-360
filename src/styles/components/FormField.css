@@ -14,11 +14,13 @@
 
 .form-field-input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 15px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   color: #ffffff;
   transition: all 0.2s ease;
   outline: none;
@@ -35,9 +37,8 @@
 }
 
 .form-field-input:focus {
-  border-color: rgba(167, 139, 250, 0.6);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+  border-color: rgba(102, 126, 234, 0.5);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .form-field-input::placeholder {
@@ -85,9 +86,10 @@
   position: relative;
   width: 44px;
   height: 24px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .switch-slider::before {

@@ -46,11 +46,11 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onCancel}
     >
       <div
-        className="bg-gray-900 rounded-2xl p-6 max-w-lg w-full mx-4 border border-white/10"
+        className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-2xl p-6 max-w-lg w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 className="text-xl font-semibold text-white mb-4">Regenerate Transition</h2>

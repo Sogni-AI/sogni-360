@@ -22,6 +22,7 @@ import {
 } from '../constants/videoSettings';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchS3AsBlob } from '../utils/s3FetchWithFallback';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 // Retry configuration
 // No delay needed between retries - each request goes to a different worker in the dePIN network
@@ -117,12 +118,15 @@ async function imageUrlToBlob(url: string): Promise<Blob> {
 async function generateWithFrontendSDK(
   options: GenerateTransitionOptions
 ): Promise<GenerateTransitionResult | null> {
+  // Get default negative prompt from advanced settings
+  const advancedSettings = getAdvancedSettings();
+
   const {
     segment,
     fromImageUrl,
     toImageUrl,
     prompt,
-    negativePrompt = '',
+    negativePrompt = advancedSettings.videoNegativePrompt,
     resolution = DEFAULT_VIDEO_SETTINGS.resolution,
     quality = DEFAULT_VIDEO_SETTINGS.quality,
     duration = 1.5,
@@ -283,12 +287,15 @@ async function generateWithFrontendSDK(
 async function generateWithBackendAPI(
   options: GenerateTransitionOptions
 ): Promise<GenerateTransitionResult | null> {
+  // Get default negative prompt from advanced settings
+  const advancedSettings = getAdvancedSettings();
+
   const {
     segment,
     fromImageUrl,
     toImageUrl,
     prompt,
-    negativePrompt = '',
+    negativePrompt = advancedSettings.videoNegativePrompt,
     resolution = DEFAULT_VIDEO_SETTINGS.resolution,
     quality = DEFAULT_VIDEO_SETTINGS.quality,
     duration = 1.5,
@@ -454,9 +461,12 @@ export async function generateMultipleTransitions(
     onAllComplete?: () => void;
   }
 ): Promise<Map<string, GenerateTransitionResult | null>> {
+  // Get default negative prompt from advanced settings
+  const advancedSettings = getAdvancedSettings();
+
   const {
     prompt,
-    negativePrompt = '',
+    negativePrompt = advancedSettings.videoNegativePrompt,
     resolution = DEFAULT_VIDEO_SETTINGS.resolution,
     quality = DEFAULT_VIDEO_SETTINGS.quality,
     duration = 1.5,

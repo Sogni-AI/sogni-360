@@ -14,6 +14,7 @@ import {
   getPhotoQualityTier,
   type PhotoQualityTier
 } from '../constants/cameraAngleSettings';
+import { DEFAULT_VIDEO_NEGATIVE_PROMPT } from '../constants/videoSettings';
 
 const STORAGE_KEY = 'sogni360_advanced_settings';
 
@@ -23,6 +24,7 @@ export interface AdvancedSettings {
   imageGuidance: number;
   photoQuality: PhotoQualityTier;
   videoQuality: VideoQualityPreset;
+  videoNegativePrompt: string;
 }
 
 const getDefaultSettings = (): AdvancedSettings => {
@@ -33,7 +35,8 @@ const getDefaultSettings = (): AdvancedSettings => {
     imageSteps: balancedPreset.steps,
     imageGuidance: balancedPreset.guidance,
     photoQuality: 'balanced',
-    videoQuality: 'balanced'
+    videoQuality: 'balanced',
+    videoNegativePrompt: DEFAULT_VIDEO_NEGATIVE_PROMPT
   };
 };
 
@@ -68,7 +71,12 @@ const loadSettings = (): AdvancedSettings => {
         ? parsed.videoQuality
         : defaults.videoQuality;
 
-      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance, photoQuality, videoQuality };
+      // Use stored negative prompt or default (allow empty string as valid)
+      const videoNegativePrompt = typeof parsed.videoNegativePrompt === 'string'
+        ? parsed.videoNegativePrompt
+        : defaults.videoNegativePrompt;
+
+      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance, photoQuality, videoQuality, videoNegativePrompt };
     }
   } catch {
     // Ignore parse errors
@@ -152,6 +160,15 @@ export function useAdvancedSettings() {
     notifyListeners();
   }, []);
 
+  const setVideoNegativePrompt = useCallback((prompt: string) => {
+    globalSettings = {
+      ...globalSettings,
+      videoNegativePrompt: prompt
+    };
+    saveSettings(globalSettings);
+    notifyListeners();
+  }, []);
+
   const setSteps = useCallback((steps: number) => {
     const modelConfig = getModelConfig(globalSettings.imageModel);
     const clampedSteps = Math.max(
@@ -197,10 +214,12 @@ export function useAdvancedSettings() {
     setGuidance,
     setPhotoQuality,
     setVideoQuality,
+    setVideoNegativePrompt,
     resetToDefaults,
     getCurrentModelConfig,
     modelConfigs: IMAGE_MODELS,
-    photoQualityPresets: PHOTO_QUALITY_PRESETS
+    photoQualityPresets: PHOTO_QUALITY_PRESETS,
+    defaultVideoNegativePrompt: DEFAULT_VIDEO_NEGATIVE_PROMPT
   };
 }
 

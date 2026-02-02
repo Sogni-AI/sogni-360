@@ -1,12 +1,13 @@
-/* Login Modal Overlay */
+/* Login Modal Overlay - Apple Liquid Glass */
 .login-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15,17 +16,17 @@
   overflow-y: auto;
 }
 
-/* Login Modal Container */
+/* Login Modal Container - Apple Liquid Glass */
 .login-modal-container {
   position: relative;
   width: 100%;
   max-width: 480px;
   min-width: 320px;
   min-height: 200px;
-  background: linear-gradient(135deg, rgba(30, 30, 40, 0.98) 0%, rgba(20, 20, 30, 0.98) 100%);
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(3, 7, 18, 0.98) 100%);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   max-height: 90vh;
   overflow-y: auto;
 }

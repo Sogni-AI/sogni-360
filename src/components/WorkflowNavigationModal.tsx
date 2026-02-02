@@ -43,8 +43,8 @@ const WorkflowNavigationModal: React.FC<WorkflowNavigationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70">
-      <div className="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md mx-4 p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-2xl border border-white/10 w-full max-w-md mx-4 p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
         <h2 className="text-xl font-semibold text-white mb-4">
           Go back to {STEP_LABELS[toStep]}?
         </h2>

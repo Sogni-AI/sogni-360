@@ -7,6 +7,12 @@ interface OutOfCreditsPopupProps {
   onPurchase?: () => void;
 }
 
+const CheckIcon = () => (
+  <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: 12, height: 12, color: '#10b981' }}>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+  </svg>
+);
+
 const OutOfCreditsPopup: React.FC<OutOfCreditsPopupProps> = ({ isOpen, onClose, onPurchase }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -103,11 +109,15 @@ const OutOfCreditsPopup: React.FC<OutOfCreditsPopupProps> = ({ isOpen, onClose, 
             </p>
             <div className="credits-info">
               <div className="info-item" onClick={handleInfoItemClick}>
-                <span className="info-icon">🎁</span>
+                <div className="info-icon">
+                  <CheckIcon />
+                </div>
                 <span className="info-text">Check for <strong>free daily credits</strong></span>
               </div>
               <div className="info-item" onClick={handleInfoItemClick}>
-                <span className="info-icon">💳</span>
+                <div className="info-icon">
+                  <CheckIcon />
+                </div>
                 <span className="info-text">Buy more render credits</span>
               </div>
             </div>
@@ -126,7 +136,7 @@ const OutOfCreditsPopup: React.FC<OutOfCreditsPopupProps> = ({ isOpen, onClose, 
             className="out-of-credits-close-btn"
             onClick={onClose}
           >
-            Close
+            Maybe later
           </button>
         </div>
       </div>

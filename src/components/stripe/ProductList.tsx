@@ -1,3 +1,4 @@
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Product } from '../../services/stripe';
 import '../../styles/stripe/ProductList.css';
 
@@ -25,6 +26,16 @@ interface Props {
 }
 
 function ProductList({ loading, products, onPurchase, currentBalance }: Props) {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true); // Default true until we know
+
+  // Sort products by price (cheapest first)
+  const sortedProducts = useMemo(() => {
+    if (!products) return null;
+    return [...products].sort((a, b) => a.unit_amount - b.unit_amount);
+  }, [products]);
+
   const formatUSD = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -52,31 +63,104 @@ function ProductList({ loading, products, onPurchase, currentBalance }: Props) {
     onPurchase(product.product);
   };
 
+  // Check scroll state
+  const updateScrollState = () => {
+    if (carouselRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+      // Only show left arrow if scrolled away from start
+      const isAtStart = scrollLeft <= 5;
+      // Only show right arrow if there's more content to scroll to
+      const isAtEnd = scrollLeft >= scrollWidth - clientWidth - 5;
+
+      setCanScrollLeft(!isAtStart);
+      setCanScrollRight(!isAtEnd && scrollWidth > clientWidth);
+    }
+  };
+
+  useEffect(() => {
+    // Reset scroll position and state when products change
+    if (carouselRef.current) {
+      carouselRef.current.scrollLeft = 0;
+    }
+    setCanScrollLeft(false);
+
+    // Use requestAnimationFrame to ensure DOM has rendered
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(updateScrollState);
+    });
+
+    const carousel = carouselRef.current;
+    if (carousel) {
+      carousel.addEventListener('scroll', updateScrollState);
+      window.addEventListener('resize', updateScrollState);
+      return () => {
+        cancelAnimationFrame(rafId);
+        carousel.removeEventListener('scroll', updateScrollState);
+        window.removeEventListener('resize', updateScrollState);
+      };
+    }
+    return () => cancelAnimationFrame(rafId);
+  }, [sortedProducts]);
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const scrollAmount = 280; // Card width + gap
+      carouselRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   let content;
-  if (products) {
+  if (sortedProducts) {
     content = (
-      <div className="stripe-products">
-        {products.map((product) => {
-          return (
-            <div key={product.id} className="stripe-product">
-              <h3>
-                <SparkIcon size={20} />
-                {product.nickname}
-              </h3>
-              <p>{product.metadata.localDescription}</p>
-              <div className="stripe-product-actions">
-                <div className="stripe-product-price">{formatUSD(product.unit_amount / 100)}</div>
-                <button
-                  className="stripe-buy-button"
-                  onClick={() => handlePurchaseClick(product)}
-                  disabled={loading}
-                >
-                  Buy
-                </button>
+      <div className="stripe-carousel-container">
+        {canScrollLeft && (
+          <button
+            className="stripe-carousel-arrow stripe-carousel-arrow-left"
+            onClick={() => scrollCarousel('left')}
+            aria-label="Scroll left"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+        <div className="stripe-products-carousel" ref={carouselRef}>
+          {sortedProducts.map((product) => {
+            return (
+              <div key={product.id} className="stripe-product">
+                <h3>
+                  <SparkIcon size={20} />
+                  {product.nickname}
+                </h3>
+                <p>{product.metadata.localDescription}</p>
+                <div className="stripe-product-actions">
+                  <div className="stripe-product-price">{formatUSD(product.unit_amount / 100)}</div>
+                  <button
+                    className="stripe-buy-button"
+                    onClick={() => handlePurchaseClick(product)}
+                    disabled={loading}
+                  >
+                    Buy
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        {canScrollRight && (
+          <button
+            className="stripe-carousel-arrow stripe-carousel-arrow-right"
+            onClick={() => scrollCarousel('right')}
+            aria-label="Scroll right"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        )}
       </div>
     );
   } else {
