@@ -102,6 +102,22 @@ export const PHOTO_QUALITY_PRESETS: Record<PhotoQualityTier, PhotoQualityPreset>
   }
 } as const;
 
+// Z-Image Turbo enhancement steps by quality tier
+// Higher steps = better enhancement quality but slower
+export const ENHANCE_STEPS_BY_QUALITY: Record<PhotoQualityTier, number> = {
+  fast: 4,
+  balanced: 6,
+  quality: 8,
+  pro: 10
+} as const;
+
+/**
+ * Get the Z-Image enhance steps for a given photo quality tier
+ */
+export function getEnhanceSteps(quality: PhotoQualityTier): number {
+  return ENHANCE_STEPS_BY_QUALITY[quality] ?? 6;
+}
+
 /**
  * Determine which quality tier matches the current settings
  */
@@ -234,7 +250,7 @@ export const MAX_WAYPOINTS = 64;
 export const MULTI_ANGLE_PRESETS: MultiAnglePreset[] = [
   {
     key: 'simple-zoom-out',
-    label: 'Simple Zoom Out',
+    label: 'Simple Zoom Out (2)',
     description: 'Original + zoomed out view',
     icon: '🔍',
     angles: [
@@ -273,7 +289,7 @@ export const MULTI_ANGLE_PRESETS: MultiAnglePreset[] = [
   },
   {
     key: 'zoom-montage',
-    label: 'Zoom Montage',
+    label: 'Zoom Montage (4)',
     description: 'Original + 3 dynamic angles',
     icon: '🎬',
     angles: [
