@@ -394,10 +394,6 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
           const toWaypoint = getWaypoint(segment.toWaypointId);
           const versionInfo = getVersionInfo(segment);
 
-          const sourceAspectRatio = currentProject?.sourceImageDimensions
-            ? `${currentProject.sourceImageDimensions.width} / ${currentProject.sourceImageDimensions.height}`
-            : '3 / 4';
-
           return (
             <TransitionVideoCard
               key={segment.id}
@@ -405,7 +401,6 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               index={index}
               totalSegments={segments.length}
               thumbAspect={thumbAspect}
-              sourceAspectRatio={sourceAspectRatio}
               fromImageUrl={fromWaypoint?.imageUrl}
               toImageUrl={toWaypoint?.imageUrl}
               fromLabel={getAngleLabel(segment.fromWaypointId)}

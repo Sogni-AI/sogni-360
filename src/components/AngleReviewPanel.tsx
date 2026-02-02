@@ -904,7 +904,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                 </button>
               </div>
 
-              {/* Image - Expands to fill available vertical space */}
+              {/* Image - fills available space in card */}
               <div
                 className={`review-card-img ${waypoint.status === 'ready' && waypoint.imageUrl ? 'clickable' : ''}`}
                 onClick={() => {

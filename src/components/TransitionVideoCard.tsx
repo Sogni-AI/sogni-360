@@ -8,7 +8,6 @@ interface TransitionVideoCardProps {
   index: number;
   totalSegments: number;
   thumbAspect: number;
-  sourceAspectRatio: string;
   fromImageUrl?: string;
   toImageUrl?: string;
   fromLabel: string;
@@ -30,7 +29,6 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   index,
   totalSegments,
   thumbAspect,
-  sourceAspectRatio,
   fromImageUrl,
   toImageUrl,
   fromLabel,
@@ -125,14 +123,13 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
         </div>
       </div>
 
-      {/* Preview Area */}
+      {/* Preview Area - fills available space in card */}
       <div className="transition-card-preview">
         {segment.status === 'ready' && segment.videoUrl ? (
           /* Ready - show video with autoplay, tap to open fullscreen */
           <div
             className={`transition-video-wrap ${!videoLoaded ? 'loading' : ''}`}
             onClick={() => setShowFullscreen(true)}
-            style={{ aspectRatio: sourceAspectRatio }}
           >
             <video
               ref={videoRef}

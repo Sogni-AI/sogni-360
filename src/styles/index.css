@@ -3654,17 +3654,17 @@ html, body {
   }
 }
 
-/* Carousel - Cards expand to fill vertical space */
+/* Carousel - Cards expand to fill vertical space but constrained */
 .review-carousel-wrap {
   flex: 1;
   display: flex;
   gap: 1.5rem;
   padding: 1rem 2rem 1.5rem;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden; /* Prevent vertical overflow - cards must fit */
   align-items: stretch; /* Cards fill vertical space */
   justify-content: flex-start; /* Start from left edge for proper scrolling */
-  min-height: 0; /* Allow flex shrink */
+  min-height: 0; /* Allow flex shrink - critical for constraining height */
   scroll-snap-type: x mandatory;
   scroll-padding: 0 2rem;
 }
@@ -3730,8 +3730,9 @@ html, body {
   }
 }
 
-/* Card Top */
+/* Card Top - never shrinks */
 .review-card-top {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4129,16 +4130,17 @@ html, body {
   color: #f87171;
 }
 
-/* Image - Expands to fill available space */
+/* Image - fills available space in card, constrained by card height */
 .review-card-img {
   position: relative;
-  flex: 1;
-  min-height: 0; /* Allow shrinking */
+  flex: 1 1 0; /* Grow to fill space, shrink if needed, base size 0 */
+  min-height: 0; /* Critical: allow shrinking below content size */
   width: 100%;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden; /* Ensure content doesn't overflow */
 }
 
 .review-card-img img {
@@ -4379,14 +4381,16 @@ html, body {
 }
 
 .transition-card-preview {
-  flex: 1; /* Fill available vertical space */
+  flex: 1 1 0; /* Grow to fill space, shrink if needed, base size 0 */
+  min-height: 0; /* Critical: allow shrinking below content size */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   padding: 1rem;
   background: rgba(0, 0, 0, 0.2);
-  min-height: 0; /* Allow flex shrink */
+  width: 100%;
+  overflow: hidden; /* Ensure content doesn't overflow */
 }
 
 /* Thumbnails Row - horizontal by default, vertical when stacked */
@@ -4916,8 +4920,9 @@ html, body {
   color: #60a5fa;
 }
 
-/* Info Section - Fixed Structure */
+/* Info Section - Fixed Structure, never shrinks */
 .review-card-info {
+  flex-shrink: 0; /* Always visible, never shrinks */
   display: flex;
   flex-direction: column;
   padding: 1rem;
