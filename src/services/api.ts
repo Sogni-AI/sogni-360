@@ -203,6 +203,7 @@ class ApiClient {
     height: number;
     tokenType?: 'spark' | 'sogni';
     prompt?: string; // Custom enhancement prompt
+    steps?: number; // Z-Image inference steps (4-10)
   }): Promise<{ projectId: string; clientAppId: string }> {
     const response = await this.fetch<{
       success: boolean;
@@ -217,6 +218,7 @@ class ApiClient {
         height: params.height,
         tokenType: params.tokenType || 'spark',
         prompt: params.prompt || '(Extra detailed and contrasty portrait) Portrait masterpiece',
+        steps: params.steps,
         clientAppId: this.clientAppId,
       }),
     });

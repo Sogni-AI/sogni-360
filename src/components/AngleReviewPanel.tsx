@@ -6,8 +6,10 @@ import {
   getAzimuthConfig,
   AZIMUTHS,
   ELEVATIONS,
-  DISTANCES
+  DISTANCES,
+  getEnhanceSteps
 } from '../constants/cameraAngleSettings';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 import type { AzimuthKey, ElevationKey, DistanceKey } from '../types';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import { enhanceImage } from '../services/ImageEnhancer';
@@ -90,8 +92,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const [showAddAnglePopup, setShowAddAnglePopup] = useState(false);
   const [insertAfterIndex, setInsertAfterIndex] = useState(-1);
 
-  // Fullscreen image viewer state
-  const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null);
+  // Fullscreen image viewer state - track waypoint ID to support version navigation
+  const [fullscreenWaypointId, setFullscreenWaypointId] = useState<string | null>(null);
 
   // Reference image selection for regeneration (waypointId -> 'original' | otherWaypointId)
   const [referenceSelections, setReferenceSelections] = useState<Record<string, string>>({});
@@ -600,12 +602,17 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     });
 
     try {
+      // Get enhance steps based on current photo quality setting
+      const advancedSettings = getAdvancedSettings();
+      const enhanceSteps = getEnhanceSteps(advancedSettings.photoQuality);
+
       const enhancedUrl = await enhanceImage({
         imageUrl: waypoint.imageUrl,
         width: currentProject.sourceImageDimensions.width,
         height: currentProject.sourceImageDimensions.height,
         tokenType: currentProject.settings.tokenType,
         prompt,
+        steps: enhanceSteps,
         onProgress: (progress) => {
           dispatch({
             type: 'UPDATE_WAYPOINT',
@@ -871,7 +878,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                 className={`review-card-img ${waypoint.status === 'ready' && waypoint.imageUrl ? 'clickable' : ''}`}
                 onClick={() => {
                   if (waypoint.status === 'ready' && waypoint.imageUrl) {
-                    setFullscreenImageUrl(waypoint.imageUrl);
+                    setFullscreenWaypointId(waypoint.id);
                   }
                 }}
               >
@@ -1192,14 +1199,39 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         onInsertAngles={handleInsertAngles}
       />
 
-      {/* Fullscreen Image Viewer */}
-      {fullscreenImageUrl && (
-        <FullscreenMediaViewer
-          type="image"
-          src={fullscreenImageUrl}
-          onClose={() => setFullscreenImageUrl(null)}
-        />
-      )}
+      {/* Fullscreen Image Viewer with Version Navigation */}
+      {fullscreenWaypointId && (() => {
+        const fullscreenWaypoint = waypoints.find(wp => wp.id === fullscreenWaypointId);
+        if (!fullscreenWaypoint?.imageUrl) return null;
+        const versionInfo = getVersionInfo(fullscreenWaypoint);
+
+        // Looping version navigation
+        const handleFullscreenPrev = () => {
+          if (!fullscreenWaypoint.imageHistory || fullscreenWaypoint.imageHistory.length <= 1) return;
+          const currentIdx = fullscreenWaypoint.currentImageIndex ?? fullscreenWaypoint.imageHistory.length - 1;
+          const newIdx = currentIdx > 0 ? currentIdx - 1 : fullscreenWaypoint.imageHistory.length - 1;
+          dispatch({ type: 'SELECT_WAYPOINT_VERSION', payload: { waypointId: fullscreenWaypoint.id, index: newIdx } });
+        };
+
+        const handleFullscreenNext = () => {
+          if (!fullscreenWaypoint.imageHistory || fullscreenWaypoint.imageHistory.length <= 1) return;
+          const currentIdx = fullscreenWaypoint.currentImageIndex ?? fullscreenWaypoint.imageHistory.length - 1;
+          const newIdx = currentIdx < fullscreenWaypoint.imageHistory.length - 1 ? currentIdx + 1 : 0;
+          dispatch({ type: 'SELECT_WAYPOINT_VERSION', payload: { waypointId: fullscreenWaypoint.id, index: newIdx } });
+        };
+
+        return (
+          <FullscreenMediaViewer
+            type="image"
+            src={fullscreenWaypoint.imageUrl}
+            onClose={() => setFullscreenWaypointId(null)}
+            versionInfo={versionInfo}
+            onPrevVersion={handleFullscreenPrev}
+            onNextVersion={handleFullscreenNext}
+            loop
+          />
+        );
+      })()}
     </div>
   );
 };

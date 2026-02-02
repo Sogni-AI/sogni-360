@@ -289,12 +289,16 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
         </div>
       </div>
 
-      {/* Fullscreen video viewer */}
+      {/* Fullscreen video viewer with version navigation */}
       {showFullscreen && segment.videoUrl && (
         <FullscreenMediaViewer
           type="video"
           src={segment.videoUrl}
           onClose={() => setShowFullscreen(false)}
+          versionInfo={versionInfo}
+          onPrevVersion={onPrevVersion}
+          onNextVersion={onNextVersion}
+          loop
         />
       )}
     </div>

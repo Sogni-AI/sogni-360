@@ -5,18 +5,73 @@
  * Allows users to save, load, and resume projects locally.
  */
 
-import type { Sogni360Project, LocalProject, Waypoint } from '../types';
+import type { Sogni360Project, LocalProject, Waypoint, Segment, TransitionVersion } from '../types';
+import { API_URL } from '../config/urls';
 
 const DB_NAME = 'sogni360-projects';
 const DB_VERSION = 1;
 const STORE_NAME = 'projects';
 
 /**
- * Convert a blob URL to a data URL (base64)
- * This allows the image data to persist in IndexedDB across page reloads
+ * Check if URL is a remote URL that needs to be converted to data URL
+ * Remote URLs include blob: URLs and S3 URLs (which expire after 24 hours)
  */
-async function blobUrlToDataUrl(blobUrl: string): Promise<string> {
-  const response = await fetch(blobUrl);
+function isRemoteUrl(url: string): boolean {
+  if (!url) return false;
+  if (url.startsWith('data:')) return false; // Already a data URL
+  if (url.startsWith('blob:')) return true;
+  // S3 URL patterns
+  if (url.includes('s3.amazonaws.com')) return true;
+  if (url.includes('s3-accelerate.amazonaws.com')) return true;
+  if (url.includes('complete-images-production')) return true;
+  if (url.includes('complete-images-staging')) return true;
+  return false;
+}
+
+/**
+ * Check if URL is an S3 URL that needs proxy for CORS
+ */
+function isS3Url(url: string): boolean {
+  const s3Patterns = [
+    's3.amazonaws.com',
+    's3-accelerate.amazonaws.com',
+    'complete-images-production',
+    'complete-images-staging'
+  ];
+  return s3Patterns.some(pattern => url.includes(pattern));
+}
+
+/**
+ * Get proxied URL for S3 resources to bypass CORS
+ */
+function getProxiedUrl(url: string): string {
+  return `${API_URL}/api/sogni/proxy-image?url=${encodeURIComponent(url)}`;
+}
+
+/**
+ * Convert any remote URL (blob or S3) to a data URL for persistence
+ * Uses proxy for S3 URLs to bypass CORS restrictions
+ */
+async function remoteUrlToDataUrl(url: string): Promise<string> {
+  let response: Response;
+
+  // For S3 URLs, try direct fetch first, fall back to proxy
+  if (isS3Url(url)) {
+    try {
+      response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch {
+      // Direct fetch failed (likely CORS), use proxy
+      const proxyUrl = getProxiedUrl(url);
+      response = await fetch(proxyUrl, { credentials: 'include' });
+      if (!response.ok) throw new Error(`Proxy fetch failed: HTTP ${response.status}`);
+    }
+  } else {
+    // For blob URLs, fetch directly
+    response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  }
+
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -27,39 +82,127 @@ async function blobUrlToDataUrl(blobUrl: string): Promise<string> {
 }
 
 /**
- * Process a waypoint's image URLs, converting blob URLs to data URLs for persistence
+ * Convert a single URL to data URL if it's remote, with error handling
+ */
+async function convertUrlIfRemote(url: string | undefined, context: string): Promise<string | undefined> {
+  if (!url || !isRemoteUrl(url)) return url;
+
+  try {
+    const dataUrl = await remoteUrlToDataUrl(url);
+    console.log(`[LocalDB] Converted ${context} to data URL`);
+    return dataUrl;
+  } catch (error) {
+    console.warn(`[LocalDB] Failed to convert ${context}:`, error);
+    return undefined;
+  }
+}
+
+/**
+ * Convert an array of URLs to data URLs if they're remote
+ */
+async function convertUrlArrayIfRemote(urls: string[] | undefined, context: string): Promise<string[] | undefined> {
+  if (!urls || urls.length === 0) return urls;
+
+  const converted: string[] = [];
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    if (isRemoteUrl(url)) {
+      try {
+        const dataUrl = await remoteUrlToDataUrl(url);
+        converted.push(dataUrl);
+        console.log(`[LocalDB] Converted ${context}[${i}] to data URL`);
+      } catch (error) {
+        console.warn(`[LocalDB] Failed to convert ${context}[${i}]:`, error);
+        // Skip failed conversions
+      }
+    } else {
+      converted.push(url);
+    }
+  }
+  return converted.length > 0 ? converted : undefined;
+}
+
+/**
+ * Process a waypoint's image URLs, converting remote URLs to data URLs for persistence
  */
 async function processWaypointForStorage(waypoint: Waypoint): Promise<Waypoint> {
   const processed = { ...waypoint };
 
-  // Convert main imageUrl if it's a blob URL
-  if (processed.imageUrl?.startsWith('blob:')) {
-    try {
-      processed.imageUrl = await blobUrlToDataUrl(processed.imageUrl);
-    } catch (e) {
-      console.warn('[LocalDB] Failed to convert blob URL to data URL:', e);
-      // Clear the blob URL since it won't work after reload anyway
+  // Convert main imageUrl
+  if (isRemoteUrl(processed.imageUrl || '')) {
+    const converted = await convertUrlIfRemote(processed.imageUrl, `waypoint ${waypoint.id} imageUrl`);
+    if (converted) {
+      processed.imageUrl = converted;
+    } else {
       processed.imageUrl = undefined;
       processed.status = 'pending';
     }
   }
 
-  // Convert imageHistory blob URLs if present
-  if (processed.imageHistory && processed.imageHistory.length > 0) {
-    const convertedHistory: string[] = [];
-    for (const url of processed.imageHistory) {
-      if (url.startsWith('blob:')) {
-        try {
-          convertedHistory.push(await blobUrlToDataUrl(url));
-        } catch (e) {
-          console.warn('[LocalDB] Failed to convert history blob URL:', e);
-          // Skip failed conversions
+  // Convert imageHistory
+  processed.imageHistory = await convertUrlArrayIfRemote(
+    processed.imageHistory,
+    `waypoint ${waypoint.id} imageHistory`
+  );
+
+  // Update currentImageIndex if history was truncated
+  if (processed.imageHistory && processed.currentImageIndex !== undefined) {
+    processed.currentImageIndex = Math.min(processed.currentImageIndex, processed.imageHistory.length - 1);
+  }
+
+  // Convert originalImageUrl (for enhancement undo)
+  processed.originalImageUrl = await convertUrlIfRemote(
+    processed.originalImageUrl,
+    `waypoint ${waypoint.id} originalImageUrl`
+  );
+
+  // Convert enhancedImageUrl (for enhancement redo)
+  processed.enhancedImageUrl = await convertUrlIfRemote(
+    processed.enhancedImageUrl,
+    `waypoint ${waypoint.id} enhancedImageUrl`
+  );
+
+  return processed;
+}
+
+/**
+ * Process a segment's video URLs, converting remote URLs to data URLs for persistence
+ */
+async function processSegmentForStorage(segment: Segment): Promise<Segment> {
+  const processed = { ...segment };
+
+  // Convert main videoUrl
+  if (isRemoteUrl(processed.videoUrl || '')) {
+    const converted = await convertUrlIfRemote(processed.videoUrl, `segment ${segment.id} videoUrl`);
+    if (converted) {
+      processed.videoUrl = converted;
+    } else {
+      processed.videoUrl = undefined;
+      processed.status = 'pending';
+    }
+  }
+
+  // Convert version URLs
+  if (processed.versions && processed.versions.length > 0) {
+    const convertedVersions: TransitionVersion[] = [];
+    for (let i = 0; i < processed.versions.length; i++) {
+      const version = processed.versions[i];
+      if (isRemoteUrl(version.videoUrl)) {
+        const converted = await convertUrlIfRemote(version.videoUrl, `segment ${segment.id} version[${i}]`);
+        if (converted) {
+          convertedVersions.push({ ...version, videoUrl: converted });
         }
+        // Skip versions that fail to convert
       } else {
-        convertedHistory.push(url);
+        convertedVersions.push(version);
       }
     }
-    processed.imageHistory = convertedHistory;
+    processed.versions = convertedVersions.length > 0 ? convertedVersions : undefined;
+
+    // Update currentVersionIndex if versions were truncated
+    if (processed.versions && processed.currentVersionIndex !== undefined) {
+      processed.currentVersionIndex = Math.min(processed.currentVersionIndex, processed.versions.length - 1);
+    }
   }
 
   return processed;
@@ -113,19 +256,34 @@ function openDB(): Promise<IDBDatabase> {
 export async function saveProject(project: Sogni360Project): Promise<void> {
   const db = await openDB();
 
-  // Process waypoints to convert blob URLs to data URLs
+  // Process waypoints to convert remote URLs to data URLs
   const processedWaypoints = await Promise.all(
     project.waypoints.map(wp => processWaypointForStorage(wp))
   );
 
-  // Create a clean copy of the project with processed waypoints
+  // Process segments to convert remote URLs to data URLs
+  const processedSegments = await Promise.all(
+    project.segments.map(seg => processSegmentForStorage(seg))
+  );
+
+  // Convert source image URL if remote
+  const processedSourceImageUrl = await convertUrlIfRemote(
+    project.sourceImageUrl,
+    'sourceImageUrl'
+  ) || project.sourceImageUrl;
+
+  // Convert final loop URL if remote (not just blob:)
+  const processedFinalLoopUrl = isRemoteUrl(project.finalLoopUrl || '')
+    ? await convertUrlIfRemote(project.finalLoopUrl, 'finalLoopUrl')
+    : project.finalLoopUrl;
+
+  // Create a clean copy of the project with processed URLs
   const cleanProject: Sogni360Project = {
     ...project,
+    sourceImageUrl: processedSourceImageUrl,
     waypoints: processedWaypoints,
-    // Don't save blob URLs for final loop - they won't work after page reload
-    finalLoopUrl: project.finalLoopUrl?.startsWith('blob:')
-      ? undefined
-      : project.finalLoopUrl
+    segments: processedSegments,
+    finalLoopUrl: processedFinalLoopUrl
   };
 
   // Get thumbnail URL (prefer first ready waypoint with image, fall back to source)

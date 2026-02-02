@@ -425,7 +425,8 @@ router.post('/enhance-image', ensureSessionId, async (req, res) => {
       width,
       height,
       tokenType = 'spark',
-      prompt = '(Extra detailed and contrasty portrait) Portrait masterpiece'
+      prompt = '(Extra detailed and contrasty portrait) Portrait masterpiece',
+      steps = 6 // Z-Image inference steps (4-10 based on quality tier)
     } = req.body;
 
     if (!sourceImage) {
@@ -467,6 +468,8 @@ router.post('/enhance-image', ensureSessionId, async (req, res) => {
 
     // Build project parameters for Z-Image Turbo enhancement
     // Key: startingImage + startingImageStrength for img2img enhancement
+    // Clamp steps to valid range (4-10) for Z-Image Turbo
+    const inferenceSteps = Math.max(4, Math.min(10, steps));
     const projectParams = {
       selectedModel: 'z_image_turbo_bf16',
       positivePrompt: prompt,
@@ -476,7 +479,7 @@ router.post('/enhance-image', ensureSessionId, async (req, res) => {
       width: width || 1024,
       height: height || 1024,
       numberImages: 1,
-      inferenceSteps: 6, // Z-Image Turbo uses fewer steps
+      inferenceSteps, // Quality-based: Fast=4, Balanced=6, Quality=8, Pro=10
       promptGuidance: 3.5, // Z-Image Turbo default guidance
       tokenType: tokenType,
       outputFormat: 'jpg',

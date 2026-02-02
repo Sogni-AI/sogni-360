@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import type { Segment } from '../types';
+import type { Segment, Sogni360Project } from '../types';
 import { useApp } from '../context/AppContext';
 import { useSogniAuth } from '../services/sogniAuth';
 import SourceUploader from './SourceUploader';
@@ -445,6 +445,13 @@ const Sogni360Container: React.FC = () => {
     hasAutoOpenedEditor.current = true; // Don't auto-open editor for loaded projects
   }, [loadProjectById, dispatch]);
 
+  // Handle importing a project - load it directly into the app
+  const handleImportProject = useCallback((project: Sogni360Project) => {
+    dispatch({ type: 'SET_PROJECT', payload: project });
+    dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
+    hasAutoOpenedEditor.current = true; // Don't auto-open editor for imported projects
+  }, [dispatch]);
+
   // Handle closing project manager
   const handleCloseProjectManager = useCallback(() => {
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
@@ -690,6 +697,7 @@ const Sogni360Container: React.FC = () => {
             onClose={handleCloseProjectManager}
             onLoadProject={handleLoadProject}
             onNewProject={handleNewProject}
+            onImportProject={handleImportProject}
             currentProjectId={currentProject?.id}
           />
         )}
@@ -897,6 +905,7 @@ const Sogni360Container: React.FC = () => {
           onClose={handleCloseProjectManager}
           onLoadProject={handleLoadProject}
           onNewProject={handleNewProject}
+          onImportProject={handleImportProject}
           currentProjectId={currentProject?.id}
         />
       )}

@@ -1,10 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+interface VersionInfo {
+  current: number;
+  total: number;
+  canPrev: boolean;
+  canNext: boolean;
+}
+
 interface FullscreenMediaViewerProps {
   type: 'image' | 'video';
   src: string;
   alt?: string;
   onClose: () => void;
+  // Version navigation (optional)
+  versionInfo?: VersionInfo | null;
+  onPrevVersion?: () => void;
+  onNextVersion?: () => void;
+  // When true, navigation loops (buttons always enabled, parent handles looping)
+  loop?: boolean;
 }
 
 /**
@@ -16,21 +29,73 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
   type,
   src,
   alt = '',
-  onClose
+  onClose,
+  versionInfo,
+  onPrevVersion,
+  onNextVersion,
+  loop = false
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
 
-  // Close on escape key
+  // Swipe tracking for version navigation
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  // Keyboard navigation (escape to close, arrows for versions)
+  // When loop is true, parent handles looping logic in callbacks
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+      } else if (e.key === 'ArrowLeft' && versionInfo && versionInfo.total > 1 && onPrevVersion) {
+        // Allow if can go prev OR if loop is enabled
+        if (versionInfo.canPrev || loop) {
+          e.preventDefault();
+          onPrevVersion();
+        }
+      } else if (e.key === 'ArrowRight' && versionInfo && versionInfo.total > 1 && onNextVersion) {
+        // Allow if can go next OR if loop is enabled
+        if (versionInfo.canNext || loop) {
+          e.preventDefault();
+          onNextVersion();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [versionInfo?.canPrev, versionInfo?.canNext, versionInfo?.total, loop]);
+
+  // Swipe handling for version navigation (touch devices)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!versionInfo || versionInfo.total <= 1) return;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, [versionInfo]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    if (!versionInfo || versionInfo.total <= 1) return;
+
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    // Only trigger if horizontal swipe is dominant and significant
+    if (absX > 50 && absX > absY * 1.5) {
+      if (deltaX > 0 && (versionInfo.canPrev || loop) && onPrevVersion) {
+        // Swipe right = previous version (or loop to end)
+        onPrevVersion();
+      } else if (deltaX < 0 && (versionInfo.canNext || loop) && onNextVersion) {
+        // Swipe left = next version (or loop to start)
+        onNextVersion();
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+  }, [versionInfo, onPrevVersion, onNextVersion, loop]);
 
   // Autoplay video when opened
   useEffect(() => {
@@ -64,10 +129,14 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
     }
   }, [type, onClose]);
 
+  const showVersionNav = versionInfo && versionInfo.total > 1;
+
   return (
     <div
       className="fullscreen-media-viewer"
       onClick={handleBackdropClick}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Close button */}
       <button
@@ -82,6 +151,47 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
+
+      {/* Version navigation - left button */}
+      {showVersionNav && (
+        <button
+          className={`fullscreen-nav-btn fullscreen-nav-prev ${!versionInfo.canPrev && !loop ? 'disabled' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if ((versionInfo.canPrev || loop) && onPrevVersion) onPrevVersion();
+          }}
+          disabled={!versionInfo.canPrev && !loop}
+          aria-label="Previous version"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="32" height="32">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+
+      {/* Version navigation - right button */}
+      {showVersionNav && (
+        <button
+          className={`fullscreen-nav-btn fullscreen-nav-next ${!versionInfo.canNext && !loop ? 'disabled' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if ((versionInfo.canNext || loop) && onNextVersion) onNextVersion();
+          }}
+          disabled={!versionInfo.canNext && !loop}
+          aria-label="Next version"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="32" height="32">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+
+      {/* Version indicator */}
+      {showVersionNav && (
+        <div className="fullscreen-version-indicator">
+          Version {versionInfo.current} of {versionInfo.total}
+        </div>
+      )}
 
       {type === 'image' ? (
         <img

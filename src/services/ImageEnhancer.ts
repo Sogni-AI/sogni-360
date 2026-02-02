@@ -20,6 +20,7 @@ export interface EnhanceImageOptions {
   height: number;
   tokenType?: 'spark' | 'sogni';
   prompt?: string;
+  steps?: number; // Z-Image inference steps (4-10 based on quality tier)
   onProgress?: (progress: number) => void;
   onComplete?: (imageUrl: string) => void;
   onError?: (error: Error) => void;
@@ -70,6 +71,7 @@ async function enhanceWithFrontendSDK(options: EnhanceImageOptions): Promise<str
     height,
     tokenType = 'spark',
     prompt = '(Extra detailed and contrasty portrait) Portrait masterpiece',
+    steps = 6,
     onProgress,
     onComplete,
     onError
@@ -86,6 +88,8 @@ async function enhanceWithFrontendSDK(options: EnhanceImageOptions): Promise<str
   const imageBlob = await imageUrlToBlob(imageUrl);
 
   // Create project options matching backend implementation
+  // Clamp steps to valid range (4-10) for Z-Image Turbo
+  const inferenceSteps = Math.max(4, Math.min(10, steps));
   const projectOptions = {
     type: 'image' as const,
     modelId: 'z_image_turbo_bf16',
@@ -95,7 +99,7 @@ async function enhanceWithFrontendSDK(options: EnhanceImageOptions): Promise<str
     sizePreset: 'custom' as const,
     width: width,
     height: height,
-    steps: 6,
+    steps: inferenceSteps,
     guidance: 3.5,
     numberOfMedia: 1,
     numberOfPreviews: 5,
@@ -203,6 +207,7 @@ async function enhanceWithBackendAPI(options: EnhanceImageOptions): Promise<stri
     height,
     tokenType = 'spark',
     prompt,
+    steps,
     onProgress,
     onComplete,
     onError
@@ -214,7 +219,8 @@ async function enhanceWithBackendAPI(options: EnhanceImageOptions): Promise<stri
     width,
     height,
     tokenType,
-    prompt
+    prompt,
+    steps
   });
 
   console.log(`[Enhancer-API] Subscribing to progress for project ${projectId}`);
