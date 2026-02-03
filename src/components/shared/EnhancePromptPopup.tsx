@@ -80,7 +80,7 @@ const EnhancePromptPopup: React.FC<EnhancePromptPopupProps> = ({
 
     const tokenCost = tokenValue.toFixed(2);
     const usdCost = usdValue && !isNaN(usdValue) ? ` (~$${usdValue.toFixed(2)})` : '';
-    return `${tokenCost} ${tokenType}${usdCost}`;
+    return `${tokenCost} ${tokenType.toUpperCase()}${usdCost}`;
   };
 
   return (

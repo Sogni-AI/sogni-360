@@ -331,7 +331,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
               <span className="config-cost-loading">Calculating...</span>
             ) : (
               <>
-                <span className="config-cost-spark">{formattedCost} Spark</span>
+                <span className="config-cost-spark">{formattedCost} {tokenType.toUpperCase()}</span>
                 <span className="config-cost-usd">≈ {formattedUSD}</span>
               </>
             )}

@@ -579,7 +579,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
             {anglesToGenerate} to generate
           </span>
           <span className="config-cost">
-            {costLoading ? 'Calculating...' : `${formattedCost} spark ≈ ${formattedUSD}`}
+            {costLoading ? 'Calculating...' : `${formattedCost} ${tokenType.toUpperCase()} ≈ ${formattedUSD}`}
           </span>
         </div>
         <div className="config-footer-actions">
