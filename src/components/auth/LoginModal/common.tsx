@@ -20,6 +20,7 @@ interface FormPanelProps extends Props {
 export function FormPanel({ children, onSubmit, disabled, autoComplete, noValidate }: FormPanelProps) {
   return (
     <form
+      method="post"
       onSubmit={onSubmit}
       className="login-modal-content-panel"
       autoComplete={autoComplete}
