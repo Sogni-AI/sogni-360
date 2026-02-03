@@ -1,8 +1,9 @@
 /**
  * Maximum dimension (width or height) for uploaded images.
  * Images larger than this will be scaled down while maintaining aspect ratio.
+ * Set to 1280px since video export is currently capped at 720p.
  */
-const MAX_IMAGE_DIMENSION = 2048;
+const MAX_IMAGE_DIMENSION = 1280;
 
 /**
  * Resizes an image if its longest dimension exceeds the maximum allowed size.
