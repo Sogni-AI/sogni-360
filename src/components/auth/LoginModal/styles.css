@@ -81,7 +81,7 @@
   margin-bottom: 8px;
 }
 
-/* Title wrapper - positions sloth behind title */
+/* Title wrapper - positions logo behind title */
 .login-modal-title-wrap {
   position: relative;
   display: flex;
@@ -91,7 +91,7 @@
   padding: 20px 0;
 }
 
-/* Sloth Mascot - centered behind title */
+/* App Icon - centered behind title */
 .login-modal-logo {
   position: absolute;
   top: 50%;
@@ -105,7 +105,7 @@
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
 }
 
-/* Title text - sits on top of sloth */
+/* Title text - sits on top of icon */
 .login-modal-title {
   position: relative;
   z-index: 1;

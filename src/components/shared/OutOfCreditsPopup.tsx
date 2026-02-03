@@ -94,8 +94,8 @@ const OutOfCreditsPopup: React.FC<OutOfCreditsPopupProps> = ({ isOpen, onClose, 
         <div className="out-of-credits-modal-header">
           <div className="out-of-credits-mascot">
             <img
-              src="/sloth_cam_hop_trnsparent.png"
-              alt="Sogni Sloth"
+              src="/van-icon.png"
+              alt="Sogni 360"
               className="sloth-mascot"
             />
           </div>

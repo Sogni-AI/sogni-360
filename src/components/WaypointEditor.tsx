@@ -20,6 +20,7 @@ import AngleReviewPanel from './AngleReviewPanel';
 import { warmUpAudio, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
 import { useImageCostEstimation } from '../hooks/useImageCostEstimation';
 import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
+import ImageAdjuster from './shared/ImageAdjuster';
 
 interface WaypointEditorProps {
   onClose: () => void;
@@ -44,6 +45,11 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
   const hasAutoLoadedPreset = useRef(false);
+
+  // Upload image for waypoint state
+  const [uploadingForWaypointId, setUploadingForWaypointId] = useState<string | null>(null);
+  const [pendingUploadImageUrl, setPendingUploadImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const waypoints = currentProject?.waypoints || [];
 
@@ -148,6 +154,68 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     });
     setSelectedPresetKey('custom');
   }, [dispatch]);
+
+  // Trigger file input for a specific waypoint
+  const handleUploadClick = useCallback((waypointId: string) => {
+    setUploadingForWaypointId(waypointId);
+    fileInputRef.current?.click();
+  }, []);
+
+  // Handle file selection
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingForWaypointId) {
+      setUploadingForWaypointId(null);
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showToast({ message: 'Please select an image file', type: 'error' });
+      setUploadingForWaypointId(null);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setPendingUploadImageUrl(dataUrl);
+    };
+    reader.onerror = () => {
+      showToast({ message: 'Failed to read image file', type: 'error' });
+      setUploadingForWaypointId(null);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  }, [uploadingForWaypointId, showToast]);
+
+  // Handle image adjuster confirm
+  const handleAdjusterConfirm = useCallback((blob: Blob) => {
+    if (!uploadingForWaypointId) return;
+
+    const imageUrl = URL.createObjectURL(blob);
+    dispatch({
+      type: 'UPDATE_WAYPOINT',
+      payload: {
+        id: uploadingForWaypointId,
+        updates: {
+          isOriginal: true,
+          status: 'ready',
+          imageUrl
+        }
+      }
+    });
+    setSelectedPresetKey('custom');
+    setPendingUploadImageUrl(null);
+    setUploadingForWaypointId(null);
+  }, [uploadingForWaypointId, dispatch]);
+
+  // Handle image adjuster cancel
+  const handleAdjusterCancel = useCallback(() => {
+    setPendingUploadImageUrl(null);
+    setUploadingForWaypointId(null);
+  }, []);
 
   // Actual generation logic (called after confirmation if needed)
   const executeGenerateAngles = useCallback(async () => {
@@ -462,16 +530,26 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
                 </div>
               )}
 
-              {/* Use original toggle */}
-              <label className="config-card-original-toggle">
-                <input
-                  type="checkbox"
-                  checked={waypoint.isOriginal || false}
-                  onChange={() => handleToggleOriginal(waypoint)}
+              {/* Use original toggle with upload option */}
+              <div className="config-card-image-options">
+                <label className="config-card-original-toggle">
+                  <input
+                    type="checkbox"
+                    checked={waypoint.isOriginal || false}
+                    onChange={() => handleToggleOriginal(waypoint)}
+                    disabled={isGenerating}
+                  />
+                  <span>Use original image</span>
+                </label>
+                <span className="config-card-option-separator">or</span>
+                <button
+                  className="config-card-upload-link"
+                  onClick={() => handleUploadClick(waypoint.id)}
                   disabled={isGenerating}
-                />
-                <span>Use original image</span>
-              </label>
+                >
+                  Upload Image
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -524,6 +602,25 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Hidden file input for waypoint image upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
+
+      {/* Image Adjuster Modal for uploaded images */}
+      {pendingUploadImageUrl && currentProject?.sourceImageDimensions && (
+        <ImageAdjuster
+          imageUrl={pendingUploadImageUrl}
+          targetDimensions={currentProject.sourceImageDimensions}
+          onConfirm={handleAdjusterConfirm}
+          onCancel={handleAdjusterCancel}
+        />
+      )}
     </div>
   );
 };
