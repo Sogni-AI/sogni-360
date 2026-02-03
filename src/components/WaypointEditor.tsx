@@ -19,6 +19,7 @@ import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import AngleReviewPanel from './AngleReviewPanel';
 import { warmUpAudio, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
 import { useImageCostEstimation } from '../hooks/useImageCostEstimation';
+import { useWallet } from '../hooks/useWallet';
 import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 import ImageAdjuster from './shared/ImageAdjuster';
 
@@ -40,6 +41,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject, showAngleReview, isAuthenticated, hasUsedFreeGeneration } = state;
+  const { tokenType } = useWallet();
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPresetKey, setSelectedPresetKey] = useState<string>('custom');
   const [showSettings, setShowSettings] = useState(false);
@@ -74,10 +76,10 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
 
   const anglesToGenerate = waypoints.filter(wp => !wp.isOriginal).length;
 
-  // Get cost estimate from API
+  // Get cost estimate from API (use wallet's tokenType for accurate pricing)
   const { loading: costLoading, formattedCost, formattedUSD } = useImageCostEstimation({
     imageCount: anglesToGenerate,
-    tokenType: currentProject?.settings.tokenType || 'spark',
+    tokenType,
     enabled: anglesToGenerate > 0
   });
 
@@ -250,7 +252,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
         currentProject.sourceImageDimensions.width,
         currentProject.sourceImageDimensions.height,
         {
-          tokenType: currentProject.settings.tokenType,
+          tokenType, // Use wallet's tokenType directly
           onWaypointStart: (waypointId) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'generating', progress: 0 } } });
           },
@@ -294,7 +296,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
       }
       showToast({ message: 'Generation failed: ' + (error instanceof Error ? error.message : 'Unknown error'), type: 'error' });
     }
-  }, [currentProject, waypoints, dispatch, showToast, selectedPresetKey, onOutOfCredits]);
+  }, [currentProject, waypoints, dispatch, showToast, selectedPresetKey, onOutOfCredits, tokenType]);
 
   // Handle generate button click - confirms if work would be lost
   const handleGenerateAngles = useCallback(() => {

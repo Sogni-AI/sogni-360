@@ -20,6 +20,7 @@ import LoginPromptModal from './auth/LoginPromptModal';
 import StripePurchase from './stripe/StripePurchase';
 import PWAInstallPrompt from './shared/PWAInstallPrompt';
 import OutOfCreditsPopup from './shared/OutOfCreditsPopup';
+import SwitchCurrencyPopup from './shared/SwitchCurrencyPopup';
 import DemoCoachmark from './shared/DemoCoachmark';
 import { ApiProvider } from '../hooks/useSogniApi';
 import { useWallet } from '../hooks/useWallet';
@@ -52,6 +53,7 @@ const Sogni360Container: React.FC = () => {
   const [showProjectNameModal, setShowProjectNameModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
+  const [showSwitchCurrency, setShowSwitchCurrency] = useState(false);
   const [showDemoCoachmark, setShowDemoCoachmark] = useState(false);
   const [demoProjectName, setDemoProjectName] = useState<string>('');
   const [projectCount, setProjectCount] = useState(0);
@@ -60,9 +62,13 @@ const Sogni360Container: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading, getSogniClient } = useSogniAuth();
   const sogniClient = getSogniClient();
 
-  // Wallet state for balance display
-  const { balances, tokenType } = useWallet();
+  // Wallet state for balance display and payment method
+  const { balances, tokenType, switchPaymentMethod } = useWallet();
   const currentBalance = balances?.[tokenType]?.net ? parseFloat(balances[tokenType].net) : undefined;
+
+  // Get alternative currency info for switch prompt
+  const alternativeCurrency = (tokenType === 'spark' ? 'sogni' : 'spark') as 'spark' | 'sogni';
+  const alternativeBalance = balances?.[alternativeCurrency]?.net || '0';
 
   // Auto-hide UI after inactivity
   const isUIAutoVisible = useAutoHideUI(3000);
@@ -238,7 +244,7 @@ const Sogni360Container: React.FC = () => {
           resolution,
           quality,
           duration,
-          tokenType: currentProject.settings.tokenType || 'spark',
+          tokenType, // Use wallet's tokenType directly
           sourceWidth: sourceWidth || 1024,  // Default to 1024 if missing
           sourceHeight: sourceHeight || 1024,  // Default to 1024 if missing
           onSegmentStart: (segmentId) => {
@@ -262,9 +268,7 @@ const Sogni360Container: React.FC = () => {
           onSegmentError: (segmentId, error) => {
             updateSegment(segmentId, { status: 'failed', error: error.message });
           },
-          onOutOfCredits: () => {
-            setShowOutOfCredits(true);
-          },
+          onOutOfCredits: handleOutOfCredits,
           onAllComplete: () => {
             setIsTransitionGenerating(false);
             dispatch({ type: 'SET_PROJECT_STATUS', payload: 'complete' });
@@ -321,7 +325,7 @@ const Sogni360Container: React.FC = () => {
           resolution: redoResolution,
           quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'balanced',
           duration: currentProject.settings.transitionDuration || 1.5,
-          tokenType: currentProject.settings.tokenType || 'spark',
+          tokenType, // Use wallet's tokenType directly
           sourceWidth: redoSourceWidth || 1024,
           sourceHeight: redoSourceHeight || 1024,
           onSegmentProgress: (segmentId, progress, workerName) => {
@@ -342,9 +346,7 @@ const Sogni360Container: React.FC = () => {
           onSegmentError: (segmentId, error) => {
             updateSegment(segmentId, { status: 'failed', error: error.message });
           },
-          onOutOfCredits: () => {
-            setShowOutOfCredits(true);
-          }
+          onOutOfCredits: handleOutOfCredits
         }
       );
     } catch (error) {
@@ -492,10 +494,23 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: true });
   }, [dispatch]);
 
-  // Handle out of credits - show popup to buy more
+  // Handle out of credits - check if alternative currency has balance, otherwise show out of credits popup
   const handleOutOfCredits = useCallback(() => {
-    setShowOutOfCredits(true);
-  }, []);
+    // Check if the alternative currency has a meaningful balance (> 1 to cover at least something)
+    const altBalanceNum = parseFloat(alternativeBalance);
+    if (altBalanceNum > 1) {
+      // Show switch currency popup instead
+      setShowSwitchCurrency(true);
+    } else {
+      // Show out of credits popup
+      setShowOutOfCredits(true);
+    }
+  }, [alternativeBalance]);
+
+  // Handle switching currency from the popup
+  const handleSwitchCurrency = useCallback(() => {
+    switchPaymentMethod(alternativeCurrency);
+  }, [switchPaymentMethod, alternativeCurrency]);
 
   // Handle purchase from out of credits popup
   const handleOutOfCreditsPurchase = useCallback(() => {
@@ -967,12 +982,21 @@ const Sogni360Container: React.FC = () => {
         />
       )}
 
-      {/* Stripe Purchase Modal */}
       {/* Out of Credits Popup */}
       <OutOfCreditsPopup
         isOpen={showOutOfCredits}
         onClose={() => setShowOutOfCredits(false)}
         onPurchase={handleOutOfCreditsPurchase}
+      />
+
+      {/* Switch Currency Popup - shown when out of credits but has balance in other currency */}
+      <SwitchCurrencyPopup
+        isOpen={showSwitchCurrency}
+        onClose={() => setShowSwitchCurrency(false)}
+        onSwitch={handleSwitchCurrency}
+        currentCurrency={tokenType}
+        alternativeCurrency={alternativeCurrency}
+        alternativeBalance={alternativeBalance}
       />
 
       {/* Stripe Purchase Modal */}

@@ -23,6 +23,7 @@ import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
 import { warmUpAudio } from '../utils/sonicLogos';
 import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
 import { useAdvancedSettings } from '../hooks/useAdvancedSettings';
+import { useWallet } from '../hooks/useWallet';
 
 export interface TransitionGenerationSettings {
   resolution: VideoResolution;
@@ -48,6 +49,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject, isAuthenticated, hasUsedFreeGeneration } = state;
+  const { tokenType } = useWallet();
   const { settings: advancedSettings } = useAdvancedSettings();
 
   // Local state for configuration
@@ -99,7 +101,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   // Total video duration for all transitions
   const totalSeconds = transitionCount * duration;
 
-  // Get cost estimate from Sogni API
+  // Get cost estimate from Sogni API (use wallet's tokenType for accurate pricing)
   const { loading: costLoading, formattedCost, formattedUSD } = useVideoCostEstimation({
     imageWidth: currentProject?.sourceImageDimensions?.width,
     imageHeight: currentProject?.sourceImageDimensions?.height,
@@ -107,7 +109,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     quality,
     duration,
     jobCount: transitionCount,
-    tokenType: currentProject?.settings.tokenType || 'spark',
+    tokenType,
     enabled: transitionCount > 0
   });
 

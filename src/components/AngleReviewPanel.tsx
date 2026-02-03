@@ -22,6 +22,7 @@ import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
 import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
 import { trackDownload } from '../utils/analytics';
 import { ensureDataUrl } from '../utils/imageUtils';
+import { useWallet } from '../hooks/useWallet';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
@@ -45,6 +46,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const { state, dispatch } = useApp();
   const { showToast } = useToast();
   const { currentProject, isAuthenticated, hasUsedFreeGeneration } = state;
+  const { tokenType } = useWallet();
   const carouselRef = useRef<HTMLDivElement>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
@@ -230,7 +232,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         currentProject.sourceImageDimensions.width,
         currentProject.sourceImageDimensions.height,
         {
-          tokenType: currentProject.settings.tokenType,
+          tokenType, // Use wallet's tokenType directly
           onWaypointProgress: (waypointId, progress) => {
             dispatch({
               type: 'UPDATE_WAYPOINT',
@@ -629,7 +631,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         imageUrl: waypoint.imageUrl,
         width: currentProject.sourceImageDimensions.width,
         height: currentProject.sourceImageDimensions.height,
-        tokenType: currentProject.settings.tokenType,
+        tokenType, // Use wallet's tokenType directly
         prompt,
         steps: enhanceSteps,
         onProgress: (progress) => {
@@ -1216,7 +1218,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         imageCount={isEnhanceAllMode
           ? waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl && !wp.enhancing).length
           : 1}
-        tokenType={currentProject?.settings.tokenType || 'spark'}
+        tokenType={tokenType}
       />
 
       {/* Add Angle Popup */}
