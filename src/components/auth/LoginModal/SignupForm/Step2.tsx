@@ -66,7 +66,7 @@ function Step2({ step1, initialState, onContinue, onReturn }: Props) {
   return (
     <FormPanel onSubmit={handleFormSubmit} disabled={isLoading} autoComplete="on">
       <FormContent subHeading="Create a secure password">
-        {/* Hidden username field for browser password manager */}
+        {/* Hidden username field for browser password manager - uses visually-hidden pattern */}
         <input
           type="text"
           name="username"
@@ -75,14 +75,16 @@ function Step2({ step1, initialState, onContinue, onReturn }: Props) {
           autoComplete="username"
           readOnly
           tabIndex={-1}
-          aria-hidden="true"
           style={{
             position: 'absolute',
-            left: '-9999px',
             width: '1px',
             height: '1px',
-            opacity: 0,
-            pointerEvents: 'none'
+            padding: 0,
+            margin: '-1px',
+            overflow: 'hidden',
+            clip: 'rect(0, 0, 0, 0)',
+            whiteSpace: 'nowrap',
+            border: 0
           }}
         />
         <FormField
