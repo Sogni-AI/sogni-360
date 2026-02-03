@@ -77,16 +77,7 @@
 
 .image-adjuster-frame {
   position: relative;
-  /*
-   * For tall aspect ratios (e.g., 9:16), we need the frame to size correctly.
-   * - height: 50vh gives us a fixed height reference
-   * - width: auto lets aspect-ratio calculate width from height
-   * - max-width: 100% prevents overflow for wide aspect ratios
-   * This ensures portrait frames are tall and narrow, landscape frames are full width.
-   */
-  height: 50vh;
-  width: auto;
-  max-width: 100%;
+  /* Dimensions are set via inline styles to properly respect aspect ratio */
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
@@ -218,7 +209,5 @@
     border-radius: 0;
   }
 
-  .image-adjuster-frame {
-    max-height: 60vh;
-  }
+  /* Frame dimensions handled by inline styles - no overrides needed */
 }

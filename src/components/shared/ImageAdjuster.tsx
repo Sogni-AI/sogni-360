@@ -368,6 +368,15 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
 
   const aspectRatio = targetDimensions.width / targetDimensions.height;
 
+  // Calculate frame dimensions explicitly to avoid CSS flex layout issues
+  // Always use height (50vh) as reference and calculate width from aspect ratio
+  // This ensures the frame respects the project's aspect ratio correctly
+  const frameStyle: React.CSSProperties = {
+    height: '50vh',
+    width: `calc(50vh * ${aspectRatio})`,
+    maxWidth: '100%',
+  };
+
   return (
     <div className="image-adjuster-overlay" onClick={onCancel}>
       <div className="image-adjuster-modal" onClick={(e) => e.stopPropagation()}>
@@ -388,7 +397,7 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
           <div
             className="image-adjuster-frame"
             ref={containerRef}
-            style={{ aspectRatio: `${aspectRatio}` }}
+            style={frameStyle}
           >
             <div className="image-adjuster-container">
               <img
