@@ -63,18 +63,18 @@ const CardMode: React.FC<CardModeProps> = ({
       flexDirection: 'column',
       gap: '6px',
       padding: '10px',
-      background: 'linear-gradient(145deg, rgba(45, 48, 55, 0.95) 0%, rgba(25, 28, 32, 0.98) 100%)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
+      background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+      backdropFilter: 'blur(24px) saturate(1.2)',
+      WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
       borderRadius: '14px',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderTopColor: 'rgba(255, 255, 255, 0.15)',
+      border: '1px solid rgba(255, 255, 255, 0.18)',
+      borderTopColor: 'rgba(255, 255, 255, 0.25)',
       width: 'fit-content',
       maxWidth: '100%',
       height: 'fit-content',
       overflow: 'hidden',
       margin: '0 auto',
-      boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.05)'
     }}>
       {/* Main row: Height | Orbital - flex: 1 to fill available space */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flex: 1 }}>
@@ -82,12 +82,12 @@ const CardMode: React.FC<CardModeProps> = ({
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%)',
           borderRadius: '8px',
           padding: '3px',
           gap: '2px',
           flexShrink: 0,
-          border: '1px solid rgba(255, 255, 255, 0.08)'
+          border: '1px solid rgba(255, 255, 255, 0.12)'
         }}>
           {elevationsReversed.map((el) => {
             const isSelected = el.key === elevation;
@@ -168,8 +168,9 @@ const CardMode: React.FC<CardModeProps> = ({
               position: 'absolute',
               inset: '15%',
               borderRadius: '50%',
-              background: `radial-gradient(ellipse 70% 70% at 35% 35%, rgba(70, 70, 75, 0.6) 0%, rgba(25, 25, 30, 0.7) 100%)`,
-              boxShadow: 'inset 0 0 15px rgba(0, 0, 0, 0.4)',
+              background: `radial-gradient(ellipse 70% 70% at 35% 35%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(0, 0, 0, 0.1) 100%)`,
+              boxShadow: 'inset 0 0 15px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.15)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               zIndex: 3,
               pointerEvents: 'none'
             }} />
@@ -181,9 +182,10 @@ const CardMode: React.FC<CardModeProps> = ({
               left: '50%',
               transform: 'translate(-50%, -50%)',
               fontSize: '32px',
-              opacity: 0.5,
+              opacity: 0.35,
               pointerEvents: 'none',
-              zIndex: 4
+              zIndex: 4,
+              filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))'
             }}>
               👤
             </div>
@@ -309,11 +311,11 @@ const CardMode: React.FC<CardModeProps> = ({
       {/* Distance row */}
       <div style={{
         display: 'flex',
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%)',
         borderRadius: '8px',
         padding: '3px',
         gap: '2px',
-        border: '1px solid rgba(255, 255, 255, 0.08)'
+        border: '1px solid rgba(255, 255, 255, 0.12)'
       }}>
         {DISTANCES.map((d) => {
           const isSelected = d.key === distance;
