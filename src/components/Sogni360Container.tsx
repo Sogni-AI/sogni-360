@@ -352,16 +352,13 @@ const Sogni360Container: React.FC = () => {
     }
   }, [currentProject, dispatch, updateSegment]);
 
-  // Handle video stitching - plays all segments in sequence
+  // Handle video stitching - plays ready segments in sequence
   const handleStitchVideos = useCallback(async () => {
     if (!currentProject) return;
 
-    const segments = currentProject.segments;
-    const allReady = segments.every(s => s.status === 'ready' && s.videoUrl);
-    if (!allReady) return;
-
-    // Get all video URLs for sequential playback
-    const videoUrls = segments.map(s => s.videoUrl).filter(Boolean) as string[];
+    // Get only the ready segments with video URLs
+    const readySegments = currentProject.segments.filter(s => s.status === 'ready' && s.videoUrl);
+    const videoUrls = readySegments.map(s => s.videoUrl).filter(Boolean) as string[];
 
     if (videoUrls.length > 0) {
       dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: false });
@@ -916,7 +913,7 @@ const Sogni360Container: React.FC = () => {
       {showFinalVideoPreview && currentProject?.segments && (
         <FinalVideoPanel
           projectId={currentProject.id}
-          videoUrls={currentProject.segments.map(s => s.videoUrl).filter(Boolean) as string[]}
+          videoUrls={currentProject.segments.filter(s => s.status === 'ready' && s.videoUrl).map(s => s.videoUrl) as string[]}
           stitchedVideoUrl={currentProject.finalLoopUrl}
           onClose={handleCloseFinalVideo}
           onBackToEditor={handleBackToEditor}

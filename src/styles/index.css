@@ -6244,30 +6244,7 @@ html, body {
   display: block;
 }
 
-.final-video-indicator {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 9999px;
-}
-
-.indicator-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  transition: all 0.2s ease;
-}
-
-.indicator-dot.active {
-  background: white;
-  transform: scale(1.2);
-}
+/* Note: Segment indicators now use inline styles for dynamic scaling */
 
 .final-video-actions {
   position: fixed;

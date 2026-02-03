@@ -41,6 +41,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   const [downloadProgress, setDownloadProgress] = useState<string | null>(null);
   const [regenerateModalSegment, setRegenerateModalSegment] = useState<Segment | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPartialStitchConfirm, setShowPartialStitchConfirm] = useState(false);
 
   const waypoints = currentProject?.waypoints || [];
   const segments = currentProject?.segments || [];
@@ -342,7 +343,23 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
     dispatch({ type: 'REMOVE_SEGMENT', payload: segmentId });
   }, [segments.length, dispatch, showToast]);
 
-  const canStitch = readyCount === totalSegments && totalSegments > 0 && !isGenerating;
+  // Enable button when at least one video is ready and not currently generating
+  const canStitch = readyCount >= 1 && !isGenerating;
+  const allReady = readyCount === totalSegments && totalSegments > 0;
+
+  // Handle stitch button click - show confirmation if not all videos are ready
+  const handleStitchClick = useCallback(() => {
+    if (!allReady) {
+      setShowPartialStitchConfirm(true);
+    } else {
+      onStitch();
+    }
+  }, [allReady, onStitch]);
+
+  const handleConfirmPartialStitch = useCallback(() => {
+    setShowPartialStitchConfirm(false);
+    onStitch();
+  }, [onStitch]);
 
   // Calculate thumbnail aspect ratio
   const thumbAspect = currentProject?.sourceImageDimensions
@@ -479,7 +496,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
           <button
             className={`btn ${canStitch ? 'btn-primary' : 'btn-disabled'}`}
-            onClick={onStitch}
+            onClick={handleStitchClick}
             disabled={!canStitch}
           >
             Create Final Video
@@ -509,6 +526,42 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Partial Stitch Confirmation Modal */}
+      {showPartialStitchConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5">
+          <div
+            className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-3xl p-7 max-w-md w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-white mb-3">Not All Videos Ready</h2>
+            <p className="text-gray-300 mb-4">
+              Only <span className="text-white font-medium">{readyCount}</span> of <span className="text-white font-medium">{totalSegments}</span> transition videos are ready.
+              {pendingCount > 0 && <> <span className="text-yellow-400">{pendingCount} pending.</span></>}
+              {generatingCount > 0 && <> <span className="text-blue-400">{generatingCount} generating.</span></>}
+              {failedCount > 0 && <> <span className="text-red-400">{failedCount} failed.</span></>}
+            </p>
+            <p className="text-gray-400 text-sm mb-6">
+              The final video will only include the completed transitions. Continue anyway?
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowPartialStitchConfirm(false)}
+                className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium transition-all min-h-[44px] border border-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPartialStitch}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium transition-all min-h-[44px] shadow-lg shadow-purple-500/25"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

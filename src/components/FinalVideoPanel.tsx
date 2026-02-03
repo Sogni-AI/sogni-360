@@ -305,16 +305,54 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
         )}
 
         {/* Segment indicator */}
-        {videoUrls.length > 1 && localStitchedUrl && !isStitching && (
-          <div className={`final-video-indicator final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`}>
-            {videoUrls.map((_, idx) => (
-              <div
-                key={idx}
-                className={`indicator-dot ${idx === currentSegmentIndex ? 'active' : ''}`}
-              />
-            ))}
-          </div>
-        )}
+        {videoUrls.length > 1 && localStitchedUrl && !isStitching && (() => {
+          const segmentCount = videoUrls.length;
+          const maxWidth = 280;
+          const minDotSize = 4;
+          const maxDotSize = 6;
+          const minGap = 2;
+          const maxGap = 4;
+
+          const defaultSpaceNeeded = segmentCount * maxDotSize + (segmentCount - 1) * maxGap;
+          const scale = defaultSpaceNeeded > maxWidth ? maxWidth / defaultSpaceNeeded : 1;
+          const dotSize = Math.max(minDotSize, Math.round(maxDotSize * scale));
+          const gap = Math.max(minGap, Math.round(maxGap * scale));
+          const activeDotWidth = Math.round(dotSize * 1.5);
+
+          return (
+            <div
+              className={`final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`}
+              style={{
+                position: 'absolute',
+                bottom: '1rem',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: `${gap}px`,
+                padding: '8px 12px',
+                background: 'rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '9999px',
+                maxWidth: `${maxWidth}px`,
+              }}
+            >
+              {videoUrls.map((_, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    width: idx === currentSegmentIndex ? `${activeDotWidth}px` : `${dotSize}px`,
+                    height: `${dotSize}px`,
+                    borderRadius: '50%',
+                    background: idx === currentSegmentIndex ? 'white' : 'rgba(255, 255, 255, 0.4)',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Action buttons */}

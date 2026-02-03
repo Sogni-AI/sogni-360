@@ -496,33 +496,66 @@ const Sogni360Viewer: React.FC = () => {
       </div>
 
       {/* Waypoint indicator */}
-      {currentProject && currentProject.waypoints.length > 0 && (
-        <div
-          className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex gap-2"
-          onTouchStart={stopTouchPropagation}
-          onTouchEnd={stopTouchPropagation}
-        >
-          {currentProject.waypoints.map((_, index) => (
-            <button
-              key={index}
-              className={`w-2 h-2 rounded-full transition-all ${
-                index === currentWaypointIndex
-                  ? 'bg-white w-4'
-                  : 'bg-white/50 hover:bg-white/75'
-              }`}
-              onClick={() => {
-                if (index === currentWaypointIndex || isTransitionPlaying) return;
-                // Stop auto-play when user manually selects a waypoint
-                if (isPlaying) {
-                  dispatch({ type: 'SET_PLAYING', payload: false });
-                }
-                const direction = index > currentWaypointIndex ? 'forward' : 'backward';
-                navigateToWaypoint(index, direction);
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {currentProject && currentProject.waypoints.length > 0 && (() => {
+        const waypointCount = currentProject.waypoints.length;
+        const maxWidth = 280; // Max container width in pixels
+        const minDotSize = 4; // Minimum dot size
+        const maxDotSize = 8; // Default dot size
+        const minGap = 2; // Minimum gap between dots
+        const maxGap = 8; // Default gap
+
+        // Calculate how much space we need at default sizes
+        // Each dot needs: dotSize + gap (except last dot)
+        const defaultSpaceNeeded = waypointCount * maxDotSize + (waypointCount - 1) * maxGap;
+
+        // Calculate scale factor if we need to shrink
+        const scale = defaultSpaceNeeded > maxWidth
+          ? maxWidth / defaultSpaceNeeded
+          : 1;
+
+        const dotSize = Math.max(minDotSize, Math.round(maxDotSize * scale));
+        const gap = Math.max(minGap, Math.round(maxGap * scale));
+        const activeDotWidth = Math.round(dotSize * 1.75); // Active dot is wider
+
+        return (
+          <div
+            className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex items-center"
+            style={{
+              maxWidth: `${maxWidth}px`,
+              gap: `${gap}px`,
+              padding: '8px 12px',
+              background: 'rgba(0, 0, 0, 0.4)',
+              borderRadius: '9999px',
+              backdropFilter: 'blur(8px)',
+            }}
+            onTouchStart={stopTouchPropagation}
+            onTouchEnd={stopTouchPropagation}
+          >
+            {currentProject.waypoints.map((_, index) => (
+              <button
+                key={index}
+                className="rounded-full transition-all flex-shrink-0"
+                style={{
+                  width: index === currentWaypointIndex ? `${activeDotWidth}px` : `${dotSize}px`,
+                  height: `${dotSize}px`,
+                  background: index === currentWaypointIndex
+                    ? 'white'
+                    : 'rgba(255, 255, 255, 0.4)',
+                }}
+                onClick={() => {
+                  if (index === currentWaypointIndex || isTransitionPlaying) return;
+                  // Stop auto-play when user manually selects a waypoint
+                  if (isPlaying) {
+                    dispatch({ type: 'SET_PLAYING', payload: false });
+                  }
+                  const direction = index > currentWaypointIndex ? 'forward' : 'backward';
+                  navigateToWaypoint(index, direction);
+                }}
+              />
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Playback and download controls - shown when final video is available */}
       {hasFinalVideo && (
