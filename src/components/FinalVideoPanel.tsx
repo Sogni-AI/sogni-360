@@ -12,6 +12,7 @@ interface FinalVideoPanelProps {
   onBackToEditor: () => void;
   onStitchComplete?: (url: string, blob?: Blob) => void;
   initialMusicSelection?: MusicSelection | null;
+  onMusicChange?: (selection: MusicSelection | null) => void;
   onWorkflowStepClick?: (step: WorkflowStep) => void;
 }
 
@@ -23,6 +24,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   onBackToEditor,
   onStitchComplete,
   initialMusicSelection,
+  onMusicChange,
   onWorkflowStepClick
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -45,7 +47,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     handleDownload,
     handleShare,
     setCurrentSegmentIndex
-  } = useFinalVideoActions({ projectId, videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection });
+  } = useFinalVideoActions({ projectId, videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection, onMusicChange });
 
   // Auto-play when stitched video is ready
   // iOS blocks autoplay for videos with audio, so we handle the failure gracefully

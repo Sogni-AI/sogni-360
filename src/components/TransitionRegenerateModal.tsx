@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-
-const DEFAULT_TRANSITION_PROMPT = `Smooth camera orbit around the subject. Preserve the same subject identity, facial structure, and environment. Seamless motion between camera angles with consistent lighting.`;
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  TRANSITION_PROMPT_PRESETS,
+  getDefaultTransitionPrompt,
+  findPresetByPrompt
+} from '../constants/transitionPromptPresets';
 
 interface TransitionRegenerateModalProps {
   fromLabel: string;
@@ -23,7 +26,23 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
   onConfirm,
   onCancel
 }) => {
-  const [prompt, setPrompt] = useState(currentPrompt || DEFAULT_TRANSITION_PROMPT);
+  const defaultPrompt = getDefaultTransitionPrompt();
+  const [prompt, setPrompt] = useState(currentPrompt || defaultPrompt);
+
+  // Determine if current prompt matches a preset (for dropdown display)
+  const selectedPresetId = useMemo(() => {
+    const preset = findPresetByPrompt(prompt);
+    return preset?.id || 'custom';
+  }, [prompt]);
+
+  // Handle preset selection
+  const handlePresetChange = useCallback((presetId: string) => {
+    if (presetId === 'custom') return; // Don't change prompt when selecting "Custom"
+    const preset = TRANSITION_PROMPT_PRESETS.find(p => p.id === presetId);
+    if (preset) {
+      setPrompt(preset.prompt);
+    }
+  }, []);
 
   // Handle escape key
   useEffect(() => {
@@ -41,8 +60,8 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
   }, [prompt, onConfirm]);
 
   const handleResetPrompt = useCallback(() => {
-    setPrompt(DEFAULT_TRANSITION_PROMPT);
-  }, []);
+    setPrompt(defaultPrompt);
+  }, [defaultPrompt]);
 
   return (
     <div
@@ -108,6 +127,25 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
               Reset to Default
             </button>
           </div>
+
+          {/* Preset dropdown */}
+          <div className="mb-3">
+            <select
+              value={selectedPresetId}
+              onChange={(e) => handlePresetChange(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 cursor-pointer"
+            >
+              {TRANSITION_PROMPT_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label} — {preset.description}
+                </option>
+              ))}
+              {selectedPresetId === 'custom' && (
+                <option value="custom">Custom</option>
+              )}
+            </select>
+          </div>
+
           <textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
@@ -116,7 +154,7 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm resize-none focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
           />
           <p className="mt-2 text-xs text-gray-500">
-            Customize how the camera moves between these two angles.
+            Select a preset above or customize the prompt. Editing the text will switch to Custom mode.
           </p>
         </div>
 

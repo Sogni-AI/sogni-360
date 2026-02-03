@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import type { Segment, Sogni360Project } from '../types';
+import type { Segment, Sogni360Project, MusicSelection } from '../types';
 import { useApp } from '../context/AppContext';
 import { useSogniAuth } from '../services/sogniAuth';
 import SourceUploader from './SourceUploader';
@@ -376,6 +376,12 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: false });
   }, [dispatch]);
 
+  // Handle music selection change - persist to project settings
+  const handleMusicChange = useCallback((selection: MusicSelection | null) => {
+    // Convert null to undefined for settings storage
+    dispatch({ type: 'UPDATE_SETTINGS', payload: { musicSelection: selection ?? undefined } });
+  }, [dispatch]);
+
   // Handle closing standalone angle review (accessed from timeline)
   const handleStandaloneAngleReviewClose = useCallback(() => {
     dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
@@ -544,10 +550,12 @@ const Sogni360Container: React.FC = () => {
 
       if (step === 'define-angles') {
         // Reset all waypoints to pending, clear segments
+        // For isOriginal waypoints: preserve their existing imageUrl (could be custom uploaded image)
+        // For generated waypoints: clear imageUrl to force regeneration
         const resetWaypoints = currentProject.waypoints.map(wp => ({
           ...wp,
           status: (wp.isOriginal ? 'ready' : 'pending') as 'ready' | 'pending',
-          imageUrl: wp.isOriginal ? currentProject.sourceImageUrl : undefined,
+          imageUrl: wp.isOriginal ? wp.imageUrl : undefined,
           imageHistory: undefined,
           currentImageIndex: undefined
         }));
@@ -895,6 +903,7 @@ const Sogni360Container: React.FC = () => {
             dispatch({ type: 'SET_FINAL_LOOP_URL', payload: url });
           }}
           initialMusicSelection={currentProject.settings.musicSelection}
+          onMusicChange={handleMusicChange}
           onWorkflowStepClick={handleWorkflowStepClick}
         />
       )}

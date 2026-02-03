@@ -98,7 +98,7 @@ export async function importProject(
     if (file) {
       try {
         const blob = await file.async('blob');
-        const dataUrl = await blobToDataUrl(blob);
+        const dataUrl = await blobToDataUrl(blob, assetPath);
         pathToDataUrl.set(assetPath, dataUrl);
       } catch (error) {
         console.warn(`[Import] Failed to load asset: ${assetPath}`, error);
@@ -164,14 +164,36 @@ function collectAllAssetPaths(project: Sogni360Project): Set<string> {
 }
 
 /**
- * Convert a blob to a data URL
+ * Get MIME type from file path/extension
  */
-function blobToDataUrl(blob: Blob): Promise<string> {
+function getMimeType(filePath: string): string {
+  const ext = filePath.toLowerCase().split('.').pop();
+  const mimeTypes: Record<string, string> = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'mp4': 'video/mp4',
+    'webm': 'video/webm',
+    'mov': 'video/quicktime'
+  };
+  return mimeTypes[ext || ''] || 'application/octet-stream';
+}
+
+/**
+ * Convert a blob to a data URL with correct MIME type
+ */
+function blobToDataUrl(blob: Blob, filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
+    // Ensure blob has correct MIME type based on file extension
+    const mimeType = getMimeType(filePath);
+    const typedBlob = blob.type === mimeType ? blob : new Blob([blob], { type: mimeType });
+
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);
     reader.onerror = reject;
-    reader.readAsDataURL(blob);
+    reader.readAsDataURL(typedBlob);
   });
 }
 
@@ -234,13 +256,31 @@ function createImportedProject(
       const videoUrl = replaceAssetPath(seg.videoUrl, pathToDataUrl);
       const hasVideo = videoUrl && pathToDataUrl.has(seg.videoUrl || '');
 
+      // Convert existing versions or create initial version from videoUrl
+      let versions: TransitionVersion[] | undefined;
+      if (seg.versions && seg.versions.length > 0) {
+        // Has versions array - convert paths to data URLs
+        versions = seg.versions.map(v => ({
+          ...v,
+          videoUrl: replaceAssetPath(v.videoUrl, pathToDataUrl) || v.videoUrl
+        } as TransitionVersion));
+      } else if (hasVideo && videoUrl) {
+        // No versions but has video - create initial version for proper history tracking
+        versions = [{
+          id: crypto.randomUUID(),
+          videoUrl,
+          createdAt: seg.sdkProjectId ? now : now, // Use current time
+          isSelected: true,
+          sdkProjectId: seg.sdkProjectId,
+          sdkJobId: seg.sdkJobId
+        }];
+      }
+
       return {
         ...seg,
         videoUrl,
-        versions: seg.versions?.map(v => ({
-          ...v,
-          videoUrl: replaceAssetPath(v.videoUrl, pathToDataUrl) || v.videoUrl
-        } as TransitionVersion)),
+        versions,
+        currentVersionIndex: versions ? versions.length - 1 : undefined,
         // Ensure status reflects whether we have a video
         status: hasVideo ? 'ready' : 'pending'
       };

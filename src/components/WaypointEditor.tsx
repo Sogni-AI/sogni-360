@@ -388,9 +388,9 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
             {/* Main Content Area - Image or 3D Control */}
             <div className="config-card-main">
               {waypoint.isOriginal ? (
-                // Original: Show source image
-                currentProject?.sourceImageUrl ? (
-                  <img src={currentProject.sourceImageUrl} alt="Original" />
+                // Original: Show waypoint's image (could be custom uploaded image, or source image)
+                (waypoint.imageUrl || currentProject?.sourceImageUrl) ? (
+                  <img src={waypoint.imageUrl || currentProject?.sourceImageUrl} alt="Original" />
                 ) : (
                   <div className="config-card-placeholder">No image</div>
                 )

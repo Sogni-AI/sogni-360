@@ -97,14 +97,27 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
     touchStartY.current = null;
   }, [versionInfo, onPrevVersion, onNextVersion, loop]);
 
-  // Autoplay video when opened
+  // Autoplay video when opened or when src changes (version navigation)
   useEffect(() => {
     if (type === 'video' && videoRef.current) {
-      videoRef.current.play().catch(() => {
-        setIsPaused(true);
-      });
+      // Reset paused state for new video
+      setIsPaused(false);
+      // Wait for video to be ready before playing
+      const video = videoRef.current;
+      const tryPlay = () => {
+        video.play().catch(() => {
+          setIsPaused(true);
+        });
+      };
+      // If video is already loaded, play immediately; otherwise wait for loadeddata
+      if (video.readyState >= 3) {
+        tryPlay();
+      } else {
+        video.addEventListener('loadeddata', tryPlay, { once: true });
+        return () => video.removeEventListener('loadeddata', tryPlay);
+      }
     }
-  }, [type]);
+  }, [type, src]);
 
   const handleVideoToggle = useCallback(() => {
     if (!videoRef.current) return;

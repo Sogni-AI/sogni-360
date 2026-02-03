@@ -13,12 +13,12 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import type { VideoTransitionState } from '../types';
-
-// Cache for preloaded video blob URLs (module-level singleton)
-// Using blob URLs ensures video data is in memory for instant playback
-const videoBlobCache = new Map<string, string>();
-// Track URLs currently being fetched to avoid duplicate requests
-const videoFetchInProgress = new Set<string>();
+import {
+  hasCachedBlobUrl,
+  getCachedBlobUrl,
+  isFetchInProgress,
+  preloadVideo
+} from '../utils/videoBlobCache';
 
 export function useTransitionNavigation() {
   const { state, dispatch } = useApp();
@@ -37,33 +37,19 @@ export function useTransitionNavigation() {
 
   // Preload all segment videos as blob URLs when project changes or segments update
   // Blob URLs guarantee the video data is in memory for instant playback
+  // Uses shared videoBlobCache for consistency across components
   useEffect(() => {
     if (!currentProject || currentProject.segments.length === 0) return;
 
     currentProject.segments.forEach(segment => {
       if (segment.status === 'ready' && segment.videoUrl &&
-          !videoBlobCache.has(segment.videoUrl) &&
-          !videoFetchInProgress.has(segment.videoUrl)) {
-
-        const videoUrl = segment.videoUrl;
-        videoFetchInProgress.add(videoUrl);
-
-        // Fetch video as blob for guaranteed in-memory playback
-        fetch(videoUrl)
-          .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch video');
-            return response.blob();
-          })
-          .then(blob => {
-            const blobUrl = URL.createObjectURL(blob);
-            videoBlobCache.set(videoUrl, blobUrl);
-          })
-          .catch(err => {
-            console.warn('[useTransitionNavigation] Failed to preload video:', videoUrl, err);
-          })
-          .finally(() => {
-            videoFetchInProgress.delete(videoUrl);
-          });
+          !hasCachedBlobUrl(segment.videoUrl) &&
+          !isFetchInProgress(segment.videoUrl)) {
+        // Preload video using shared cache utility
+        // This handles data URLs, S3 URLs, and proxy fallback
+        preloadVideo(segment.videoUrl).catch(err => {
+          console.warn('[useTransitionNavigation] Failed to preload video:', segment.videoUrl, err);
+        });
       }
     });
   }, [currentProject?.segments]);
@@ -111,7 +97,7 @@ export function useTransitionNavigation() {
 
     if (segmentVideo) {
       // Check if video is preloaded as blob URL (instant playback)
-      const blobUrl = videoBlobCache.get(segmentVideo.url);
+      const blobUrl = getCachedBlobUrl(segmentVideo.url);
       const isVideoReady = !!blobUrl;
 
       // Use blob URL if available, otherwise fall back to original URL

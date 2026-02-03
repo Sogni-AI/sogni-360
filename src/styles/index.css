@@ -5870,6 +5870,11 @@ html, body {
   color: white;
 }
 
+.config-preset-select {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
 /* Cost estimate */
 .config-cost {
   display: flex;

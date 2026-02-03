@@ -11,6 +11,11 @@ import {
   VideoQualityPreset,
   VideoResolution
 } from '../constants/videoSettings';
+import {
+  TRANSITION_PROMPT_PRESETS,
+  getDefaultTransitionPrompt,
+  findPresetByPrompt
+} from '../constants/transitionPromptPresets';
 import type { WorkflowStep } from './shared/WorkflowWizard';
 import MusicSelector from './shared/MusicSelector';
 import MusicConfigSection from './shared/MusicConfigSection';
@@ -18,9 +23,6 @@ import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
 import { warmUpAudio } from '../utils/sonicLogos';
 import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
 import { useAdvancedSettings } from '../hooks/useAdvancedSettings';
-
-// Default transition prompt
-const DEFAULT_TRANSITION_PROMPT = `Smooth camera orbit around the subject. Preserve the same subject identity, facial structure, and environment. Seamless motion between camera angles with consistent lighting.`;
 
 export interface TransitionGenerationSettings {
   resolution: VideoResolution;
@@ -50,9 +52,25 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
 
   // Local state for configuration
   // Quality syncs with Advanced Settings as fallback when no project-specific setting exists
+  const defaultPrompt = getDefaultTransitionPrompt();
   const [transitionPrompt, setTransitionPrompt] = useState(
-    currentProject?.settings.transitionPrompt || DEFAULT_TRANSITION_PROMPT
+    currentProject?.settings.transitionPrompt || defaultPrompt
   );
+
+  // Determine if current prompt matches a preset (for dropdown display)
+  const selectedPresetId = useMemo(() => {
+    const preset = findPresetByPrompt(transitionPrompt);
+    return preset?.id || 'custom';
+  }, [transitionPrompt]);
+
+  // Handle preset selection
+  const handlePresetChange = useCallback((presetId: string) => {
+    if (presetId === 'custom') return; // Don't change prompt when selecting "Custom"
+    const preset = TRANSITION_PROMPT_PRESETS.find(p => p.id === presetId);
+    if (preset) {
+      setTransitionPrompt(preset.prompt);
+    }
+  }, []);
   const [resolution, setResolution] = useState<VideoResolution>(
     (currentProject?.settings.videoResolution as VideoResolution) || DEFAULT_VIDEO_SETTINGS.resolution
   );
@@ -223,8 +241,25 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
             Video Generation Prompt
           </label>
           <p className="config-hint">
-            Describe how the camera should move between angles. The AI will animate the transition.
+            Select a preset or customize how the camera should move between angles.
           </p>
+
+          {/* Preset dropdown */}
+          <select
+            className="config-select config-preset-select"
+            value={selectedPresetId}
+            onChange={(e) => handlePresetChange(e.target.value)}
+          >
+            {TRANSITION_PROMPT_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.label} — {preset.description}
+              </option>
+            ))}
+            {selectedPresetId === 'custom' && (
+              <option value="custom">Custom</option>
+            )}
+          </select>
+
           <textarea
             className="config-textarea"
             value={transitionPrompt}

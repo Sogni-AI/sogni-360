@@ -4,7 +4,7 @@ import { concatenateVideos } from '../utils/video-concatenation';
 import { loadAudioAsBuffer } from '../utils/audioUtils';
 import { ensureM4AFormat, needsTranscoding } from '../utils/audioTranscoder';
 import { trackDownload, trackShare, trackVideoExport } from '../utils/analytics';
-import { saveStitchedVideo, loadStitchedVideo } from '../utils/videoCache';
+import { saveStitchedVideo, loadStitchedVideo, getMusicFingerprint } from '../utils/videoCache';
 import type { MusicSelection } from '../types';
 
 interface UseFinalVideoActionsProps {
@@ -13,6 +13,7 @@ interface UseFinalVideoActionsProps {
   stitchedVideoUrl?: string;
   onStitchComplete?: (url: string, blob?: Blob) => void;
   initialMusicSelection?: MusicSelection | null;
+  onMusicChange?: (selection: MusicSelection | null) => void;
 }
 
 export function useFinalVideoActions({
@@ -20,7 +21,8 @@ export function useFinalVideoActions({
   videoUrls,
   stitchedVideoUrl,
   onStitchComplete,
-  initialMusicSelection
+  initialMusicSelection,
+  onMusicChange
 }: UseFinalVideoActionsProps) {
   const { showToast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
@@ -64,8 +66,13 @@ export function useFinalVideoActions({
       let audioOptions = null;
       if (withMusic) {
         setStitchProgress('Loading audio...');
-        const audioUrl = withMusic.type === 'upload' && withMusic.file
-          ? URL.createObjectURL(withMusic.file)
+
+        // For uploads, validate that file is actually a File/Blob (not a serialized object from IndexedDB)
+        const hasValidFile = withMusic.type === 'upload' &&
+          withMusic.file instanceof Blob;
+
+        const audioUrl = hasValidFile
+          ? URL.createObjectURL(withMusic.file as Blob)
           : withMusic.presetUrl;
 
         if (audioUrl) {
@@ -83,8 +90,8 @@ export function useFinalVideoActions({
             startOffset: withMusic.startOffset
           };
 
-          // Revoke blob URL if we created one
-          if (withMusic.type === 'upload' && withMusic.file) {
+          // Revoke blob URL if we created one from a valid file
+          if (hasValidFile) {
             URL.revokeObjectURL(audioUrl);
           }
         }
@@ -101,9 +108,10 @@ export function useFinalVideoActions({
       const url = URL.createObjectURL(blob);
       setLocalStitchedUrl(url);
 
-      // Cache the stitched video (only if no music - music versions are ephemeral)
-      if (!withMusic && projectId) {
-        saveStitchedVideo(projectId, blob, videoUrls).catch(err => {
+      // Cache the stitched video with music fingerprint for validation
+      if (projectId) {
+        const musicFingerprint = getMusicFingerprint(withMusic);
+        saveStitchedVideo(projectId, blob, videoUrls, musicFingerprint).catch(err => {
           console.warn('[useFinalVideoActions] Failed to cache video:', err);
         });
       }
@@ -133,18 +141,20 @@ export function useFinalVideoActions({
         return;
       }
 
-      // If music is selected, skip cache and stitch with music
-      // (cached videos don't include music)
-      if (initialMusicSelection) {
-        console.log('[useFinalVideoActions] Music selected, skipping cache to include audio');
-        stitchVideos(initialMusicSelection);
-        return;
+      // Validate that upload files are still valid (File objects don't survive IndexedDB serialization)
+      let effectiveMusicSelection = initialMusicSelection;
+      if (initialMusicSelection?.type === 'upload' && !(initialMusicSelection.file instanceof Blob)) {
+        console.log('[useFinalVideoActions] Music upload file is no longer valid (not a Blob), will stitch without music');
+        effectiveMusicSelection = null;
       }
 
-      // Try to load from cache first (validates video URLs match)
+      // Calculate music fingerprint for cache lookup
+      const musicFingerprint = getMusicFingerprint(effectiveMusicSelection);
+
+      // Try to load from cache first (validates video URLs AND music selection match)
       if (projectId) {
         try {
-          const cachedBlob = await loadStitchedVideo(projectId, videoUrls);
+          const cachedBlob = await loadStitchedVideo(projectId, videoUrls, musicFingerprint);
           if (cachedBlob) {
             console.log('[useFinalVideoActions] Loaded video from cache');
             const url = URL.createObjectURL(cachedBlob);
@@ -158,8 +168,9 @@ export function useFinalVideoActions({
         }
       }
 
-      // No cached video, stitch now
-      stitchVideos(null);
+      // No cached video matching current settings, stitch now
+      console.log('[useFinalVideoActions] Cache miss, stitching video' + (effectiveMusicSelection ? ' with music' : ''));
+      stitchVideos(effectiveMusicSelection);
     };
 
     initializeVideo();
@@ -171,17 +182,23 @@ export function useFinalVideoActions({
   const handleMusicConfirm = useCallback(async (selection: MusicSelection) => {
     setMusicSelection(selection);
 
+    // Notify parent to persist music selection to project settings
+    onMusicChange?.(selection);
+
     // Re-stitch with music
     if (localStitchedUrl && localStitchedUrl.startsWith('blob:')) {
       URL.revokeObjectURL(localStitchedUrl);
       setLocalStitchedUrl(null);
     }
     await stitchVideos(selection);
-  }, [localStitchedUrl, stitchVideos]);
+  }, [localStitchedUrl, stitchVideos, onMusicChange]);
 
   // Handle removing music
   const handleRemoveMusic = useCallback(async () => {
     setMusicSelection(null);
+
+    // Notify parent to persist music removal to project settings
+    onMusicChange?.(null);
 
     // Re-stitch without music
     if (localStitchedUrl && localStitchedUrl.startsWith('blob:')) {
@@ -189,7 +206,7 @@ export function useFinalVideoActions({
       setLocalStitchedUrl(null);
     }
     await stitchVideos(null);
-  }, [localStitchedUrl, stitchVideos]);
+  }, [localStitchedUrl, stitchVideos, onMusicChange]);
 
   // Track current segment based on video time
   const handleTimeUpdate = useCallback((currentTime: number, duration: number) => {
