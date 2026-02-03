@@ -366,15 +366,13 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
     }
   };
 
-  const aspectRatio = targetDimensions.width / targetDimensions.height;
-
-  // Calculate frame dimensions explicitly to avoid CSS flex layout issues
-  // Always use height (50vh) as reference and calculate width from aspect ratio
-  // This ensures the frame respects the project's aspect ratio correctly
+  // Use CSS aspect-ratio property to properly maintain proportions within constraints
+  // This ensures landscape images get a wide frame (not square) even when constrained by modal width
   const frameStyle: React.CSSProperties = {
-    height: '50vh',
-    width: `calc(50vh * ${aspectRatio})`,
+    aspectRatio: `${targetDimensions.width} / ${targetDimensions.height}`,
+    maxHeight: '50vh',
     maxWidth: '100%',
+    width: '100%', // Fill available width, let aspect-ratio and maxHeight control height
   };
 
   return (

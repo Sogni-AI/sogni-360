@@ -914,13 +914,12 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                 }}
               >
                 {waypoint.imageUrl ? (
-                  <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} loading="lazy" />
+                  <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} />
                 ) : (
                   <img
                     src={getReferenceImageUrl(waypoint.id) || currentProject?.sourceImageUrl}
                     alt={`Step ${index + 1}`}
                     className={waypoint.status === 'generating' ? 'dimmed' : 'pending-preview'}
-                    loading="lazy"
                   />
                 )}
 
