@@ -141,7 +141,7 @@ const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onClose, forceShow 
         <div className="pwa-install-header">
           <div className="pwa-install-mascot">
             <img
-              src="/van-icon.png"
+              src="/slothicorn-camera.png"
               alt="Sogni 360"
               className="pwa-install-icon"
             />

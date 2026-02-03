@@ -39,12 +39,12 @@ function LoginPromptModal({
         </button>
 
         <div className="p-8 pt-10">
-          {/* App Icon */}
+          {/* Sloth Mascot */}
           <div className="text-center mb-6">
             <img
-              src="/van-icon.png"
+              src="/sloth_cam_hop_trnsparent.png"
               alt="Sogni 360"
-              className="w-28 h-28 mx-auto object-contain mb-2 rounded-xl"
+              className="w-28 h-28 mx-auto object-contain mb-2"
               style={{ filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3))' }}
             />
             <h2 className="text-2xl font-bold text-white">{title}</h2>

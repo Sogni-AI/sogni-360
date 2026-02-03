@@ -45,7 +45,7 @@ export function FormContent({ children, noHeading, subHeading }: FormContentProp
         <div className="login-modal-title-wrap">
           <img
             className="login-modal-logo"
-            src="/van-icon.png"
+            src="/sloth_cam_hop_trnsparent.png"
             alt="Sogni 360"
           />
           {!noHeading && <h1 className="login-modal-title">{text.heading}</h1>}
