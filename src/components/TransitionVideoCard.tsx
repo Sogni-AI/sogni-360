@@ -45,21 +45,20 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   const canDelete = totalSegments > 1;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [userPaused, setUserPaused] = useState(false); // Track if user manually paused
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | undefined>(undefined);
+  const hasEverBeenVisible = useRef(false); // Track if card has ever been visible (for lazy loading)
 
-  // Track visibility for lazy loading (once: true keeps video loaded)
-  const { ref: cardRef, isVisible: hasBeenVisible } = useLazyLoad({ rootMargin: '100px', once: true });
-  // Track real-time visibility for autoplay (once: false updates as card enters/leaves viewport)
-  const { ref: visibilityRef, isVisible: isCurrentlyVisible } = useLazyLoad({ rootMargin: '0px', once: false });
+  // Single observer for real-time visibility tracking
+  const { ref: cardRef, isVisible: isCurrentlyVisible } = useLazyLoad({ rootMargin: '50px', once: false });
 
-  // Combine refs using a callback ref
-  const combinedRef = useCallback((node: HTMLDivElement | null) => {
-    // Attach to both lazy load refs
-    (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-    (visibilityRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-  }, [cardRef, visibilityRef]);
+  // Track if card has ever been visible (for lazy loading the video src)
+  const hasBeenVisible = isCurrentlyVisible || hasEverBeenVisible.current;
+  if (isCurrentlyVisible && !hasEverBeenVisible.current) {
+    hasEverBeenVisible.current = true;
+  }
 
   // Get blob URL from cache or preload video when visible
   // This ensures we use cached blob URLs for reliable playback
@@ -84,6 +83,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   // Reset states when video URL changes
   useEffect(() => {
     setVideoLoaded(false);
+    setUserPaused(false); // Reset user pause preference for new video
     // Check if new URL is already cached
     if (segment.videoUrl) {
       const cached = getCachedBlobUrl(segment.videoUrl);
@@ -93,28 +93,39 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
     }
   }, [segment.videoUrl]);
 
-  // Autoplay videos when they become ready, currently visible in viewport, and loaded
+  // Pause videos when scrolled out of view to free browser resources
+  // Autoplay is handled by the native autoplay attribute on muted videos
   useEffect(() => {
-    if (segment.status === 'ready' && segment.videoUrl && videoRef.current && isCurrentlyVisible && videoLoaded) {
-      // Reset paused state and try to play
-      setIsPaused(false);
+    if (segment.status !== 'ready' || !segment.videoUrl || !videoRef.current || !videoLoaded) {
+      return;
+    }
+
+    if (!isCurrentlyVisible) {
+      // Not visible - pause to free up browser resources
+      videoRef.current.pause();
+      setIsPaused(true);
+    } else if (!userPaused) {
+      // Visible and not user-paused - ensure playing
+      // This handles the case where video was paused due to scrolling out of view
       videoRef.current.play().catch(() => {
-        // Autoplay blocked - user interaction required
         setIsPaused(true);
       });
+      setIsPaused(false);
     }
-  }, [segment.status, segment.videoUrl, isCurrentlyVisible, videoLoaded]);
+  }, [segment.status, segment.videoUrl, isCurrentlyVisible, videoLoaded, userPaused]);
 
-  // Handle play/pause toggle
+  // Handle play/pause toggle (user-initiated)
   const handleVideoToggle = useCallback(() => {
     if (!videoRef.current) return;
 
     if (videoRef.current.paused) {
       videoRef.current.play().catch(() => {});
       setIsPaused(false);
+      setUserPaused(false); // User wants it to play
     } else {
       videoRef.current.pause();
       setIsPaused(true);
+      setUserPaused(true); // User wants it paused
     }
   }, []);
 
@@ -126,7 +137,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   const handleVideoLoaded = useCallback(() => setVideoLoaded(true), []);
 
   return (
-    <div ref={combinedRef} className="transition-card">
+    <div ref={cardRef} className="transition-card">
       {/* Card Header */}
       <div className="transition-card-header">
         <span className="transition-card-title">Transition {index + 1}</span>
@@ -170,6 +181,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
             <video
               ref={videoRef}
               src={hasBeenVisible ? (blobUrl || segment.videoUrl) : undefined}
+              autoPlay
               loop
               muted
               playsInline

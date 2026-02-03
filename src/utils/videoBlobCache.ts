@@ -14,7 +14,9 @@
 import { API_URL } from '../config/urls';
 
 // Maximum number of videos to keep in cache (prevents memory issues with many segments)
-const MAX_CACHE_SIZE = 8;
+// Set high enough to avoid evicting videos that are still visible/playing
+// With typical viewport showing 4-6 videos, 24 allows comfortable scrolling
+const MAX_CACHE_SIZE = 24;
 
 // Cache entry with last access time for LRU eviction
 interface CacheEntry {
