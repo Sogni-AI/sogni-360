@@ -1,27 +1,55 @@
 /**
  * Video Blob Cache
  *
- * Shared cache for preloaded video blob URLs.
+ * Shared cache for preloaded video blob URLs with LRU eviction.
  * Used by both useTransitionNavigation (preloading) and TransitionVideoCard (display).
  *
  * This cache ensures that:
  * 1. Videos are fetched once and reused everywhere
  * 2. Data URLs are converted to blob URLs for reliable <video> playback
  * 3. S3 URLs are fetched while still valid and cached as blob URLs
+ * 4. Memory is managed via LRU eviction when cache exceeds max size
  */
 
 import { API_URL } from '../config/urls';
 
+// Maximum number of videos to keep in cache (prevents memory issues with many segments)
+const MAX_CACHE_SIZE = 8;
+
+// Cache entry with last access time for LRU eviction
+interface CacheEntry {
+  blobUrl: string;
+  lastAccess: number;
+}
+
 // Cache for preloaded video blob URLs (module-level singleton)
 // Keys are original URLs (data URLs, S3 URLs, etc.)
-// Values are blob URLs created from URL.createObjectURL()
-const videoBlobCache = new Map<string, string>();
+// Values are cache entries with blob URLs and access times
+const videoBlobCache = new Map<string, CacheEntry>();
 
 // Track URLs currently being fetched to avoid duplicate requests
 const videoFetchInProgress = new Set<string>();
 
 // Track URLs that permanently failed (e.g., expired S3 URLs)
 const videoFetchFailed = new Set<string>();
+
+/**
+ * Evict least recently used entries if cache is too large
+ */
+function evictIfNeeded(): void {
+  if (videoBlobCache.size <= MAX_CACHE_SIZE) return;
+
+  // Sort by last access time (oldest first)
+  const entries = Array.from(videoBlobCache.entries())
+    .sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+
+  // Evict oldest entries until we're at max size
+  const toEvict = entries.slice(0, videoBlobCache.size - MAX_CACHE_SIZE);
+  for (const [url, entry] of toEvict) {
+    URL.revokeObjectURL(entry.blobUrl);
+    videoBlobCache.delete(url);
+  }
+}
 
 /**
  * Check if a URL is already cached
@@ -31,10 +59,16 @@ export function hasCachedBlobUrl(originalUrl: string): boolean {
 }
 
 /**
- * Get cached blob URL for an original URL
+ * Get cached blob URL for an original URL (updates access time for LRU)
  */
 export function getCachedBlobUrl(originalUrl: string): string | undefined {
-  return videoBlobCache.get(originalUrl);
+  const entry = videoBlobCache.get(originalUrl);
+  if (entry) {
+    // Update access time for LRU
+    entry.lastAccess = Date.now();
+    return entry.blobUrl;
+  }
+  return undefined;
 }
 
 /**
@@ -83,9 +117,11 @@ function getProxiedUrl(url: string): string {
  * Returns the blob URL on success, or undefined on failure
  */
 export async function preloadVideo(originalUrl: string): Promise<string | undefined> {
-  // Already cached
-  if (videoBlobCache.has(originalUrl)) {
-    return videoBlobCache.get(originalUrl);
+  // Already cached - return and update access time
+  const existing = videoBlobCache.get(originalUrl);
+  if (existing) {
+    existing.lastAccess = Date.now();
+    return existing.blobUrl;
   }
 
   // Already failed
@@ -98,8 +134,10 @@ export async function preloadVideo(originalUrl: string): Promise<string | undefi
     // Simple polling wait (could be improved with proper promise sharing)
     for (let i = 0; i < 100; i++) {
       await new Promise(resolve => setTimeout(resolve, 100));
-      if (videoBlobCache.has(originalUrl)) {
-        return videoBlobCache.get(originalUrl);
+      const cached = videoBlobCache.get(originalUrl);
+      if (cached) {
+        cached.lastAccess = Date.now();
+        return cached.blobUrl;
       }
       if (videoFetchFailed.has(originalUrl)) {
         return undefined;
@@ -108,7 +146,8 @@ export async function preloadVideo(originalUrl: string): Promise<string | undefi
         break;
       }
     }
-    return videoBlobCache.get(originalUrl);
+    const cached = videoBlobCache.get(originalUrl);
+    return cached?.blobUrl;
   }
 
   videoFetchInProgress.add(originalUrl);
@@ -160,7 +199,8 @@ export async function preloadVideo(originalUrl: string): Promise<string | undefi
 
     if (blob) {
       const blobUrl = URL.createObjectURL(blob);
-      videoBlobCache.set(originalUrl, blobUrl);
+      videoBlobCache.set(originalUrl, { blobUrl, lastAccess: Date.now() });
+      evictIfNeeded();
       return blobUrl;
     } else {
       videoFetchFailed.add(originalUrl);
@@ -187,8 +227,8 @@ export async function preloadVideos(urls: string[]): Promise<void> {
  */
 export function clearVideoCache(): void {
   // Revoke all blob URLs to free memory
-  for (const blobUrl of videoBlobCache.values()) {
-    URL.revokeObjectURL(blobUrl);
+  for (const entry of videoBlobCache.values()) {
+    URL.revokeObjectURL(entry.blobUrl);
   }
   videoBlobCache.clear();
   videoFetchInProgress.clear();
@@ -200,5 +240,10 @@ export function clearVideoCache(): void {
  * Returns blob URL if cached, otherwise original URL
  */
 export function getVideoUrl(originalUrl: string): string {
-  return videoBlobCache.get(originalUrl) || originalUrl;
+  const entry = videoBlobCache.get(originalUrl);
+  if (entry) {
+    entry.lastAccess = Date.now();
+    return entry.blobUrl;
+  }
+  return originalUrl;
 }

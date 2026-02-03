@@ -5,20 +5,23 @@
  * Uses global state from AppContext for transition state to avoid hooks order issues.
  *
  * Features:
- * - Preloads all transition videos for instant playback
+ * - Smart preloading: only preloads adjacent transition videos (not all)
  * - Shows current waypoint image while video loads (no black flash)
  * - Tracks video ready state for smooth transitions
  */
 
 import { useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import type { VideoTransitionState } from '../types';
+import type { VideoTransitionState, Segment } from '../types';
 import {
   hasCachedBlobUrl,
   getCachedBlobUrl,
   isFetchInProgress,
   preloadVideo
 } from '../utils/videoBlobCache';
+
+// How many waypoints ahead/behind to preload (2 = preload transitions for ±2 waypoints)
+const PRELOAD_RADIUS = 2;
 
 export function useTransitionNavigation() {
   const { state, dispatch } = useApp();
@@ -35,24 +38,52 @@ export function useTransitionNavigation() {
   // This prevents the timer from being reset when nextWaypoint changes
   const nextWaypointRef = useRef<() => void>(() => {});
 
-  // Preload all segment videos as blob URLs when project changes or segments update
-  // Blob URLs guarantee the video data is in memory for instant playback
-  // Uses shared videoBlobCache for consistency across components
+  // Find segments adjacent to a waypoint index (segments that start or end at this waypoint)
+  const getAdjacentSegments = useCallback((waypointIndex: number): Segment[] => {
+    if (!currentProject || currentProject.segments.length === 0) return [];
+
+    const waypoints = currentProject.waypoints;
+    if (waypointIndex < 0 || waypointIndex >= waypoints.length) return [];
+
+    const waypointId = waypoints[waypointIndex].id;
+
+    return currentProject.segments.filter(
+      s => s.fromWaypointId === waypointId || s.toWaypointId === waypointId
+    );
+  }, [currentProject]);
+
+  // Smart preload: only preload videos for adjacent waypoints (within PRELOAD_RADIUS)
+  // This prevents memory issues with projects that have many segments
   useEffect(() => {
     if (!currentProject || currentProject.segments.length === 0) return;
 
-    currentProject.segments.forEach(segment => {
+    const waypoints = currentProject.waypoints;
+    const maxIndex = waypoints.length - 1;
+
+    // Collect segments within preload radius
+    const segmentsToPreload = new Set<Segment>();
+
+    for (let offset = -PRELOAD_RADIUS; offset <= PRELOAD_RADIUS; offset++) {
+      // Handle wraparound for looping navigation
+      let idx = currentWaypointIndex + offset;
+      if (idx < 0) idx = maxIndex + 1 + idx; // Wrap to end
+      if (idx > maxIndex) idx = idx - maxIndex - 1; // Wrap to start
+
+      const adjacentSegments = getAdjacentSegments(idx);
+      adjacentSegments.forEach(s => segmentsToPreload.add(s));
+    }
+
+    // Preload collected segments
+    segmentsToPreload.forEach(segment => {
       if (segment.status === 'ready' && segment.videoUrl &&
           !hasCachedBlobUrl(segment.videoUrl) &&
           !isFetchInProgress(segment.videoUrl)) {
-        // Preload video using shared cache utility
-        // This handles data URLs, S3 URLs, and proxy fallback
         preloadVideo(segment.videoUrl).catch(err => {
           console.warn('[useTransitionNavigation] Failed to preload video:', segment.videoUrl, err);
         });
       }
     });
-  }, [currentProject?.segments]);
+  }, [currentProject?.segments, currentWaypointIndex, getAdjacentSegments]);
 
   // Find segment video URL between two waypoint indices
   // Returns { url, playReverse } where playReverse indicates if video should be played backwards

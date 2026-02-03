@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { useToast } from '../context/ToastContext';
+import { preloadVideo, hasCachedBlobUrl, getCachedBlobUrl } from '../utils/videoBlobCache';
 
 const Sogni360Viewer: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -28,13 +29,19 @@ const Sogni360Viewer: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const content = getCurrentContent();
 
-  // Track which video URL is ready to play (not just a boolean)
-  // This prevents race conditions when rapidly switching videos - the old "ready" state
-  // won't match the new URL, so opacity stays at 0 until the new video is actually ready
-  const [readyVideoUrl, setReadyVideoUrl] = useState<string | null>(null);
+  // Track which video URL + direction is ready to play
+  // This prevents race conditions when rapidly switching videos or changing direction
+  const [readyVideoKey, setReadyVideoKey] = useState<string | null>(null);
 
-  // Video is ready only if the ready URL matches the current content URL
-  const isVideoElementReady = content?.type === 'video' && readyVideoUrl === content?.url;
+  // State to hold the blob URL for reverse playback (ensures full video is loaded)
+  const [reverseBlobUrl, setReverseBlobUrl] = useState<string | null>(null);
+
+  // Video is ready only when readyVideoKey matches the current video+direction
+  const isVideoElementReady = content?.type === 'video' && readyVideoKey !== null && (
+    content.playReverse
+      ? reverseBlobUrl !== null && readyVideoKey === `${reverseBlobUrl}:reverse`
+      : readyVideoKey === `${content.url}:forward`
+  );
 
   // Check if sequence is complete (has transitions to play)
   const waypoints = currentProject?.waypoints || [];
@@ -92,83 +99,213 @@ const Sogni360Viewer: React.FC = () => {
   }, [content?.url, content?.type]);
 
   // Handle reverse video playback using requestAnimationFrame
+  // For reverse playback to work reliably, we MUST have the full video loaded as a blob
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !playReverse || content?.type !== 'video') {
+    if (!playReverse || content?.type !== 'video' || !content?.url) {
       // Clean up animation frame if conditions change
       if (reverseAnimationRef.current) {
         cancelAnimationFrame(reverseAnimationRef.current);
         reverseAnimationRef.current = null;
       }
+      setReverseBlobUrl(null);
       return;
     }
 
-    // Start reverse playback animation loop
-    const animateReverse = (timestamp: number) => {
-      if (!video || video.paused === false) {
-        // Pause the video - we're manually controlling playback
-        video.pause();
+    let cancelled = false;
+
+    // Ensure video is loaded as blob for reliable reverse playback
+    const ensureBlobUrl = async (): Promise<string | null> => {
+      const url = content.url;
+
+      // If already a blob URL, use it directly
+      if (url.startsWith('blob:')) {
+        return url;
       }
 
-      // Initialize timing on first frame
-      if (lastTimeRef.current === 0) {
-        lastTimeRef.current = timestamp;
-        reverseAnimationRef.current = requestAnimationFrame(animateReverse);
+      // Check if we have it cached
+      if (hasCachedBlobUrl(url)) {
+        return getCachedBlobUrl(url) || null;
+      }
+
+      // Need to preload it - this fetches the full video into memory
+      const blobUrl = await preloadVideo(url);
+      return blobUrl || null;
+    };
+
+    // Initialize reverse playback
+    const initReverse = async () => {
+      console.log('[Reverse] Ensuring blob URL for:', content.url?.substring(0, 50));
+      const blobUrl = await ensureBlobUrl();
+      if (cancelled || !blobUrl) {
+        console.log('[Reverse] Blob URL failed or cancelled');
         return;
       }
-
-      // Calculate time delta and step backwards
-      const deltaTime = (timestamp - lastTimeRef.current) / 1000; // Convert to seconds
-      lastTimeRef.current = timestamp;
-
-      // Step backwards (1x playback rate in reverse)
-      const newTime = video.currentTime - deltaTime;
-
-      if (newTime <= 0) {
-        // Reached the start - end transition
-        video.currentTime = 0;
-        reverseAnimationRef.current = null;
-        lastTimeRef.current = 0;
-        handleTransitionEnd();
-        return;
-      }
-
-      video.currentTime = newTime;
-      reverseAnimationRef.current = requestAnimationFrame(animateReverse);
+      console.log('[Reverse] Got blob URL:', blobUrl.substring(0, 30));
+      setReverseBlobUrl(blobUrl);
     };
 
-    // Start animation when video is ready
-    const startReverse = () => {
-      if (video.duration && video.duration > 0) {
-        setReadyVideoUrl(content?.url || null);
-        video.currentTime = video.duration;
-        lastTimeRef.current = 0;
-        reverseAnimationRef.current = requestAnimationFrame(animateReverse);
-      }
-    };
-
-    // Wait for canplaythrough to ensure video is fully buffered
-    const handleCanPlayThrough = () => {
-      startReverse();
-    };
-
-    // If video is already fully loaded, start immediately
-    if (video.readyState >= 4 && video.duration > 0) {
-      startReverse();
-    } else {
-      // Wait for video to be fully buffered before starting reverse playback
-      video.addEventListener('canplaythrough', handleCanPlayThrough, { once: true });
-    }
+    initReverse();
 
     return () => {
+      cancelled = true;
       if (reverseAnimationRef.current) {
         cancelAnimationFrame(reverseAnimationRef.current);
         reverseAnimationRef.current = null;
       }
       lastTimeRef.current = 0;
-      video.removeEventListener('canplaythrough', handleCanPlayThrough);
     };
-  }, [playReverse, content?.type, content?.url, handleTransitionEnd]);
+  }, [playReverse, content?.type, content?.url]);
+
+  // Once we have the blob URL, set up the actual reverse playback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !playReverse || !reverseBlobUrl) {
+      return;
+    }
+
+    let loadedHandler: (() => void) | null = null;
+    let seekedHandler: (() => void) | null = null;
+    let timeupdateHandler: (() => void) | null = null;
+    let cancelled = false;
+
+    // Reverse playback using setInterval instead of RAF for more consistent timing
+    // RAF-based seeking causes stuttering because video decoders aren't optimized for reverse
+    // Using interval gives the decoder more time between seeks
+    const REVERSE_FPS = 30; // Target 30fps for reverse (smoother than 60fps seeking)
+    const FRAME_INTERVAL = 1000 / REVERSE_FPS;
+    let reverseInterval: ReturnType<typeof setInterval> | null = null;
+    let lastReverseTime = 0;
+
+    const startReverseInterval = () => {
+      if (reverseInterval) return;
+
+      lastReverseTime = performance.now();
+      video.pause();
+
+      reverseInterval = setInterval(() => {
+        if (cancelled || !video) {
+          if (reverseInterval) clearInterval(reverseInterval);
+          reverseInterval = null;
+          return;
+        }
+
+        const now = performance.now();
+        const deltaTime = (now - lastReverseTime) / 1000;
+        lastReverseTime = now;
+
+        const newTime = video.currentTime - deltaTime;
+
+        if (newTime <= 0) {
+          video.currentTime = 0;
+          if (reverseInterval) clearInterval(reverseInterval);
+          reverseInterval = null;
+          handleTransitionEnd();
+          return;
+        }
+
+        video.currentTime = newTime;
+      }, FRAME_INTERVAL);
+    };
+
+    const stopReverseInterval = () => {
+      if (reverseInterval) {
+        clearInterval(reverseInterval);
+        reverseInterval = null;
+      }
+    };
+
+    // Start animation after frame is rendered
+    const beginReverseAnimation = () => {
+      if (cancelled) return;
+      timeupdateHandler = () => {
+        if (cancelled) return;
+        video.removeEventListener('timeupdate', timeupdateHandler!);
+        timeupdateHandler = null;
+        // Use RAF to ensure frame is painted before showing video
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          requestAnimationFrame(() => {
+            if (cancelled) return;
+            setReadyVideoKey(`${reverseBlobUrl}:reverse`);
+            // Start the interval-based reverse playback
+            startReverseInterval();
+          });
+        });
+      };
+      video.addEventListener('timeupdate', timeupdateHandler, { once: true });
+      // Force a tiny currentTime change to trigger timeupdate
+      const ct = video.currentTime;
+      video.currentTime = ct > 0.01 ? ct - 0.01 : ct + 0.01;
+    };
+
+    // Seek to end and verify position
+    const seekToEnd = () => {
+      if (cancelled || !video.duration || video.duration <= 0) return;
+
+      const targetTime = video.duration - 0.01; // Slightly before absolute end
+      console.log('[Reverse] Seeking to end:', { duration: video.duration, targetTime, currentTime: video.currentTime, src: video.src?.substring(0, 50) });
+      video.currentTime = targetTime;
+
+      seekedHandler = () => {
+        if (cancelled) return;
+        console.log('[Reverse] Seeked event fired:', { currentTime: video.currentTime, duration: video.duration, targetTime });
+        // Verify we actually reached near the end
+        if (video.currentTime >= video.duration - 0.5) {
+          console.log('[Reverse] Seek successful, starting animation');
+          beginReverseAnimation();
+        } else {
+          // Seek didn't work - try again or give up
+          console.warn('[Reverse] Seek failed, at:', video.currentTime, 'wanted:', targetTime);
+          // Try one more time
+          video.currentTime = targetTime;
+          video.addEventListener('seeked', () => {
+            console.log('[Reverse] Retry seeked:', { currentTime: video.currentTime });
+            if (!cancelled) beginReverseAnimation();
+          }, { once: true });
+        }
+      };
+      video.addEventListener('seeked', seekedHandler, { once: true });
+    };
+
+    // ALWAYS wait for loadedmetadata since we changed the src
+    // This ensures video.duration is accurate and seeking will work
+    loadedHandler = () => {
+      if (cancelled) return;
+      video.removeEventListener('loadedmetadata', loadedHandler!);
+      loadedHandler = null;
+      // Double-check duration is valid before seeking
+      if (video.duration && video.duration > 0 && isFinite(video.duration)) {
+        seekToEnd();
+      } else {
+        // Wait for durationchange if metadata loaded but duration isn't ready
+        const onDurationChange = () => {
+          if (cancelled) return;
+          video.removeEventListener('durationchange', onDurationChange);
+          if (video.duration && video.duration > 0 && isFinite(video.duration)) {
+            seekToEnd();
+          }
+        };
+        video.addEventListener('durationchange', onDurationChange);
+      }
+    };
+
+    // Always wait for loadedmetadata - don't assume video is ready
+    video.addEventListener('loadedmetadata', loadedHandler);
+
+    return () => {
+      cancelled = true;
+      stopReverseInterval();
+      if (loadedHandler) {
+        video.removeEventListener('loadedmetadata', loadedHandler);
+      }
+      if (seekedHandler) {
+        video.removeEventListener('seeked', seekedHandler);
+      }
+      if (timeupdateHandler) {
+        video.removeEventListener('timeupdate', timeupdateHandler);
+      }
+    };
+  }, [playReverse, reverseBlobUrl, handleTransitionEnd]);
 
   // Handle click zones - stop auto-play when user manually navigates
   const handleLeftClick = useCallback(() => {
@@ -278,11 +415,12 @@ const Sogni360Viewer: React.FC = () => {
       )}
 
       {/* Video overlay - only mounted during transitions */}
-      {content.type === 'video' && (
+      {/* For reverse playback, use the blob URL to ensure full video is loaded */}
+      {content.type === 'video' && (playReverse ? reverseBlobUrl : true) && (
         <video
           ref={videoRef}
-          key={content.url + (playReverse ? '-reverse' : '')}
-          src={content.url}
+          key={(playReverse ? reverseBlobUrl : content.url) + (playReverse ? '-reverse' : '')}
+          src={playReverse ? (reverseBlobUrl || '') : content.url}
           className={`video-overlay transition-opacity duration-100 ${
             isVideoElementReady ? 'opacity-100' : 'opacity-0'
           }`}
@@ -311,7 +449,8 @@ const Sogni360Viewer: React.FC = () => {
             // Video is actually rendering frames now - safe to show
             // This prevents flicker on iOS where canplaythrough fires before frames render
             if (!playReverse) {
-              setReadyVideoUrl(content.url);
+              // Set ready with key that includes direction (forward)
+              setReadyVideoKey(`${content.url}:forward`);
             }
           }}
           onEnded={playReverse ? undefined : handleTransitionEnd}
@@ -328,7 +467,7 @@ const Sogni360Viewer: React.FC = () => {
         className="click-zone click-zone-left hidden md:block"
         onClick={handleLeftClick}
       >
-        <button className="click-zone-btn" aria-label="Previous">
+        <button type="button" className="click-zone-btn" aria-label="Previous" onClick={handleLeftClick}>
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
           </svg>
@@ -338,7 +477,7 @@ const Sogni360Viewer: React.FC = () => {
         className="click-zone click-zone-center hidden md:block"
         onClick={handleCenterClick}
       >
-        <button className="click-zone-btn" aria-label={isPlaying ? 'Pause' : 'Play'}>
+        <button type="button" className="click-zone-btn" aria-label={isPlaying ? 'Pause' : 'Play'} onClick={handleCenterClick}>
           {isPlaying ? (
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
@@ -354,7 +493,7 @@ const Sogni360Viewer: React.FC = () => {
         className="click-zone click-zone-right hidden md:block"
         onClick={handleRightClick}
       >
-        <button className="click-zone-btn" aria-label="Next">
+        <button type="button" className="click-zone-btn" aria-label="Next" onClick={handleRightClick}>
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
           </svg>

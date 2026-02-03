@@ -79,15 +79,15 @@ html, body {
 /* Camera angle indicator */
 .camera-angle-indicator-with-nav {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  left: calc(1rem + env(safe-area-inset-left, 0px));
   z-index: 15;
 }
 
 @media (max-width: 767px) {
   .camera-angle-indicator-with-nav {
-    top: 0.5rem;
-    left: 0.5rem;
+    top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    left: calc(0.5rem + env(safe-area-inset-left, 0px));
   }
 }
 
@@ -172,8 +172,8 @@ html, body {
 
 @media (max-width: 767px) {
   .camera-angle-indicator-with-nav {
-    top: 0.5rem;
-    left: 0.5rem;
+    top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    left: calc(0.5rem + env(safe-area-inset-left, 0px));
   }
   .camera-angle-indicator-inner {
     padding: 0.75rem;
@@ -1050,14 +1050,14 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: calc(1rem + env(safe-area-inset-top, 0px)) 1.5rem 1rem 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
 @media (max-width: 480px) {
   .waypoint-editor-panel-header {
-    padding: 0.5rem 0.75rem;
+    padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 0.75rem 0.5rem 0.75rem;
   }
   .waypoint-editor-panel-header h2 {
     font-size: 0.875rem;
@@ -2137,7 +2137,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1.5rem 1.25rem 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -2593,14 +2593,14 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 2rem;
+  padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 2rem 0.75rem 2rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
 
 @media (max-width: 767px) {
   .config-header-bar {
-    padding: 0.5rem 1rem;
+    padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 1rem 0.5rem 1rem;
   }
 }
 
@@ -3378,7 +3378,7 @@ html, body {
 .workflow-wizard-expanded-container {
   background: rgba(0, 0, 0, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1rem 0;
+  padding: calc(1rem + env(safe-area-inset-top, 0px)) 0 1rem 0;
   backdrop-filter: blur(10px);
 }
 
@@ -3463,7 +3463,7 @@ html, body {
 
   .global-wizard-bar .workflow-wizard-collapsed-tab {
     position: fixed;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 50;
@@ -3487,7 +3487,7 @@ html, body {
 
   .global-wizard-bar .workflow-wizard-collapsed-tab {
     position: fixed;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 50;
@@ -3513,16 +3513,16 @@ html, body {
 /* Project actions fixed to top right corner of screen */
 .global-wizard-bar .project-actions-bar {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  right: calc(1rem + env(safe-area-inset-right, 0px));
   z-index: 100;
   gap: 0.5rem;
 }
 
 @media (max-width: 767px) {
   .global-wizard-bar .project-actions-bar {
-    top: 0.5rem;
-    right: 0.5rem;
+    top: calc(0.5rem + env(safe-area-inset-top, 0px));
+    right: calc(0.5rem + env(safe-area-inset-right, 0px));
   }
 }
 
@@ -3567,7 +3567,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: calc(1rem + env(safe-area-inset-top, 0px)) 1.5rem 1rem 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -3590,7 +3590,7 @@ html, body {
 /* Compact header on mobile */
 @media (max-width: 480px) {
   .review-header-bar {
-    padding: 0.625rem 1rem;
+    padding: calc(0.625rem + env(safe-area-inset-top, 0px)) 1rem 0.625rem 1rem;
   }
 
   .review-main-title {
@@ -6115,8 +6115,8 @@ html, body {
 
 .final-video-close {
   position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
+  top: calc(1.5rem + env(safe-area-inset-top, 0px));
+  right: calc(1.5rem + env(safe-area-inset-right, 0px));
   width: 44px;
   height: 44px;
   display: flex;
@@ -6927,8 +6927,8 @@ html, body {
 
 .fullscreen-close-btn {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  right: calc(1rem + env(safe-area-inset-right, 0px));
   width: 48px;
   height: 48px;
   display: flex;
@@ -7080,8 +7080,8 @@ html, body {
 /* Mobile adjustments */
 @media (max-width: 767px) {
   .fullscreen-close-btn {
-    top: 0.75rem;
-    right: 0.75rem;
+    top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    right: calc(0.75rem + env(safe-area-inset-right, 0px));
     width: 44px;
     height: 44px;
   }
