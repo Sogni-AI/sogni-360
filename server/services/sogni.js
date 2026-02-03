@@ -392,7 +392,7 @@ export async function generateVideo(client, params, progressCallback, localProje
     shift: params.shift,
     guidance: params.promptGuidance
   });
-  console.log(`[VIDEO] FPS: ${params.fps || 32} (worker will interpolate from 16fps base to ${params.fps || 32}fps output)`);
+  console.log(`[VIDEO] Output FPS: ${params.fps || 32} (post-processing interpolation)`);
 
   const projectOptions = {
     type: 'video',

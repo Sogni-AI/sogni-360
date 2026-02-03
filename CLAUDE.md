@@ -131,65 +131,113 @@ This solution can be copied to other projects (e.g., Photobooth):
 
 ---
 
-## 🚨 CRITICAL: Video Generation Frame Rate (16fps Base + Interpolation)
+## 🚨 CRITICAL: Video Model Architecture
 
-**UNDERSTAND THIS BEFORE MODIFYING VIDEO GENERATION CODE.**
+**⚠️ DO NOT CHANGE THIS LOGIC - IT HAS BEEN VERIFIED CORRECT ⚠️**
 
-### How Video FPS Works
+The SDK supports two families of video models with **fundamentally different FPS and frame count behavior**. This app currently uses WAN 2.2 but may add LTX-2 support in the future.
 
-The video model (WAN 2.2) **ALWAYS generates frames at 16fps base rate**. The `fps` parameter controls worker-side interpolation AFTER generation:
+---
 
-1. **Frame count is ALWAYS calculated at 16fps base rate:**
-   ```typescript
-   // CORRECT: Always use 16fps for frame calculation
-   const BASE_FPS = 16;
-   const frames = Math.round(BASE_FPS * duration) + 1;
-   // For 1.5 seconds: 16 * 1.5 + 1 = 25 frames
-   ```
+### WAN 2.2 Models (Current - Legacy Behavior)
 
-2. **The `fps` parameter tells the worker to interpolate:**
-   - `fps: 16` → No interpolation, output matches generated frames
-   - `fps: 32` → Worker interpolates 25 frames → ~49 frames for smooth playback
+**Model IDs:** `wan_v2.2-*`
 
-3. **Duration calculation:**
-   - Generated frames: 25 (at 16fps base)
-   - Output at 32fps: Worker interpolates to ~49 frames
-   - Final duration: Still ~1.5 seconds, but smoother playback
+WAN 2.2 is the outlier with legacy behavior:
+- **Always generates at 16fps internally**, regardless of the user's fps setting
+- The `fps` parameter (16 or 32) controls **post-render frame interpolation only**
+- `fps=16`: No interpolation, output matches generation (16fps)
+- `fps=32`: Frames are doubled via interpolation after generation (+10% cost)
 
-### ⚠️ CRITICAL MISTAKES TO AVOID
+**Frame Calculation for WAN 2.2:**
+```typescript
+// ✅ CORRECT - Always use 16fps for frame calculation with WAN 2.2
+const BASE_FPS = 16; // Generation ALWAYS happens at 16fps
+const frames = Math.round(BASE_FPS * duration) + 1;
+// For 1.5 seconds: 16 * 1.5 + 1 = 25 frames generated
+// If fps=32: interpolated to ~50 output frames
+```
 
-1. **NEVER calculate frames based on output fps:**
-   ```typescript
-   // ❌ WRONG - Do NOT do this!
-   const frames = Math.round(duration * outputFps) + 1;
+**⚠️ NEVER DO THIS for WAN 2.2:**
+```typescript
+// ❌ WRONG - Do NOT calculate frames based on output fps!
+const frames = Math.round(duration * outputFps) + 1;
+```
 
-   // ✅ CORRECT - Always use 16fps base
-   const BASE_FPS = 16;
-   const frames = Math.round(BASE_FPS * duration) + 1;
-   ```
-
-2. **NEVER change frame count when fps setting changes:**
-   - Changing fps from 16 to 32 should NOT double the frame count
-   - Frame count is determined by duration only (at 16fps base)
-
-3. **The worker handles interpolation:**
-   - Pass frames calculated at 16fps
-   - Pass desired output fps (16 or 32)
-   - Worker does the interpolation automatically
-
-### Code Reference
+**Code Reference (WAN 2.2):**
 
 See `src/constants/videoSettings.ts`:
 - `calculateVideoFrames(duration)` - Always uses BASE_FPS=16
-- `DEFAULT_VIDEO_SETTINGS.fps = 32` - Output fps (after interpolation)
+- `DEFAULT_VIDEO_SETTINGS.fps = 32` - Output fps (post-processing interpolation)
 - `DEFAULT_VIDEO_SETTINGS.frames = 25` - For 1.5s at 16fps base
 
-### Debugging 16fps Output
+**We offer two fps options for WAN 2.2: 16 and 32. Default is 32.**
 
-If videos are outputting at 16fps instead of 32fps:
-1. Verify `fps: 32` is being passed to the SDK/API
-2. Check worker logs for interpolation errors
-3. Verify video metadata after download (not just during playback)
+---
+
+### LTX-2 Models (Future - Standard Behavior)
+
+**Model IDs:** `ltx2-*`
+
+LTX-2 represents the **standard behavior going forward**:
+- **Generates at the actual specified FPS** (1-60 fps range)
+- No post-render interpolation - fps directly affects generation
+- More flexibility but different frame calculation
+
+**Frame Calculation for LTX-2:**
+```typescript
+// ✅ CORRECT for LTX-2 - Use actual fps in calculation
+const frames = Math.round(duration * fps) + 1;
+// For 5 seconds at 24fps: 5 * 24 + 1 = 121 frames
+```
+
+**Frame Step Constraint for LTX-2:**
+- Frame count MUST follow pattern: `1 + n*8` (i.e., 1, 9, 17, 25, 33, 41, 49, ...)
+- If calculated frames don't match, snap to nearest valid value
+- Example: 5s at 24fps = 121 frames (valid: 1 + 15*8 = 121 ✓)
+
+**Key Differences Summary:**
+
+| Aspect | WAN 2.2 (Current) | LTX-2 (Future) |
+|--------|-------------------|----------------|
+| Internal generation FPS | Always 16fps | Actual specified fps |
+| FPS parameter meaning | Post-processing interpolation | Direct generation fps |
+| FPS range | 16 or 32 only | 1-60 fps |
+| Frame calculation | `duration * 16 + 1` | `duration * fps + 1` |
+| Frame constraint | None | Must be `1 + n*8` |
+
+---
+
+### Passing Parameters to the SDK
+
+For WAN 2.2 (current):
+```typescript
+const projectOptions = {
+  // ... other options ...
+  frames: 25,  // Calculated at 16fps base rate
+  fps: 32,     // Output fps (post-processing interpolation)
+};
+```
+
+For LTX-2 (future):
+```typescript
+const projectOptions = {
+  // ... other options ...
+  frames: 121, // Calculated at actual fps, snapped to 1 + n*8
+  fps: 24,     // Actual generation fps
+};
+```
+
+---
+
+### Implementation Notes for Adding LTX-2
+
+When adding LTX-2 support to this repo:
+1. Add model detection: check if model ID starts with `ltx2-` vs `wan_v2.2-`
+2. Update `calculateVideoFrames()` to accept model type and use correct formula
+3. Add frame snapping logic for LTX-2 (round to nearest `1 + n*8`)
+4. Update UI to allow fps selection beyond 16/32 for LTX-2
+5. Reference `sogni-client` utils: `isWanModel()`, `isLtx2Model()`, `calculateVideoFrames()`
 
 ---
 

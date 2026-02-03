@@ -105,7 +105,7 @@ export function useVideoCostEstimation(params: VideoCostEstimationParams): Video
     tokenType = 'spark'
   } = params;
 
-  // Calculate frames at 16fps base rate (worker interpolates to target fps)
+  // Calculate frames at 16fps base rate (fps controls post-processing interpolation)
   const frames = calculateVideoFrames(duration);
 
   const fetchCost = useCallback(async () => {

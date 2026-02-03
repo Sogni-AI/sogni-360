@@ -149,12 +149,11 @@ async function generateWithFrontendSDK(
   // Calculate video dimensions preserving aspect ratio
   const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
 
-  // Calculate frames at 16fps base rate (worker interpolates to target fps)
+  // Calculate frames at 16fps base rate (fps controls post-processing interpolation)
   const frames = calculateVideoFrames(duration);
 
   console.log(`[TransitionGenerator-SDK] Video: ${videoDimensions.width}x${videoDimensions.height}`);
-  console.log(`[TransitionGenerator-SDK] Frames: ${frames} (at 16fps base rate)`);
-  console.log(`[TransitionGenerator-SDK] Output FPS: ${DEFAULT_VIDEO_SETTINGS.fps} (worker will interpolate from 16fps to ${DEFAULT_VIDEO_SETTINGS.fps}fps)`);
+  console.log(`[TransitionGenerator-SDK] Frames: ${frames} (16fps base), Output: ${DEFAULT_VIDEO_SETTINGS.fps}fps`);
 
   // Convert images to blobs
   const [fromBlob, toBlob] = await Promise.all([
@@ -322,12 +321,11 @@ async function generateWithBackendAPI(
   // Calculate video dimensions preserving aspect ratio
   const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
 
-  // Calculate frames at 16fps base rate (worker interpolates to target fps)
+  // Calculate frames at 16fps base rate (fps controls post-processing interpolation)
   const frames = calculateVideoFrames(duration);
 
   console.log(`[TransitionGenerator-API] Video: ${videoDimensions.width}x${videoDimensions.height}`);
-  console.log(`[TransitionGenerator-API] Frames: ${frames} (at 16fps base rate)`);
-  console.log(`[TransitionGenerator-API] Output FPS: ${DEFAULT_VIDEO_SETTINGS.fps} (worker will interpolate from 16fps to ${DEFAULT_VIDEO_SETTINGS.fps}fps)`);
+  console.log(`[TransitionGenerator-API] Frames: ${frames} (16fps base), Output: ${DEFAULT_VIDEO_SETTINGS.fps}fps`);
 
   // Start generation via API
   // Pass shift and guidance from quality config (model-specific optimal values)

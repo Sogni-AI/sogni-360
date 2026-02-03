@@ -304,7 +304,7 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
       width = 720,
       height = 720,
       frames = 25,        // Default: 1.5s at 16fps base rate
-      fps = 32,           // Output fps (worker interpolates from 16fps base)
+      fps = 32,           // Output fps (post-processing interpolation)
       steps = 4,
       shift,              // Motion intensity (model-specific: lightx2v 5.0, full 8.0)
       guidance,           // Guidance scale (model-specific: lightx2v 1.0, full 4.0)
@@ -320,8 +320,7 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
 
     console.log(`[${localProjectId}] Prompt: ${prompt}`);
     console.log(`[${localProjectId}] Resolution: ${width}x${height}`);
-    console.log(`[${localProjectId}] Frames: ${frames} (at 16fps base rate)`);
-    console.log(`[${localProjectId}] Output FPS: ${fps} (worker will interpolate from 16fps to ${fps}fps)`);
+    console.log(`[${localProjectId}] Frames: ${frames} (16fps base), Output: ${fps}fps`);
     console.log(`[${localProjectId}] Steps: ${steps}, Shift: ${shift}, Guidance: ${guidance}`);
 
     // Progress handler
