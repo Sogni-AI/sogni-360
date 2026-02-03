@@ -498,24 +498,30 @@ const Sogni360Viewer: React.FC = () => {
       {/* Waypoint indicator */}
       {currentProject && currentProject.waypoints.length > 0 && (() => {
         const waypointCount = currentProject.waypoints.length;
-        const maxWidth = 280; // Max container width in pixels
-        const minDotSize = 4; // Minimum dot size
-        const maxDotSize = 8; // Default dot size
-        const minGap = 2; // Minimum gap between dots
-        const maxGap = 8; // Default gap
+        const maxWidth = 240; // Max container width in pixels
 
-        // Calculate how much space we need at default sizes
-        // Each dot needs: dotSize + gap (except last dot)
-        const defaultSpaceNeeded = waypointCount * maxDotSize + (waypointCount - 1) * maxGap;
+        // For many waypoints, use tiny dots
+        // Under 10: normal dots (6px), 10-20: small (4px), 20+: tiny (3px)
+        let baseDotSize: number;
+        let baseGap: number;
+        if (waypointCount <= 10) {
+          baseDotSize = 6;
+          baseGap = 6;
+        } else if (waypointCount <= 20) {
+          baseDotSize = 4;
+          baseGap = 4;
+        } else {
+          baseDotSize = 3;
+          baseGap = 3;
+        }
 
-        // Calculate scale factor if we need to shrink
-        const scale = defaultSpaceNeeded > maxWidth
-          ? maxWidth / defaultSpaceNeeded
-          : 1;
+        // Calculate if we still need to shrink further
+        const spaceNeeded = waypointCount * baseDotSize + (waypointCount - 1) * baseGap;
+        const scale = spaceNeeded > maxWidth ? maxWidth / spaceNeeded : 1;
 
-        const dotSize = Math.max(minDotSize, Math.round(maxDotSize * scale));
-        const gap = Math.max(minGap, Math.round(maxGap * scale));
-        const activeDotWidth = Math.round(dotSize * 1.75); // Active dot is wider
+        const dotSize = Math.max(2, Math.round(baseDotSize * scale));
+        const gap = Math.max(1, Math.round(baseGap * scale));
+        const activeDotWidth = Math.min(dotSize * 2, dotSize + 4); // Active dot slightly wider
 
         return (
           <div
@@ -523,8 +529,8 @@ const Sogni360Viewer: React.FC = () => {
             style={{
               maxWidth: `${maxWidth}px`,
               gap: `${gap}px`,
-              padding: '8px 12px',
-              background: 'rgba(0, 0, 0, 0.4)',
+              padding: `6px ${Math.max(8, gap * 2)}px`,
+              background: 'rgba(0, 0, 0, 0.5)',
               borderRadius: '9999px',
               backdropFilter: 'blur(8px)',
             }}

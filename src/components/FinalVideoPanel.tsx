@@ -307,17 +307,27 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
         {/* Segment indicator */}
         {videoUrls.length > 1 && localStitchedUrl && !isStitching && (() => {
           const segmentCount = videoUrls.length;
-          const maxWidth = 280;
-          const minDotSize = 4;
-          const maxDotSize = 6;
-          const minGap = 2;
-          const maxGap = 4;
+          const maxWidth = 240;
 
-          const defaultSpaceNeeded = segmentCount * maxDotSize + (segmentCount - 1) * maxGap;
-          const scale = defaultSpaceNeeded > maxWidth ? maxWidth / defaultSpaceNeeded : 1;
-          const dotSize = Math.max(minDotSize, Math.round(maxDotSize * scale));
-          const gap = Math.max(minGap, Math.round(maxGap * scale));
-          const activeDotWidth = Math.round(dotSize * 1.5);
+          // For many segments, use tiny dots
+          let baseDotSize: number;
+          let baseGap: number;
+          if (segmentCount <= 10) {
+            baseDotSize = 6;
+            baseGap = 6;
+          } else if (segmentCount <= 20) {
+            baseDotSize = 4;
+            baseGap = 4;
+          } else {
+            baseDotSize = 3;
+            baseGap = 3;
+          }
+
+          const spaceNeeded = segmentCount * baseDotSize + (segmentCount - 1) * baseGap;
+          const scale = spaceNeeded > maxWidth ? maxWidth / spaceNeeded : 1;
+          const dotSize = Math.max(2, Math.round(baseDotSize * scale));
+          const gap = Math.max(1, Math.round(baseGap * scale));
+          const activeDotWidth = Math.min(dotSize * 2, dotSize + 4);
 
           return (
             <div
@@ -330,7 +340,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: `${gap}px`,
-                padding: '8px 12px',
+                padding: `6px ${Math.max(8, gap * 2)}px`,
                 background: 'rgba(0, 0, 0, 0.5)',
                 backdropFilter: 'blur(8px)',
                 borderRadius: '9999px',

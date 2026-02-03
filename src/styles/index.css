@@ -3731,16 +3731,16 @@ html, body {
 /* On tablet/mobile, adjust review wizard wrap for pull-tab */
 @media (max-width: 1023px) {
   .review-wizard-wrap {
-    padding: 0;
+    padding: env(safe-area-inset-top, 0px) 0 0 0;
     background: transparent;
     border-bottom: none;
     position: relative;
-    min-height: 48px;
+    min-height: calc(48px + env(safe-area-inset-top, 0px));
   }
 
   .review-wizard-wrap .workflow-wizard-collapsed-tab {
     position: absolute;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
@@ -3748,7 +3748,7 @@ html, body {
 
   .review-wizard-wrap .workflow-wizard-expanded-overlay {
     position: absolute;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     left: 0;
     right: 0;
     z-index: 100;
