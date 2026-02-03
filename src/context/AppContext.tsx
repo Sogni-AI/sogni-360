@@ -9,7 +9,7 @@ import type {
   ProjectStatus
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { saveCurrentProject, getMostRecentProject, setCurrentProjectId, loadProject } from '../utils/localProjectsDB';
+import { saveCurrentProject, setCurrentProjectId, loadProject } from '../utils/localProjectsDB';
 import { loadStitchedVideo } from '../utils/videoCache';
 import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
 import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
@@ -549,49 +549,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const hasRestoredRef = useRef(false);
   const lastSavedProjectRef = useRef<string | null>(null);
 
-  // ===== Auto-Restore on Mount =====
+  // ===== Initialize on Mount (no auto-restore) =====
+  // Projects are now loaded explicitly via "Load Existing Project" button
   useEffect(() => {
     if (hasRestoredRef.current) return;
     hasRestoredRef.current = true;
 
-    const restoreProject = async () => {
-      try {
-        console.log('[AppContext] Attempting to restore project...');
-        const project = await getMostRecentProject();
-        if (project) {
-          console.log('[AppContext] Restored project:', project.id, project.name);
-
-          // Try to restore cached video if project has segments but no finalLoopUrl
-          const readySegmentUrls = project.segments
-            ?.filter(s => s.status === 'ready' && s.videoUrl)
-            .map(s => s.videoUrl) as string[] | undefined;
-          if (readySegmentUrls && readySegmentUrls.length > 0 && !project.finalLoopUrl) {
-            try {
-              // Pass video URLs for validation - ensures cached video matches current segments
-              const cachedBlob = await loadStitchedVideo(project.id, readySegmentUrls);
-              if (cachedBlob) {
-                console.log('[AppContext] Restoring cached final video');
-                const blobUrl = URL.createObjectURL(cachedBlob);
-                project.finalLoopUrl = blobUrl;
-              }
-            } catch (err) {
-              console.warn('[AppContext] Failed to restore cached video:', err);
-            }
-          }
-
-          dispatch({ type: 'SET_PROJECT', payload: project });
-          lastSavedProjectRef.current = JSON.stringify(project);
-        } else {
-          console.log('[AppContext] No project to restore');
-        }
-      } catch (error) {
-        console.error('[AppContext] Failed to restore project:', error);
-      } finally {
-        setIsRestoring(false);
-      }
-    };
-
-    restoreProject();
+    // Just mark restore as complete - user will choose to load a project manually
+    console.log('[AppContext] App initialized - user can load existing projects from menu');
+    setIsRestoring(false);
   }, []);
 
   // ===== Auto-Save on Project Changes =====

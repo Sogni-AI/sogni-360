@@ -841,6 +841,76 @@ html, body {
   filter: drop-shadow(0 0 8px rgba(240, 171, 252, 0.8));
 }
 
+/* Existing project variant - same colorful effect */
+.uploader-load-projects-btn.existing-variant {
+  position: relative;
+  background: rgba(30, 25, 45, 0.8);
+  border: 1px solid rgba(196, 181, 253, 0.3);
+  overflow: hidden;
+  box-shadow:
+    0 0 20px rgba(168, 85, 247, 0.2),
+    0 0 40px rgba(168, 85, 247, 0.1);
+}
+
+/* Animated gradient shimmer overlay for existing project */
+.uploader-load-projects-btn.existing-variant::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(165, 180, 252, 0.1) 20%,
+    rgba(196, 181, 253, 0.2) 40%,
+    rgba(240, 171, 252, 0.2) 60%,
+    rgba(196, 181, 253, 0.1) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Gradient text for the existing project button */
+.uploader-load-projects-btn.existing-variant .existing-text {
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #a5b4fc 20%,
+    #c4b5fd 40%,
+    #f0abfc 60%,
+    #c4b5fd 80%,
+    #ffffff 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Glowing icon for existing project */
+.uploader-load-projects-btn.existing-variant .existing-icon {
+  opacity: 1;
+  stroke: #c4b5fd;
+  filter: drop-shadow(0 0 6px rgba(196, 181, 253, 0.6));
+}
+
+.uploader-load-projects-btn.existing-variant:hover {
+  background: rgba(40, 35, 60, 0.9);
+  border-color: rgba(196, 181, 253, 0.5);
+  box-shadow:
+    0 0 30px rgba(168, 85, 247, 0.3),
+    0 0 60px rgba(168, 85, 247, 0.15);
+  transform: translateY(-2px);
+}
+
+.uploader-load-projects-btn.existing-variant:hover .existing-icon {
+  stroke: #f0abfc;
+  filter: drop-shadow(0 0 8px rgba(240, 171, 252, 0.8));
+}
+
 /* Demo Video Background - 6-tile grid of showcase videos */
 .demo-video-background {
   position: absolute;
@@ -6296,6 +6366,7 @@ html, body {
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
+  z-index: 15;
 }
 
 .final-video-close:hover {
