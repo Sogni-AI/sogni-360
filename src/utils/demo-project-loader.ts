@@ -323,6 +323,27 @@ function createDemoProject(
 }
 
 /**
+ * Check if an error is likely a CORS or network error that should trigger proxy fallback.
+ * Different browsers report these errors differently:
+ * - Chrome/Edge: "Failed to fetch"
+ * - Safari (macOS): "Load failed" or "Not allowed to request resource"
+ * - iOS Safari: "Load failed"
+ * - Firefox: "NetworkError when attempting to fetch resource"
+ */
+function isCorsOrNetworkError(error: unknown): boolean {
+  if (!(error instanceof TypeError)) return false;
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('fetch') ||
+    message.includes('load failed') ||
+    message.includes('network') ||
+    message.includes('not allowed') ||
+    message.includes('cross-origin')
+  );
+}
+
+/**
  * Fetch a file with proxy fallback for CORS issues
  * Tries direct fetch first, falls back to backend proxy if CORS fails
  */
@@ -339,9 +360,9 @@ async function fetchWithProxyFallback(
     }
     return await fetchWithProgress(response, expectedSize, onProgress);
   } catch (error) {
-    // Check if this is a CORS error (TypeError: Failed to fetch)
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      console.log('[DemoLoader] Direct fetch failed (likely CORS), trying proxy...');
+    // Check if this is a CORS or network error
+    if (isCorsOrNetworkError(error)) {
+      console.log('[DemoLoader] Direct fetch failed (likely CORS), trying proxy...', error);
 
       // Fall back to backend proxy
       const proxyUrl = `${API_URL}/api/sogni/proxy-image?url=${encodeURIComponent(url)}`;
