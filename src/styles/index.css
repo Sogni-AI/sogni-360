@@ -6802,6 +6802,157 @@ html, body {
   height: 18px;
 }
 
+/* ========================================
+   Demo Projects Section
+   ======================================== */
+
+.demo-projects-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.demo-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.demo-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.demo-section-subtitle {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.demo-projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Demo Card Styling */
+.project-card.demo-card {
+  border-color: rgba(147, 51, 234, 0.2);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+}
+
+.project-card.demo-card:hover {
+  border-color: rgba(147, 51, 234, 0.35);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+}
+
+.project-card.demo-card.loading {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Demo Badge */
+.demo-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.125rem 0;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  color: white;
+}
+
+/* Demo Size Tag */
+.demo-size {
+  color: rgba(147, 51, 234, 0.8);
+  font-weight: 500;
+}
+
+/* Demo Progress */
+.demo-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  background: rgba(147, 51, 234, 0.15);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Demo Error */
+.demo-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  background: rgba(239, 68, 68, 0.15);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.demo-error span {
+  flex: 1;
+}
+
+.demo-error button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.25rem;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.demo-error button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* Demo Open Button */
+.demo-open-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  border-radius: 0.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.demo-open-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
+  border-color: rgba(147, 51, 234, 0.5);
+  color: white;
+}
+
+.demo-open-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demo-open-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .project-name-input {
   width: 100%;
   padding: 0.375rem 0.5rem;

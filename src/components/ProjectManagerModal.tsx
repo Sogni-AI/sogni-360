@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listProjects, deleteProject, renameProject, saveProject } from '../utils/localProjectsDB';
 import { exportProject, generateExportFilename, downloadZipBlob, ExportOptions } from '../utils/projectExport';
 import { importProject, ImportError } from '../utils/projectImport';
+import { DemoProjectsSection } from './demo-project-card';
 import type { LocalProject, Sogni360Project } from '../types';
 
 interface ProjectManagerModalProperties {
@@ -29,6 +30,7 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>('');
   const [importError, setImportError] = useState<string | null>(null);
+  const [loadingDemo, setLoadingDemo] = useState(false);
   // Export dialog state
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportDialogProject, setExportDialogProject] = useState<LocalProject | null>(null);
@@ -224,6 +226,21 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
     }
   };
 
+  const handleDemoLoaded = useCallback(async (project: Sogni360Project) => {
+    setLoadingDemo(true);
+    try {
+      // Refresh the project list to show the newly imported demo
+      await loadProjects();
+      // Load the demo project
+      if (onImportProject) {
+        onImportProject(project);
+      }
+      onClose();
+    } finally {
+      setLoadingDemo(false);
+    }
+  }, [loadProjects, onImportProject, onClose]);
+
   return (
     <div className="project-manager-overlay" onClick={onClose}>
       <div className="project-manager-modal" onClick={event => event.stopPropagation()}>
@@ -296,15 +313,17 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
               <div className="spinner" />
               <span>Loading projects...</span>
             </div>
-          ) : projects.length === 0 ? (
-            <div className="project-manager-empty">
-              <div className="empty-icon">📁</div>
-              <p>No saved projects yet</p>
-              <span>Upload an image to get started</span>
-            </div>
           ) : (
-            <div className="project-list">
-              {projects.map(project => (
+            <>
+              {projects.length === 0 ? (
+                <div className="project-manager-empty">
+                  <div className="empty-icon">📁</div>
+                  <p>No saved projects yet</p>
+                  <span>Upload an image or try a demo below</span>
+                </div>
+              ) : (
+                <div className="project-list">
+                  {projects.map(project => (
                 <div
                   key={project.id}
                   className={`project-card ${project.id === currentProjectId ? 'current' : ''}`}
@@ -394,8 +413,16 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Demo Projects Section */}
+              <DemoProjectsSection
+                onDemoLoaded={handleDemoLoaded}
+                disabled={loadingDemo || importing}
+              />
+            </>
           )}
         </div>
 

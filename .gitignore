@@ -46,3 +46,6 @@ test-results/
 
 # Demo videos (synced to R2 separately)
 demo/
+
+# Local scripts (not checked into git)
+local-scripts/
