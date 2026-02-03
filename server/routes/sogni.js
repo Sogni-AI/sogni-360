@@ -586,14 +586,16 @@ router.get('/proxy-image', async (req, res) => {
     return res.status(400).json({ error: 'URL parameter is required' });
   }
 
-  // Only allow proxying from trusted S3 domains
+  // Only allow proxying from trusted S3/R2 domains
   const allowedDomains = [
     'complete-images-production.s3-accelerate.amazonaws.com',
     'complete-images-staging.s3-accelerate.amazonaws.com',
     'complete-images-production.s3.amazonaws.com',
     'complete-images-staging.s3.amazonaws.com',
     's3.amazonaws.com',
-    's3-accelerate.amazonaws.com'
+    's3-accelerate.amazonaws.com',
+    // Cloudflare R2 public bucket for demo projects
+    'pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev'
   ];
 
   try {

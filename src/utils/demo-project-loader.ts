@@ -10,6 +10,7 @@ import { APP_SCHEMA_VERSION } from './localProjectsDB';
 import type { Sogni360Project, TransitionVersion } from '../types';
 import type { ExportManifest } from './projectExport';
 import { markDemoAsDownloaded, type DemoProjectManifest } from '../constants/demo-projects';
+import { API_URL } from '../config/urls';
 
 export type DemoLoadErrorCode =
   | 'FETCH_FAILED'
@@ -42,45 +43,10 @@ export async function loadDemoProject(
 ): Promise<Sogni360Project> {
   onProgress?.(0, 100, 'Downloading demo project...');
 
-  // 1. Fetch the ZIP file from S3
+  // 1. Fetch the ZIP file from R2 (with proxy fallback for CORS)
   let zipBlob: Blob;
   try {
-    const response = await fetch(demo.projectZipUrl);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    // Track download progress if available
-    const contentLength = response.headers.get('content-length');
-    const totalBytes = contentLength ? Number.parseInt(contentLength, 10) : demo.zipSizeBytes;
-
-    if (response.body && totalBytes > 0) {
-      const reader = response.body.getReader();
-      const chunks: BlobPart[] = [];
-      let receivedBytes = 0;
-
-      let readComplete = false;
-      while (!readComplete) {
-        const { done, value } = await reader.read();
-        if (done) {
-          readComplete = true;
-          continue;
-        }
-
-        chunks.push(value as BlobPart);
-        receivedBytes += value.length;
-
-        const progress = Math.round((receivedBytes / totalBytes) * 40);
-        const downloadedMB = (receivedBytes / (1024 * 1024)).toFixed(1);
-        const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
-        onProgress?.(progress, 100, `Downloading: ${downloadedMB}/${totalMB} MB`);
-      }
-
-      zipBlob = new Blob(chunks);
-    } else {
-      // Fallback if streaming not available
-      zipBlob = await response.blob();
-    }
+    zipBlob = await fetchWithProxyFallback(demo.projectZipUrl, demo.zipSizeBytes, onProgress);
   } catch (error) {
     console.error('[DemoLoader] Failed to fetch demo:', error);
     throw new DemoLoadError(
@@ -354,4 +320,79 @@ function createDemoProject(
     exportCompleted: false,
     status: 'complete' // Demo projects are already complete
   };
+}
+
+/**
+ * Fetch a file with proxy fallback for CORS issues
+ * Tries direct fetch first, falls back to backend proxy if CORS fails
+ */
+async function fetchWithProxyFallback(
+  url: string,
+  expectedSize: number,
+  onProgress?: DemoLoadProgressCallback
+): Promise<Blob> {
+  // Try direct fetch first
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return await fetchWithProgress(response, expectedSize, onProgress);
+  } catch (error) {
+    // Check if this is a CORS error (TypeError: Failed to fetch)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      console.log('[DemoLoader] Direct fetch failed (likely CORS), trying proxy...');
+
+      // Fall back to backend proxy
+      const proxyUrl = `${API_URL}/api/sogni/proxy-image?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+
+      if (!response.ok) {
+        throw new Error(`Proxy HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await fetchWithProgress(response, expectedSize, onProgress);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Fetch response body with progress tracking
+ */
+async function fetchWithProgress(
+  response: Response,
+  expectedSize: number,
+  onProgress?: DemoLoadProgressCallback
+): Promise<Blob> {
+  const contentLength = response.headers.get('content-length');
+  const totalBytes = contentLength ? Number.parseInt(contentLength, 10) : expectedSize;
+
+  if (response.body && totalBytes > 0) {
+    const reader = response.body.getReader();
+    const chunks: BlobPart[] = [];
+    let receivedBytes = 0;
+
+    let readComplete = false;
+    while (!readComplete) {
+      const { done, value } = await reader.read();
+      if (done) {
+        readComplete = true;
+        continue;
+      }
+
+      chunks.push(value as BlobPart);
+      receivedBytes += value.length;
+
+      const progress = Math.round((receivedBytes / totalBytes) * 40);
+      const downloadedMB = (receivedBytes / (1024 * 1024)).toFixed(1);
+      const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
+      onProgress?.(progress, 100, `Downloading: ${downloadedMB}/${totalMB} MB`);
+    }
+
+    return new Blob(chunks);
+  } else {
+    // Fallback if streaming not available
+    return await response.blob();
+  }
 }

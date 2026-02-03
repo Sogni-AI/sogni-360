@@ -58,16 +58,13 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     }
   }, [waypoints.length]);
 
-  // Reset scroll position to the start when component mounts
+  // Reset scroll position and preset flag when project changes (new image uploaded)
   useEffect(() => {
     if (carouselRef.current) {
       carouselRef.current.scrollLeft = 0;
     }
-  }, []);
-
-  useEffect(() => {
-    return () => { hasAutoLoadedPreset.current = false; };
-  }, []);
+    hasAutoLoadedPreset.current = false;
+  }, [currentProject?.sourceImageUrl]);
 
   const anglesToGenerate = waypoints.filter(wp => !wp.isOriginal).length;
 
