@@ -3,7 +3,7 @@
  * Supports animated transitions when target props are provided
  */
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { COLORS, useCameraPosition, useCameraScale, useIsBehindSphere, useConeVisibility, useLensAngle } from './shared';
 import { getAzimuthConfig, getElevationConfig, getDistanceConfig } from '../../../constants/cameraAngleSettings';
 
@@ -42,35 +42,55 @@ const CompactMode: React.FC<CompactModeProps> = ({
 
   // Use animation progress to interpolate between current and target
   const [animProgress, setAnimProgress] = useState(0);
+  // Track the animation frame ID so we can cancel it on cleanup
+  const animFrameRef = useRef<number | null>(null);
+  // Track which target we're animating to (prevents stale progress on new animations)
+  const animTargetRef = useRef<string | null>(null);
+
+  // Synchronously reset progress when animation target changes (before paint)
+  // This prevents any frame where stale progress is shown
+  const currentTargetKey = targetAzimuthConfig ? `${targetAzimuth}-${targetElevation}-${targetDistance}` : null;
+  useLayoutEffect(() => {
+    if (animTargetRef.current !== currentTargetKey) {
+      animTargetRef.current = currentTargetKey;
+      setAnimProgress(0);
+    }
+  }, [currentTargetKey]);
 
   useEffect(() => {
+    // Cancel any running animation frame
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
     if (isAnimating && targetAzimuthConfig) {
-      // Start animation after a delay to let video start playing
-      setAnimProgress(0);
-      const ANIMATION_DELAY_MS = 1000; // 1 second delay before animation starts
+      // Start animation immediately - no delay needed since video is already playing
+      const startTime = performance.now();
+      const duration = animationDuration * 1000;
 
-      const timeoutId = setTimeout(() => {
-        const startTime = performance.now();
-        const duration = animationDuration * 1000;
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out cubic for smooth deceleration
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setAnimProgress(eased);
 
-        const animate = (currentTime: number) => {
-          const elapsed = currentTime - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          // Ease-out cubic for smooth deceleration
-          const eased = 1 - Math.pow(1 - progress, 3);
-          setAnimProgress(eased);
+        if (progress < 1) {
+          animFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          animFrameRef.current = null;
+        }
+      };
 
-          if (progress < 1) {
-            requestAnimationFrame(animate);
-          }
-        };
+      animFrameRef.current = requestAnimationFrame(animate);
 
-        requestAnimationFrame(animate);
-      }, ANIMATION_DELAY_MS);
-
-      return () => clearTimeout(timeoutId);
-    } else {
-      setAnimProgress(0);
+      return () => {
+        if (animFrameRef.current !== null) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+      };
     }
   }, [isAnimating, targetAzimuthConfig, animationDuration]);
 
