@@ -43,12 +43,7 @@ const Sogni360Viewer: React.FC = () => {
       : readyVideoKey === `${content.url}:forward`
   );
 
-  // Check if sequence is complete (has transitions to play)
-  const waypoints = currentProject?.waypoints || [];
-  const segments = currentProject?.segments || [];
-  const readyWaypointCount = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl).length;
-  const readySegmentCount = segments.filter(s => s.status === 'ready' && s.videoUrl).length;
-  const hasPlayableSequence = readyWaypointCount >= 2 && readySegmentCount > 0;
+  // Check if final video is available
   const hasFinalVideo = !!currentProject?.finalLoopUrl;
 
   // Download handler for stitched video
@@ -529,66 +524,43 @@ const Sogni360Viewer: React.FC = () => {
         </div>
       )}
 
-      {/* Playback and download controls - shown when sequence is complete */}
-      {hasPlayableSequence && (
+      {/* Playback and download controls - shown when final video is available */}
+      {hasFinalVideo && (
         <div
           className="viewer-controls"
           onTouchStart={stopTouchPropagation}
           onTouchEnd={stopTouchPropagation}
         >
-          {/* Auto-play toggle button with label */}
-          <div className="autoplay-control">
-            <button
-              className={`viewer-control-btn ${isPlaying ? 'active' : ''}`}
-              onClick={togglePlayback}
-              title={isPlaying ? 'Pause auto-play (Space)' : 'Start auto-play (Space)'}
-            >
-              {isPlaying ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                </svg>
-              )}
-            </button>
-            <span className="autoplay-label">Auto-play</span>
-          </div>
+          {/* Play Final Video button - prominent gradient button */}
+          <button
+            className="viewer-play-video-btn"
+            onClick={() => dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: true })}
+            title="Play completed video"
+          >
+            <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <span>Play Video</span>
+          </button>
 
-          {/* Open final video panel button */}
-          {hasFinalVideo && (
-            <>
-              <button
-                className="viewer-control-btn"
-                onClick={() => dispatch({ type: 'SET_SHOW_FINAL_VIDEO_PREVIEW', payload: true })}
-                title="View stitched loop"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-
-              {/* Download stitched video button */}
-              <button
-                className={`viewer-control-btn ${isDownloading ? 'disabled' : ''}`}
-                onClick={handleDownloadLoop}
-                disabled={isDownloading}
-                title="Download stitched video"
-              >
-                {isDownloading ? (
-                  <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                )}
-              </button>
-            </>
-          )}
+          {/* Download stitched video button */}
+          <button
+            className={`viewer-control-btn ${isDownloading ? 'disabled' : ''}`}
+            onClick={handleDownloadLoop}
+            disabled={isDownloading}
+            title="Download stitched video"
+          >
+            {isDownloading ? (
+              <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            )}
+          </button>
         </div>
       )}
     </div>

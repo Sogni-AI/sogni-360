@@ -20,6 +20,7 @@ import LoginPromptModal from './auth/LoginPromptModal';
 import StripePurchase from './stripe/StripePurchase';
 import PWAInstallPrompt from './shared/PWAInstallPrompt';
 import OutOfCreditsPopup from './shared/OutOfCreditsPopup';
+import DemoCoachmark from './shared/DemoCoachmark';
 import { ApiProvider } from '../hooks/useSogniApi';
 import { useWallet } from '../hooks/useWallet';
 import useAutoHideUI from '../hooks/useAutoHideUI';
@@ -29,6 +30,7 @@ import { duplicateProject, getProjectCount } from '../utils/localProjectsDB';
 import { playVideoCompleteIfEnabled, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
 import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
 import { getAzimuthConfig, getElevationConfig, getDistanceConfig } from '../constants/cameraAngleSettings';
+import { isDemoProject, hasDemoCoachmarkBeenShown } from '../constants/demo-projects';
 import '../services/pwaInstaller'; // Initialize PWA installer service
 
 // Type for pending destructive action that needs confirmation
@@ -50,6 +52,8 @@ const Sogni360Container: React.FC = () => {
   const [showProjectNameModal, setShowProjectNameModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
+  const [showDemoCoachmark, setShowDemoCoachmark] = useState(false);
+  const [demoProjectName, setDemoProjectName] = useState<string>('');
   const [projectCount, setProjectCount] = useState(0);
 
   // Auth state
@@ -456,6 +460,12 @@ const Sogni360Container: React.FC = () => {
     dispatch({ type: 'SET_PROJECT', payload: project });
     dispatch({ type: 'SET_SHOW_PROJECT_MANAGER', payload: false });
     hasAutoOpenedEditor.current = true; // Don't auto-open editor for imported projects
+
+    // Show coachmark for demo projects if not already shown
+    if (isDemoProject(project.id) && !hasDemoCoachmarkBeenShown()) {
+      setDemoProjectName(project.name);
+      setShowDemoCoachmark(true);
+    }
   }, [dispatch]);
 
   // Handle closing project manager
@@ -812,6 +822,17 @@ const Sogni360Container: React.FC = () => {
                 </button>
               </div>
             )}
+            {/* Auto-play checkbox - shown when sequence has playable transitions */}
+            {hasGeneratedImages && currentProject?.segments?.some(s => s.status === 'ready' && s.videoUrl) && (
+              <label className="autoplay-checkbox">
+                <input
+                  type="checkbox"
+                  checked={state.isPlaying}
+                  onChange={(e) => dispatch({ type: 'SET_PLAYING', payload: e.target.checked })}
+                />
+                <span className="autoplay-checkbox-label">Auto-play</span>
+              </label>
+            )}
           </div>
         </div>
       )}
@@ -977,6 +998,13 @@ const Sogni360Container: React.FC = () => {
         onLogin={handleLoginFromPrompt}
         title="Sign in to Continue"
         message="You've used your free generation. Sign in or create an account to keep creating amazing 360° portraits!"
+      />
+
+      {/* Demo Coachmark - shown when user loads a demo project for the first time */}
+      <DemoCoachmark
+        isOpen={showDemoCoachmark}
+        onClose={() => setShowDemoCoachmark(false)}
+        demoName={demoProjectName}
       />
     </div>
   );

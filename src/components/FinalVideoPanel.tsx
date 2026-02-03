@@ -28,9 +28,13 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   onWorkflowStepClick
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [needsPlayPrompt, setNeedsPlayPrompt] = useState(false);
+  const [uiVisible, setUiVisible] = useState(true);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INACTIVITY_TIMEOUT = 3000; // 3 seconds
 
   const {
     isDownloading,
@@ -48,6 +52,79 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     handleShare,
     setCurrentSegmentIndex
   } = useFinalVideoActions({ projectId, videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection, onMusicChange });
+
+  // Reset inactivity timer on user interaction
+  const resetInactivityTimer = useCallback(() => {
+    setUiVisible(true);
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    // Only start hiding timer if video is playing
+    if (isPlaying) {
+      inactivityTimerRef.current = setTimeout(() => {
+        setUiVisible(false);
+      }, INACTIVITY_TIMEOUT);
+    }
+  }, [isPlaying]);
+
+  // Handle user interaction to show UI
+  const handleUserInteraction = useCallback(() => {
+    resetInactivityTimer();
+  }, [resetInactivityTimer]);
+
+  // Start/stop inactivity timer based on play state
+  useEffect(() => {
+    if (isPlaying) {
+      // Start inactivity timer when video starts playing
+      inactivityTimerRef.current = setTimeout(() => {
+        setUiVisible(false);
+      }, INACTIVITY_TIMEOUT);
+    } else {
+      // Show UI and clear timer when video is paused
+      setUiVisible(true);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [isPlaying]);
+
+  // Request fullscreen on mobile (tap video area)
+  const requestFullscreen = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Use the video element's webkitEnterFullscreen for iOS Safari
+    // or standard requestFullscreen for other browsers
+    if ('webkitEnterFullscreen' in video && typeof (video as unknown as { webkitEnterFullscreen: () => void }).webkitEnterFullscreen === 'function') {
+      (video as unknown as { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
+    } else if (video.requestFullscreen) {
+      video.requestFullscreen();
+    } else if ('webkitRequestFullscreen' in video && typeof (video as unknown as { webkitRequestFullscreen: () => void }).webkitRequestFullscreen === 'function') {
+      (video as unknown as { webkitRequestFullscreen: () => void }).webkitRequestFullscreen();
+    }
+  }, []);
+
+  // Handle tap on video container (mobile fullscreen)
+  const handleVideoContainerClick = useCallback((e: React.MouseEvent) => {
+    // Only handle clicks directly on the video container, not on buttons/controls
+    if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'VIDEO') {
+      // Check if mobile (touch device)
+      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      if (isMobile && isPlaying) {
+        requestFullscreen();
+      } else {
+        // On desktop, show UI on click
+        handleUserInteraction();
+      }
+    }
+  }, [isPlaying, requestFullscreen, handleUserInteraction]);
 
   // Auto-play when stitched video is ready
   // iOS blocks autoplay for videos with audio, so we handle the failure gracefully
@@ -127,9 +204,14 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   }
 
   return (
-    <div className="final-video-panel">
+    <div
+      className="final-video-panel"
+      ref={containerRef}
+      onMouseMove={handleUserInteraction}
+      onTouchStart={handleUserInteraction}
+    >
       {/* Workflow Progress */}
-      <div className="review-wizard-wrap">
+      <div className={`review-wizard-wrap final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`}>
         <WorkflowWizard
           currentStep="export"
           completedSteps={completedSteps}
@@ -138,7 +220,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
       </div>
 
       {/* Video container */}
-      <div className="final-video-container">
+      <div className="final-video-container" onClick={handleVideoContainerClick}>
         {isStitching ? (
           <div className="flex flex-col items-center justify-center h-full text-white">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mb-4" />
@@ -224,7 +306,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
 
         {/* Segment indicator */}
         {videoUrls.length > 1 && localStitchedUrl && !isStitching && (
-          <div className="final-video-indicator">
+          <div className={`final-video-indicator final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`}>
             {videoUrls.map((_, idx) => (
               <div
                 key={idx}
@@ -235,16 +317,8 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
         )}
       </div>
 
-      {/* Music indicator */}
-      {musicSelection && !isStitching && (
-        <MusicIndicator
-          title={musicSelection.title}
-          onRemove={handleRemoveMusic}
-        />
-      )}
-
       {/* Action buttons */}
-      <div className="final-video-actions">
+      <div className={`final-video-actions final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`}>
         <ActionButton
           icon={isPlaying ? 'pause' : 'play'}
           onClick={togglePlayPause}
@@ -278,7 +352,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
       </div>
 
       {/* Close button */}
-      <button className="final-video-close" onClick={onClose}>
+      <button className={`final-video-close final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`} onClick={onClose}>
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -298,55 +372,6 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
 };
 
 // Sub-components for cleaner JSX
-
-interface MusicIndicatorProps {
-  title?: string;
-  onRemove: () => void;
-}
-
-const MusicIndicator: React.FC<MusicIndicatorProps> = ({ title, onRemove }) => (
-  <div
-    style={{
-      position: 'absolute',
-      top: '1rem',
-      left: '1rem',
-      background: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(8px)',
-      borderRadius: '12px',
-      padding: '8px 12px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      color: 'white',
-      fontSize: '13px',
-      zIndex: 10
-    }}
-  >
-    <span>🎵</span>
-    <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-      {title}
-    </span>
-    <button
-      onClick={onRemove}
-      style={{
-        background: 'rgba(255, 255, 255, 0.2)',
-        border: 'none',
-        borderRadius: '50%',
-        width: '20px',
-        height: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'white',
-        cursor: 'pointer',
-        fontSize: '12px'
-      }}
-      title="Remove music"
-    >
-      ×
-    </button>
-  </div>
-);
 
 interface ActionButtonProps {
   icon: 'play' | 'pause' | 'music' | 'download' | 'share' | 'back';

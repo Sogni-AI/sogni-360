@@ -103,6 +103,40 @@ export function isDemoDownloaded(demoId: string): boolean {
 }
 
 /**
+ * LocalStorage key for tracking demo coachmark visibility
+ */
+const DEMO_COACHMARK_KEY = 'sogni360-demo-coachmark-shown';
+
+/**
+ * Check if the demo coachmark has been shown to the user
+ */
+export function hasDemoCoachmarkBeenShown(): boolean {
+  try {
+    return localStorage.getItem(DEMO_COACHMARK_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mark the demo coachmark as shown
+ */
+export function markDemoCoachmarkAsShown(): void {
+  try {
+    localStorage.setItem(DEMO_COACHMARK_KEY, 'true');
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Check if a project ID is a demo project
+ */
+export function isDemoProject(projectId: string): boolean {
+  return projectId.startsWith('demo-');
+}
+
+/**
  * Format file size for display
  */
 export function formatFileSize(bytes: number): string {

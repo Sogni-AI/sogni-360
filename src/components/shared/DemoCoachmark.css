@@ -1,0 +1,282 @@
+/**
+ * Demo Coachmark Styles
+ *
+ * Follows the "Liquid Glass" design language used throughout the app.
+ * Premium frosted glass effect with subtle gradients and animations.
+ */
+
+.demo-coachmark-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.demo-coachmark-modal {
+  background: linear-gradient(135deg, rgba(30, 30, 40, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  max-width: 420px;
+  width: 100%;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+.demo-coachmark-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.demo-coachmark-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.demo-coachmark-close svg {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.demo-coachmark-content {
+  padding: 32px 24px 24px;
+  text-align: center;
+  position: relative;
+}
+
+.demo-coachmark-mascot {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+}
+
+.demo-coachmark-mascot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.demo-coachmark-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 12px;
+  line-height: 1.3;
+}
+
+.demo-coachmark-message {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.demo-coachmark-message strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+}
+
+/* Steps Preview - Visual representation of workflow */
+.demo-coachmark-steps-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.steps-preview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.steps-preview-item .step-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.steps-preview-item.completed .step-dot {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.steps-preview-item.completed .step-dot svg {
+  width: 12px;
+  height: 12px;
+}
+
+.steps-preview-item.active .step-dot {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 0 12px rgba(102, 126, 234, 0.4);
+}
+
+.steps-preview-item span:last-child {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.steps-preview-connector {
+  width: 16px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1px;
+  margin-bottom: 20px;
+}
+
+/* Tips section */
+.demo-coachmark-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tip-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tip-item svg {
+  width: 18px;
+  height: 18px;
+  color: #667eea;
+  flex-shrink: 0;
+}
+
+.tip-item span {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: left;
+}
+
+/* Action button */
+.demo-coachmark-action {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+}
+
+.demo-coachmark-action:hover {
+  opacity: 0.95;
+}
+
+.demo-coachmark-action:active {
+  transform: scale(0.99);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .demo-coachmark-modal {
+    max-width: 100%;
+    margin: 0 8px;
+    border-radius: 20px;
+  }
+
+  .demo-coachmark-content {
+    padding: 28px 20px 20px;
+  }
+
+  .demo-coachmark-mascot {
+    width: 64px;
+    height: 64px;
+  }
+
+  .demo-coachmark-title {
+    font-size: 18px;
+  }
+
+  .demo-coachmark-message {
+    font-size: 14px;
+  }
+
+  .demo-coachmark-steps-preview {
+    padding: 12px 8px;
+    gap: 2px;
+  }
+
+  .steps-preview-item .step-dot {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+
+  .steps-preview-connector {
+    width: 12px;
+  }
+
+  .demo-coachmark-action {
+    padding: 14px;
+    font-size: 14px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+}

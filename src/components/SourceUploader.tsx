@@ -161,6 +161,13 @@ const SourceUploader: React.FC = () => {
             </div>
           </div>
 
+          {/* OR separator */}
+          <div className="uploader-or-separator">
+            <span className="uploader-or-line" />
+            <span className="uploader-or-text">or</span>
+            <span className="uploader-or-line" />
+          </div>
+
           <button
             className={`uploader-load-projects-btn ${projectCount === 0 ? 'demo-variant' : ''}`}
             onClick={handleOpenProjects}
