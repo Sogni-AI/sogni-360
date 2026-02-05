@@ -17,12 +17,12 @@ const NewProjectConfirmModal: React.FC<NewProjectConfirmModalProps> = ({
         className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-3xl p-7 max-w-md w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-semibold text-white mb-3">Start New Project?</h2>
+        <h2 className="text-xl font-semibold text-white mb-3">Create New Project?</h2>
         <p className="text-gray-300 mb-4">
           Your current project{projectName ? ` "${projectName}"` : ''} is automatically saved and can be accessed from <span className="text-white font-medium">Projects</span> anytime.
         </p>
         <p className="text-gray-400 text-sm mb-6">
-          Ready to start fresh with a new portrait?
+          Ready to start fresh with a new project?
         </p>
 
         <div className="flex gap-3 justify-end">
