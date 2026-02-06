@@ -44,8 +44,8 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   const [highlightDailyBoost, setHighlightDailyBoost] = useState(false);
   const [showDailyBoostCelebration, setShowDailyBoostCelebration] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [isNewSignup, setIsNewSignup] = useState(false); // Track if user just signed up (don't auto-show boost)
   const hasShownLoginBoostRef = useRef(false);
-  const isNewSignupRef = useRef(false); // Track if user just signed up (don't auto-show boost)
   const authButtonTextRef = useRef<string>(getAuthButtonText());
   const authButtonText = authButtonTextRef.current;
   const defaultModalModeRef = useRef<'login' | 'signup'>(getDefaultModalMode());
@@ -70,7 +70,7 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   // Fresh signups need to verify email first, so we wait for onSignupComplete
   useEffect(() => {
     if (hasShownLoginBoostRef.current) return;
-    if (isNewSignupRef.current) return; // Don't auto-show for new signups
+    if (isNewSignup) return; // Don't auto-show for new signups
     if (!isAuthenticated || rewardsLoading || rewards.length === 0) return;
     if (!canClaimDailyBoost) return;
 
@@ -78,7 +78,7 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
     setTimeout(() => {
       setShowDailyBoostCelebration(true);
     }, 800);
-  }, [isAuthenticated, canClaimDailyBoost, rewardsLoading, rewards.length]);
+  }, [isAuthenticated, canClaimDailyBoost, rewardsLoading, rewards.length, isNewSignup]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -108,7 +108,7 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
     const mode = defaultModalModeRef.current;
     // Track if user is starting a signup flow
     if (mode === 'signup') {
-      isNewSignupRef.current = true;
+      setIsNewSignup(true);
     }
     setLoginModalMode(mode);
     setShowLoginModal(true);
@@ -121,13 +121,13 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   const handleCloseLoginModal = () => {
     setShowLoginModal(false);
     // If closing without completing signup, clear the new signup flag
-    isNewSignupRef.current = false;
+    setIsNewSignup(false);
   };
 
   const handleModeChange = (mode: LoginModalMode) => {
     // Track if user switches to signup mode
     if (mode === 'signup') {
-      isNewSignupRef.current = true;
+      setIsNewSignup(true);
     }
     setLoginModalMode(mode);
   };
@@ -135,16 +135,9 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   const handleSignupComplete = () => {
     setShowLoginModal(false);
 
-    // User clicked "I verified my email!" - now we can show daily boost
-    isNewSignupRef.current = false;
-
-    // Show daily boost celebration if they can claim
-    if (canClaimDailyBoost && !hasShownLoginBoostRef.current) {
-      hasShownLoginBoostRef.current = true;
-      setTimeout(() => {
-        setShowDailyBoostCelebration(true);
-      }, 500);
-    }
+    // User clicked "I verified my email!" - clear the new signup flag
+    // This will trigger the useEffect to show daily boost once rewards are loaded
+    setIsNewSignup(false);
 
     if (onSignupComplete) {
       onSignupComplete();
