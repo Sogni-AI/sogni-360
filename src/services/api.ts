@@ -150,6 +150,7 @@ class ApiClient {
     guidance?: number;  // Guidance scale (model-specific: lightx2v 1.0, full 4.0)
     model?: string;
     tokenType?: 'spark' | 'sogni';
+    trimEndFrame?: boolean; // Trim last frame from video (removes duplicate end frame for seamless stitching)
   }): Promise<{ projectId: string; clientAppId: string }> {
     // Convert Uint8Array to base64 if needed
     const imageToBase64 = (data: Uint8Array | string): string => {
@@ -186,6 +187,7 @@ class ApiClient {
         guidance: params.guidance,  // Model-specific guidance scale
         model: params.model || 'wan_v2.2-14b-fp8_i2v_lightx2v',
         tokenType: params.tokenType || 'spark',
+        trimEndFrame: params.trimEndFrame || false,
         clientAppId: this.clientAppId,
       }),
     });

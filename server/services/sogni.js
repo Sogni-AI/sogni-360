@@ -431,6 +431,12 @@ export async function generateVideo(client, params, progressCallback, localProje
     projectOptions.referenceImageEnd = refImgEnd;
   }
 
+  // Add frame trimming parameter (for seamless video stitching)
+  // Applied by the worker after video generation using FFmpeg
+  if (params.trimEndFrame) {
+    projectOptions.trimEndFrame = true;
+  }
+
   // Log full project options for debugging (mask binary data)
   console.log('[VIDEO] Full project options:', JSON.stringify({
     ...projectOptions,

@@ -72,6 +72,7 @@ export interface GenerateTransitionOptions {
   tokenType?: 'spark' | 'sogni';
   sourceWidth?: number;
   sourceHeight?: number;
+  trimEndFrame?: boolean; // Trim last frame from video (removes duplicate end frame for seamless stitching)
   onProgress?: (progress: number, workerName?: string) => void;
   onComplete?: (result: GenerateTransitionResult) => void;
   onError?: (error: Error) => void;
@@ -133,6 +134,7 @@ async function generateWithFrontendSDK(
     tokenType = 'spark',
     sourceWidth = 1024,
     sourceHeight = 1024,
+    trimEndFrame,
     onProgress,
     onComplete,
     onError
@@ -163,7 +165,7 @@ async function generateWithFrontendSDK(
 
   // Create project options matching backend implementation
   // Use shift and guidance values from quality config (model-specific optimal values)
-  const projectOptions = {
+  const projectOptions: Record<string, any> = {
     type: 'video' as const,
     modelId: qualityConfig.model,
     positivePrompt: prompt,
@@ -187,6 +189,12 @@ async function generateWithFrontendSDK(
     referenceImage: fromBlob,
     referenceImageEnd: toBlob
   };
+
+  // Add frame trimming parameter (for seamless video stitching)
+  // Applied by the worker after video generation using FFmpeg
+  if (trimEndFrame) {
+    projectOptions.trimEndFrame = true;
+  }
 
   // Log full project options for debugging (mask binary data)
   console.log('[TransitionGenerator-SDK] Full project options:', JSON.stringify({
@@ -310,6 +318,7 @@ async function generateWithBackendAPI(
     tokenType = 'spark',
     sourceWidth = 1024,
     sourceHeight = 1024,
+    trimEndFrame,
     onProgress,
     onComplete,
     onError
@@ -342,7 +351,8 @@ async function generateWithBackendAPI(
     shift: qualityConfig.shift,
     guidance: qualityConfig.guidance,
     model: qualityConfig.model,
-    tokenType
+    tokenType,
+    trimEndFrame
   });
 
   console.log(`[TransitionGenerator-API] Started project ${projectId} for segment ${segment.id}`);
@@ -536,6 +546,8 @@ export async function generateMultipleTransitions(
           tokenType,
           sourceWidth,
           sourceHeight,
+          // Trim last frame for seamless stitching with next segment
+          trimEndFrame: true,
           onProgress: (progress, workerName) => {
             onSegmentProgress?.(segment.id, progress, workerName);
           },

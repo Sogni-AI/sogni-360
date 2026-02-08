@@ -309,7 +309,8 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
       shift,              // Motion intensity (model-specific: lightx2v 5.0, full 8.0)
       guidance,           // Guidance scale (model-specific: lightx2v 1.0, full 4.0)
       model = 'wan_v2.2-14b-fp8_i2v_lightx2v',
-      tokenType = 'spark'
+      tokenType = 'spark',
+      trimEndFrame = false
     } = req.body;
 
     if (!referenceImage || !referenceImageEnd) {
@@ -381,6 +382,7 @@ router.post('/generate-transition', ensureSessionId, async (req, res) => {
       sampler: 'euler',
       scheduler: 'simple',
       tokenType,
+      trimEndFrame,
       clientAppId
     };
 
