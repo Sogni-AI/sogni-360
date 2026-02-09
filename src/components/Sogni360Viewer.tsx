@@ -525,14 +525,11 @@ const Sogni360Viewer: React.FC = () => {
 
         return (
           <div
-            className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex items-center"
+            className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex items-center glass-indicator-pill"
             style={{
               maxWidth: `${maxWidth}px`,
               gap: `${gap}px`,
               padding: `6px ${Math.max(8, gap * 2)}px`,
-              background: 'rgba(0, 0, 0, 0.5)',
-              borderRadius: '9999px',
-              backdropFilter: 'blur(8px)',
             }}
             onTouchStart={stopTouchPropagation}
             onTouchEnd={stopTouchPropagation}

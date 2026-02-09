@@ -155,6 +155,9 @@ export interface Sogni360State {
   showProjectManager: boolean;
   showLoginPrompt: boolean;
 
+  // Visual Effects
+  liquidGlassEnabled: boolean;
+
   // Auth
   isAuthenticated: boolean;
   authMode: 'frontend' | 'demo' | null;
@@ -206,6 +209,7 @@ export type Sogni360Action =
   | { type: 'SET_PROJECT_NAME'; payload: string }
   | { type: 'SET_SHOW_LOGIN_PROMPT'; payload: boolean }
   | { type: 'SET_HAS_USED_FREE_GENERATION'; payload: boolean }
+  | { type: 'SET_LIQUID_GLASS_ENABLED'; payload: boolean }
   | { type: 'RESET_STATE' };
 
 // Generation event types

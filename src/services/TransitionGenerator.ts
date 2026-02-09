@@ -204,7 +204,8 @@ async function generateWithFrontendSDK(
   }, null, 2));
 
   // Create project
-  const project = await client.projects.create(projectOptions);
+  // Cast to any to work around strict SDK typing - options are validated server-side
+  const project = await client.projects.create(projectOptions as any);
   console.log(`[TransitionGenerator-SDK] Project created: ${project.id}`);
 
   return new Promise((resolve) => {

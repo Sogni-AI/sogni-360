@@ -3,6 +3,7 @@ import { listProjects, deleteProject, renameProject, saveProject } from '../util
 import { exportProject, generateExportFilename, downloadZipBlob, ExportOptions } from '../utils/projectExport';
 import { importProject, ImportError } from '../utils/projectImport';
 import { DemoProjectsSection } from './demo-project-card';
+import LiquidGlassPanel from './shared/LiquidGlassPanel';
 import type { LocalProject, Sogni360Project } from '../types';
 
 interface ProjectManagerModalProperties {
@@ -243,7 +244,13 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
 
   return (
     <div className="project-manager-overlay" onClick={onClose}>
-      <div className="project-manager-modal" onClick={event => event.stopPropagation()}>
+      <LiquidGlassPanel
+        cornerRadius={24}
+        modalTint
+        className="project-manager-modal"
+        style={{ padding: 0 }}
+      >
+        <div onClick={event => event.stopPropagation()}>
         <div className="project-manager-header">
           <div className="project-manager-title-group">
             <h2 className="project-manager-title">My Projects</h2>
@@ -472,7 +479,8 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </LiquidGlassPanel>
     </div>
   );
 };

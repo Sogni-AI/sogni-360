@@ -16,6 +16,8 @@ import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 // Key for persisting free generation usage in localStorage
 const FREE_GENERATION_KEY = 'sogni360_has_used_free_generation';
+// Key for persisting liquid glass setting
+const LIQUID_GLASS_KEY = 'sogni360_liquid_glass_enabled';
 
 /**
  * Strip ephemeral fields from project for save comparison.
@@ -59,6 +61,26 @@ const setHasUsedFreeGenerationStorage = (value: boolean): void => {
   }
 };
 
+// Check if liquid glass is enabled (from localStorage, defaults to true)
+const getLiquidGlassEnabled = (): boolean => {
+  try {
+    const stored = localStorage.getItem(LIQUID_GLASS_KEY);
+    // Default to true if not set
+    return stored === null ? true : stored === 'true';
+  } catch {
+    return true;
+  }
+};
+
+// Persist liquid glass setting to localStorage
+const setLiquidGlassEnabledStorage = (value: boolean): void => {
+  try {
+    localStorage.setItem(LIQUID_GLASS_KEY, value ? 'true' : 'false');
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 // Initial state
 const initialState: Sogni360State = {
   currentProject: null,
@@ -77,6 +99,7 @@ const initialState: Sogni360State = {
   showFinalVideoPreview: false,
   showProjectManager: false,
   showLoginPrompt: false,
+  liquidGlassEnabled: getLiquidGlassEnabled(),
   isAuthenticated: false,
   authMode: null,
   walletBalance: null,
@@ -435,6 +458,16 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
       // Also persist to localStorage
       setHasUsedFreeGenerationStorage(action.payload);
       return { ...state, hasUsedFreeGeneration: action.payload };
+
+    case 'SET_LIQUID_GLASS_ENABLED':
+      // Persist to localStorage and toggle body class
+      setLiquidGlassEnabledStorage(action.payload);
+      if (action.payload) {
+        document.body.classList.remove('no-liquid-glass');
+      } else {
+        document.body.classList.add('no-liquid-glass');
+      }
+      return { ...state, liquidGlassEnabled: action.payload };
 
     case 'SET_FINAL_LOOP_URL':
       if (!state.currentProject) return state;

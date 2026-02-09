@@ -11,6 +11,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useAdvancedSettings } from '../../hooks/useAdvancedSettings';
+import { useApp } from '../../context/AppContext';
 import { PHOTO_QUALITY_PRESETS, type PhotoQualityTier } from '../../constants/cameraAngleSettings';
 import { VIDEO_QUALITY_PRESETS, type VideoQualityPreset } from '../../constants/videoSettings';
 import type { ImageModelId, OutputFormat } from '../../types';
@@ -39,6 +40,7 @@ export default function AdvancedSettingsPopup({
     modelConfigs,
     defaultVideoNegativePrompt
   } = useAdvancedSettings();
+  const { state, dispatch } = useApp();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const currentModelConfig = getCurrentModelConfig();
@@ -141,6 +143,31 @@ export default function AdvancedSettingsPopup({
             </div>
             <p className="quality-tier-description">
               {VIDEO_QUALITY_PRESETS[settings.videoQuality].description}
+            </p>
+          </div>
+
+          {/* Visual Effects Section */}
+          <div className="settings-section">
+            <label className="settings-label">Visual Effects</label>
+            <p className="settings-description">
+              Enable or disable premium visual effects
+            </p>
+            <label className="settings-toggle-row">
+              <span className="settings-toggle-label">Liquid Glass Effects</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={state.liquidGlassEnabled}
+                className={`settings-toggle-switch ${state.liquidGlassEnabled ? 'active' : ''}`}
+                onClick={() => dispatch({ type: 'SET_LIQUID_GLASS_ENABLED', payload: !state.liquidGlassEnabled })}
+              >
+                <span className="settings-toggle-knob" />
+              </button>
+            </label>
+            <p className="settings-toggle-hint">
+              {state.liquidGlassEnabled
+                ? 'Dynamic glass refraction effects enabled'
+                : 'Using static frosted glass (better performance)'}
             </p>
           </div>
 

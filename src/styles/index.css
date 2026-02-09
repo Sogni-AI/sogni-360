@@ -23,6 +23,136 @@ html, body {
   height: 100%;
 }
 
+/* ========================================
+   LIQUID GLASS EFFECTS (liquid-glass-react)
+   Premium frosted glass with dynamic refraction
+   ======================================== */
+
+/* liquid-glass-react: stack Fragment siblings via CSS grid.
+   The library returns ~5 siblings; only GlassContainer (class="relative") sizes correctly.
+   The others use a stale glassSize from mount, causing frame mismatches. */
+.liquid-glass-wrap {
+  display: grid;
+  position: relative;
+  border: none;
+  overflow: hidden;
+}
+
+.liquid-glass-wrap > * {
+  grid-area: 1 / 1;
+}
+
+/* Hide all Fragment siblings except GlassContainer (class="relative").
+   They use stale glassSize from mount, causing size mismatches. */
+.liquid-glass-wrap > :not(.relative) {
+  display: none !important;
+}
+
+.liquid-glass-wrap > .relative {
+  /* Neutralize the library's centering pattern (top:50% + left:50% +
+     transform:translate(-50%,-50%)) — our CSS grid stacking handles
+     positioning, and the imbalance breaks mobile when max-height clips. */
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  transition: none !important;
+  /* Override library's uniform border-radius so asymmetric values propagate */
+  border-radius: inherit !important;
+  /* Ensure grid children respect container's maxHeight constraint */
+  max-height: inherit;
+  overflow: inherit;
+}
+
+/* Subtle variant — no visual chrome, just the library's glass effect.
+   Uses same grid layout as non-subtle since all chrome is already stripped. */
+.liquid-glass-wrap.liquid-glass-subtle {
+  /* grid is inherited from .liquid-glass-wrap — sizes to content */
+}
+
+/* Strip ALL of the library's panel chrome (bg, border, shadow, padding)
+   so it doesn't create a visible rectangle or add extra space.
+   The glass__warp inside still provides backdrop-filter + SVG displacement. */
+.liquid-glass-wrap .glass {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: inherit !important;
+}
+
+/* Fix library's stale glassSize on .glass__warp — force it to cover the
+   full panel area so its backdrop-filter and SVG filter apply everywhere. */
+.liquid-glass-wrap .glass__warp {
+  width: 100% !important;
+  height: 100% !important;
+  top: 0 !important;
+  left: 0 !important;
+  border-radius: inherit !important;
+}
+
+/* Fix library's stale SVG dimensions — the library sets hardcoded pixel
+   width/height on the SVG filter element at mount time. If content resizes
+   after mount (e.g., deferred text render, viewport change), the SVG stays
+   at the old size, causing partial glass coverage. Force 100% so the SVG
+   displacement filter always covers the full element area. */
+.liquid-glass-wrap > .relative > svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Library forces font: "500 20px/1 system-ui" on the content wrapper — reset. */
+.liquid-glass-wrap .glass > div {
+  font: inherit !important;
+}
+
+/* Strip margins from child elements inside glass wrappers so the grid
+   cell sizes to content only. Margins go on the wrapper via style prop. */
+.liquid-glass-wrap .uploader-load-projects-btn {
+  margin: 0 !important;
+}
+
+/* Modal tint — darker backdrop for readability on modals with dense content.
+   Applied via LiquidGlassPanel modalTint prop. */
+.glass-modal-tint::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 20, 0.55);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-modal-tint > .relative {
+  z-index: 1;
+}
+
+/* Fallback panel when liquid glass is disabled */
+.glass-fallback {
+  position: relative;
+  background: rgba(20, 20, 30, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
+}
+
+/* --- No Liquid Glass overrides (body.no-liquid-glass) --- */
+
+/* Glass indicator pill (segment/waypoint dots) */
+.glass-indicator-pill {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* ======================================== */
+
 /* Fullscreen container */
 .sogni-360-container {
   position: fixed;
@@ -274,23 +404,25 @@ html, body {
 }
 
 .viewer-control-btn {
+  position: relative;
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .viewer-control-btn:hover:not(.disabled) {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
 }
 
@@ -491,27 +623,26 @@ html, body {
   }
 }
 
-/* Upload area wrapper */
-.upload-area-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
 .upload-area {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 1rem;
   padding: 2.5rem 3rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
   overflow: hidden;
   min-width: 280px;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
-/* Animated border gradient */
+/* Animated border gradient — glass edge highlight */
 .upload-area::before {
   content: '';
   position: absolute;
@@ -520,12 +651,13 @@ html, body {
   right: 0;
   bottom: 0;
   border-radius: 1rem;
-  padding: 1px;
+  padding: 1.5px;
   background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.3),
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.3)
+    160deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.15) 25%,
+    rgba(255, 255, 255, 0.04) 60%,
+    rgba(255, 255, 255, 0.2) 100%
   );
   background-size: 200% 200%;
   animation: borderRotate 3s ease infinite;
@@ -541,9 +673,13 @@ html, body {
 }
 
 .upload-area:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(0, 0, 0, 0.7);
   transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 12px 32px rgba(0, 0, 0, 0.12);
 }
 
 .upload-area.dragover {
@@ -739,30 +875,27 @@ html, body {
   letter-spacing: 0.1em;
 }
 
-/* Load projects button - premium style */
+/* Load projects button - glassy style */
 .uploader-load-projects-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.875rem;
   padding: 0.875rem 1.5rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.75rem;
-  color: rgba(255, 255, 255, 0.75);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 0.9375rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  backdrop-filter: blur(8px);
 }
 
 .uploader-load-projects-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
   color: white;
-  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .uploader-load-projects-btn svg {
@@ -774,12 +907,8 @@ html, body {
 /* Demo variant with gradient glow animation */
 .uploader-load-projects-btn.demo-variant {
   position: relative;
-  background: rgba(30, 25, 45, 0.8);
-  border: 1px solid rgba(196, 181, 253, 0.3);
+  /* Background handled by LiquidGlassPanel wrapper */
   overflow: hidden;
-  box-shadow:
-    0 0 20px rgba(168, 85, 247, 0.2),
-    0 0 40px rgba(168, 85, 247, 0.1);
 }
 
 /* Animated gradient shimmer overlay */
@@ -828,12 +957,7 @@ html, body {
 }
 
 .uploader-load-projects-btn.demo-variant:hover {
-  background: rgba(40, 35, 60, 0.9);
-  border-color: rgba(196, 181, 253, 0.5);
-  box-shadow:
-    0 0 30px rgba(168, 85, 247, 0.3),
-    0 0 60px rgba(168, 85, 247, 0.15);
-  transform: translateY(-2px);
+  /* Hover handled by LiquidGlassPanel wrapper */
 }
 
 .uploader-load-projects-btn.demo-variant:hover .demo-icon {
@@ -844,12 +968,8 @@ html, body {
 /* Existing project variant - same colorful effect */
 .uploader-load-projects-btn.existing-variant {
   position: relative;
-  background: rgba(30, 25, 45, 0.8);
-  border: 1px solid rgba(196, 181, 253, 0.3);
+  /* Background handled by LiquidGlassPanel wrapper */
   overflow: hidden;
-  box-shadow:
-    0 0 20px rgba(168, 85, 247, 0.2),
-    0 0 40px rgba(168, 85, 247, 0.1);
 }
 
 /* Animated gradient shimmer overlay for existing project */
@@ -898,12 +1018,11 @@ html, body {
 }
 
 .uploader-load-projects-btn.existing-variant:hover {
-  background: rgba(40, 35, 60, 0.9);
-  border-color: rgba(196, 181, 253, 0.5);
-  box-shadow:
-    0 0 30px rgba(168, 85, 247, 0.3),
-    0 0 60px rgba(168, 85, 247, 0.15);
   transform: translateY(-2px);
+}
+
+.uploader-load-projects-wrapper:hover {
+  filter: brightness(1.1);
 }
 
 .uploader-load-projects-btn.existing-variant:hover .existing-icon {
@@ -1007,26 +1126,39 @@ html, body {
   align-items: center;
 }
 
-/* Badge/tagline at bottom */
+/* Badge/tagline at bottom - flat, transparent, no glass */
 .uploader-badge {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-top: 2.5rem;
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 2rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.4);
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.uploader-badge:hover {
+  color: rgba(255, 255, 255, 0.65);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .uploader-badge svg {
   width: 14px;
   height: 14px;
-  opacity: 0.6;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.uploader-badge:hover svg {
+  opacity: 0.75;
 }
 
 /* Mobile responsive adjustments for uploader */
@@ -3039,8 +3171,8 @@ html, body {
   min-width: 280px;
   max-width: 480px;
   height: 100%;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   overflow: hidden;
   scroll-snap-align: center;
@@ -5880,13 +6012,9 @@ html, body {
   position: relative;
   width: 90%;
   max-width: 640px;
-  background: rgba(17, 24, 39, 0.98);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
+  /* Background/border handled by LiquidGlassPanel wrapper */
   overflow: hidden;
   z-index: 50;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 /* Full width on small mobile screens */
@@ -6418,15 +6546,15 @@ html, body {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(3, 7, 18, 0.98) 100%);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1.5rem;
+  /* Background/border handled by LiquidGlassPanel wrapper */
   overflow: hidden;
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.project-manager-modal > div {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .project-manager-header {
@@ -6577,33 +6705,27 @@ html, body {
   gap: 0.75rem;
 }
 
-/* Project Card - Glass Style */
+/* Project Card */
 .project-card {
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .project-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .project-card.current {
   border-color: rgba(59, 130, 246, 0.5);
   background: rgba(59, 130, 246, 0.1);
-  box-shadow:
-    0 0 0 1px rgba(59, 130, 246, 0.2),
-    0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
 .project-thumbnail {

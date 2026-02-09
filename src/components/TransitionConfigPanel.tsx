@@ -20,6 +20,7 @@ import type { WorkflowStep } from './shared/WorkflowWizard';
 import MusicSelector from './shared/MusicSelector';
 import MusicConfigSection from './shared/MusicConfigSection';
 import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
+import LiquidGlassPanel from './shared/LiquidGlassPanel';
 import { warmUpAudio } from '../utils/sonicLogos';
 import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
 import { useAdvancedSettings } from '../hooks/useAdvancedSettings';
@@ -199,7 +200,11 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   }, [readyWaypoints.length, onConfirmDestructiveAction, executeStartGeneration, showToast, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   return (
-    <div className="transition-config-panel">
+    <LiquidGlassPanel
+      cornerRadius={16}
+      modalTint
+      className="transition-config-panel"
+    >
       {/* Header */}
       <div className="config-header">
         <div className="config-header-left">
@@ -370,7 +375,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
-    </div>
+    </LiquidGlassPanel>
   );
 };
 

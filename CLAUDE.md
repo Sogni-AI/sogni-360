@@ -506,6 +506,65 @@ Key principles:
 }
 ```
 
+### 🔮 Liquid Glass Library (liquid-glass-react)
+
+This app uses the `liquid-glass-react` library for premium Apple-style frosted glass effects with dynamic refraction. **Toggle via settings > Liquid Glass Effects.**
+
+**Key Component:** `src/components/shared/LiquidGlassPanel.tsx`
+
+#### Architecture (From sogni-globe lessons learned)
+
+The library's `LiquidGlass` component renders 5 Fragment siblings. Only the GlassContainer (class `relative`) sizes correctly; the others use a stale `glassSize` from mount. We hide them with CSS and provide our own effects:
+
+| Layer | Element | Purpose |
+|-------|---------|---------|
+| Frosted glass | `.liquid-glass-wrap::before` | `backdrop-filter: blur + saturate + brightness` — always 100% coverage |
+| SVG refraction | `.glass__warp` (library) | SVG displacement filter + chromatic aberration — partial coverage OK |
+| Content | `.glass > div` | Children rendered at z-index 1 |
+| Specular border | `.liquid-glass-wrap::after` | Top-lit gradient highlight via mask-composite trick |
+
+#### CSS Classes
+
+- `.liquid-glass-wrap` — Main glass panel (auto via `LiquidGlassPanel`)
+- `.liquid-glass-subtle` — Invisible wrapper for small elements (buttons, badges)
+- `.glass-fallback` — Non-glass fallback when disabled
+- `.glass-inner` — Sub-panels (tab bars, filters)
+- `.glass-button` — Buttons with specular edge `::after`
+- `.glass-indicator-pill` — Small indicator dots with glass styling
+- `.no-liquid-glass` — Body class that tones down effects when disabled
+
+#### Critical Gotchas
+
+1. **Child elements keep ORIGINAL production CSS** — background, border, padding, sizing all unchanged. The library overlays its glass effect on top via `.glass__warp`.
+
+2. **Strip ALL library chrome from `.glass`** — The library sets `padding: 24px 32px`, `gap: 24px`, `background`, `border`, `box-shadow` on `.glass`. ALL must be overridden to `0`/`transparent`/`none` with `!important`. Missing even one (like padding) causes size mismatch.
+
+3. **`overflow: hidden` on wrapper** — The library's SVG displacement filter pushes pixels outside element bounds. Without `overflow: hidden`, refraction bleeds visibly beyond the element.
+
+4. **Move margins to wrapper, not child** — Grid includes child margins in cell sizing, making `.glass__warp` cover the margin area. Move `margin-top` etc. to `<LiquidGlassPanel style={{ marginTop: '...' }}>` and set `margin: 0 !important` on child inside wrapper.
+
+5. **Do NOT use `display: contents`** — Causes `.relative` to expand to viewport size (1440x900). Keep the default `display: grid` which auto-sizes to content.
+
+6. **Always verify sizes match** — After changes, measure `wrap`, `.glass`, and content element. ALL THREE must have identical width×height. If not, something is leaking size.
+
+7. **Do NOT add manual glass CSS** — No manual `backdrop-filter`, `box-shadow` insets, or `::before`/`::after` pseudo-elements to simulate glass. The library handles all glass visuals via `.glass__warp`.
+
+#### Usage Patterns
+
+**Wrapping any element:**
+```tsx
+// Margin goes on wrapper, not child
+<LiquidGlassPanel cornerRadius={16} subtle style={{ marginTop: '1rem' }}>
+  <div className="my-panel">  {/* keeps original CSS, margin: 0 */}
+    {children}
+  </div>
+</LiquidGlassPanel>
+```
+
+**Settings toggle location:** `src/components/shared/AdvancedSettingsPopup.tsx`
+
+**State:** `liquidGlassEnabled` in AppContext, persisted to localStorage
+
 ### Typography
 - **Minimum body text**: 12px (0.75rem)
 - **Button/label text**: 14px (0.875rem) minimum

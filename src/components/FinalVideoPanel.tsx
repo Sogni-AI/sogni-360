@@ -331,7 +331,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
 
           return (
             <div
-              className={`final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`}
+              className={`final-video-ui-element glass-indicator-pill ${uiVisible ? 'visible' : 'hidden'}`}
               style={{
                 position: 'absolute',
                 bottom: '1rem',
@@ -341,9 +341,6 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
                 alignItems: 'center',
                 gap: `${gap}px`,
                 padding: `6px ${Math.max(8, gap * 2)}px`,
-                background: 'rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: '9999px',
                 maxWidth: `${maxWidth}px`,
               }}
             >

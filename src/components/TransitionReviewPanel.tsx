@@ -11,6 +11,7 @@ import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import TransitionVideoCard from './TransitionVideoCard';
 import TransitionRegenerateModal from './TransitionRegenerateModal';
 import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
+import LiquidGlassPanel from './shared/LiquidGlassPanel';
 import { downloadSingleVideo, downloadVideosAsZip, type VideoDownloadItem } from '../utils/bulkDownload';
 
 interface TransitionReviewPanelProps {
@@ -530,10 +531,15 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
       {/* Partial Stitch Confirmation Modal */}
       {showPartialStitchConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5">
-          <div
-            className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-3xl p-7 max-w-md w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
-            onClick={(e) => e.stopPropagation()}
+          <LiquidGlassPanel
+            cornerRadius={24}
+            modalTint
+            className="max-w-md w-full mx-4"
           >
+            <div
+              className="p-7"
+              onClick={(e) => e.stopPropagation()}
+            >
             <h2 className="text-xl font-semibold text-white mb-3">Not All Videos Ready</h2>
             <p className="text-gray-300 mb-4">
               Only <span className="text-white font-medium">{readyCount}</span> of <span className="text-white font-medium">{totalSegments}</span> transition videos are ready.
@@ -559,7 +565,8 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
                 Continue
               </button>
             </div>
-          </div>
+            </div>
+          </LiquidGlassPanel>
         </div>
       )}
     </div>
