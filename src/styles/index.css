@@ -94,6 +94,13 @@ html, body {
   border-radius: inherit !important;
 }
 
+/* Brightening variant — adds brightness() so glass lightens the backdrop
+   instead of darkening it. Values match subtle mode: blur(8.8px) saturate(200%). */
+.liquid-glass-wrap.glass-brighten .glass__warp {
+  -webkit-backdrop-filter: blur(8.8px) saturate(200%) brightness(1.2) !important;
+  backdrop-filter: blur(8.8px) saturate(200%) brightness(1.2) !important;
+}
+
 /* Fix library's stale SVG dimensions — the library sets hardcoded pixel
    width/height on the SVG filter element at mount time. If content resizes
    after mount (e.g., deferred text render, viewport change), the SVG stays
@@ -6562,8 +6569,19 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
   flex-shrink: 0;
+  position: relative;
+}
+
+.project-manager-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
 }
 
 .project-manager-title-group {
@@ -6575,8 +6593,11 @@ html, body {
 .project-manager-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: white;
   margin: 0;
+  background: linear-gradient(90deg, #ffffff 0%, #e0e7ff 50%, #ffffff 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .project-manager-subtitle {
@@ -6591,17 +6612,24 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 50%;
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
 }
 
 .project-manager-close:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
   color: white;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .project-manager-close svg {
@@ -6618,7 +6646,7 @@ html, body {
   gap: 1rem;
 }
 
-/* New Project Button - Glass Style */
+/* New Project Button — Liquid Glass */
 .new-project-btn {
   display: flex;
   align-items: center;
@@ -6626,26 +6654,53 @@ html, body {
   gap: 0.5rem;
   width: 100%;
   padding: 0.875rem 1rem;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(37, 99, 235, 0.9) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.7) 0%, rgba(37, 99, 235, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 1rem;
   color: white;
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
   box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.1),
+    0 0 0 0.5px rgba(59, 130, 246, 0.2),
     0 4px 12px rgba(59, 130, 246, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 8px 24px rgba(59, 130, 246, 0.15);
+}
+
+.new-project-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 30%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.08) 70%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  pointer-events: none;
+  border-radius: inherit;
 }
 
 .new-project-btn:hover {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 1) 100%);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.85) 0%, rgba(37, 99, 235, 1) 100%);
+  transform: translateY(-1px);
   box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.1),
+    0 0 0 0.5px rgba(59, 130, 246, 0.3),
     0 6px 20px rgba(59, 130, 246, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 12px 32px rgba(59, 130, 246, 0.2);
 }
 
 .new-project-btn svg {
@@ -6678,8 +6733,16 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  padding: 1rem;
+  padding: 2rem 1.5rem;
   text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .project-manager-empty .empty-icon {
@@ -6705,27 +6768,46 @@ html, body {
   gap: 0.75rem;
 }
 
-/* Project Card */
+/* Project Card — Liquid Glass */
 .project-card {
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.03),
+    0 0 0 0.5px rgba(255, 255, 255, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .project-card:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.05),
+    0 0 0 0.5px rgba(255, 255, 255, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .project-card.current {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.06);
+  box-shadow:
+    inset 0 1px 0 0 rgba(59, 130, 246, 0.2),
+    inset 0 -1px 0 0 rgba(59, 130, 246, 0.04),
+    0 0 0 0.5px rgba(59, 130, 246, 0.15),
+    0 4px 16px rgba(59, 130, 246, 0.1);
 }
 
 .project-thumbnail {
@@ -6733,9 +6815,13 @@ html, body {
   width: 72px;
   height: 72px;
   flex-shrink: 0;
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .project-thumbnail img {
@@ -6760,13 +6846,16 @@ html, body {
   left: 0;
   right: 0;
   padding: 0.125rem 0;
-  background: rgba(59, 130, 246, 0.9);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.85) 0%, rgba(37, 99, 235, 0.9) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-align: center;
   color: white;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
 }
 
 .project-info {
@@ -6812,19 +6901,25 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.5rem;
   color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .project-delete:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
   color: #f87171;
+  box-shadow:
+    inset 0 1px 0 0 rgba(239, 68, 68, 0.15),
+    0 2px 8px rgba(239, 68, 68, 0.15);
 }
 
 .project-delete:disabled {
@@ -6850,19 +6945,25 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.5rem;
   color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .project-edit:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
   color: #60a5fa;
+  box-shadow:
+    inset 0 1px 0 0 rgba(59, 130, 246, 0.15),
+    0 2px 8px rgba(59, 130, 246, 0.15);
 }
 
 .project-edit:disabled {
@@ -6875,25 +6976,31 @@ html, body {
   height: 16px;
 }
 
-/* Project Export Button */
+/* Project Export Button — Glass */
 .project-export {
   width: 36px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.5rem;
   color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .project-export:hover:not(:disabled) {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.25);
   color: #4ade80;
+  box-shadow:
+    inset 0 1px 0 0 rgba(34, 197, 94, 0.15),
+    0 2px 8px rgba(34, 197, 94, 0.15);
 }
 
 .project-export:disabled {
@@ -6913,7 +7020,7 @@ html, body {
   gap: 0.5rem;
 }
 
-/* Project Import Button in Header */
+/* Project Import Button in Header — Glass */
 .project-import-btn {
   width: 36px;
   height: 36px;
@@ -6926,12 +7033,18 @@ html, body {
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
 }
 
 .project-import-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
   color: #60a5fa;
+  box-shadow:
+    inset 0 1px 0 0 rgba(59, 130, 246, 0.15),
+    0 2px 8px rgba(59, 130, 246, 0.15);
 }
 
 .project-import-btn:disabled {
@@ -6944,32 +7057,42 @@ html, body {
   height: 18px;
 }
 
-/* Project Manager Progress */
+/* Project Manager Progress — Glass */
 .project-manager-progress {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 0.5rem;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 0.75rem;
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(59, 130, 246, 0.12),
+    0 2px 8px rgba(59, 130, 246, 0.08);
 }
 
-/* Project Manager Error */
+/* Project Manager Error — Glass */
 .project-manager-error {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 0.5rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 0.75rem;
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(239, 68, 68, 0.12),
+    0 2px 8px rgba(239, 68, 68, 0.08);
 }
 
 .project-manager-error svg {
@@ -6984,27 +7107,30 @@ html, body {
 }
 
 .project-manager-error button {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.375rem;
   color: rgba(255, 255, 255, 0.6);
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .project-manager-error button:hover {
   background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
   color: white;
 }
 
-/* Export Dialog */
+/* Export Dialog — Liquid Glass */
 .export-dialog-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7013,12 +7139,19 @@ html, body {
 }
 
 .export-dialog {
-  background: linear-gradient(135deg, rgba(30, 30, 40, 0.98) 0%, rgba(20, 20, 30, 0.99) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(30, 30, 40, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.25rem;
   width: 90%;
   max-width: 420px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.02),
+    0 0 0 0.5px rgba(255, 255, 255, 0.06),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .export-dialog-header {
@@ -7026,7 +7159,18 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  position: relative;
+}
+
+.export-dialog-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
 }
 
 .export-dialog-header h3 {
@@ -7037,19 +7181,25 @@ html, body {
 }
 
 .export-dialog-close {
-  background: transparent;
-  border: none;
-  padding: 0.375rem;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  padding: 0;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.5);
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .export-dialog-close:hover {
   color: white;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .export-dialog-close svg {
@@ -7075,14 +7225,20 @@ html, body {
   cursor: pointer;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem;
   transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .export-dialog-checkbox:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .export-dialog-checkbox input[type="checkbox"] {
@@ -7129,14 +7285,25 @@ html, body {
   display: flex;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: none;
   justify-content: flex-end;
+  position: relative;
+}
+
+.export-dialog-actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 .export-dialog-cancel {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
   padding: 0.625rem 1.25rem;
   font-size: 0.9375rem;
   font-weight: 500;
@@ -7144,12 +7311,18 @@ html, body {
   cursor: pointer;
   transition: all 0.2s ease;
   min-height: 44px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .export-dialog-cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
   color: white;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .export-dialog-confirm {
@@ -7157,21 +7330,29 @@ html, body {
   align-items: center;
   gap: 0.5rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
   padding: 0.625rem 1.25rem;
   font-size: 0.9375rem;
   font-weight: 500;
   color: white;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   min-height: 44px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(102, 126, 234, 0.3),
+    0 8px 24px rgba(102, 126, 234, 0.15);
 }
 
 .export-dialog-confirm:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.1),
+    0 6px 16px rgba(102, 126, 234, 0.4),
+    0 12px 32px rgba(102, 126, 234, 0.2);
 }
 
 .export-dialog-confirm svg {
@@ -7186,7 +7367,18 @@ html, body {
 .demo-projects-section {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  position: relative;
+}
+
+.demo-projects-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(147, 51, 234, 0.3), rgba(59, 130, 246, 0.3), transparent);
 }
 
 .demo-section-header {
@@ -7199,9 +7391,12 @@ html, body {
 .demo-section-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: linear-gradient(90deg, rgba(196, 181, 253, 0.9), rgba(165, 180, 252, 0.9));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .demo-section-subtitle {
@@ -7215,15 +7410,26 @@ html, body {
   gap: 0.75rem;
 }
 
-/* Demo Card Styling */
+/* Demo Card — Liquid Glass */
 .project-card.demo-card {
-  border-color: rgba(147, 51, 234, 0.2);
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-color: rgba(147, 51, 234, 0.15);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.04) 0%, rgba(59, 130, 246, 0.04) 100%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(147, 51, 234, 0.12),
+    inset 0 -1px 0 0 rgba(59, 130, 246, 0.03),
+    0 0 0 0.5px rgba(147, 51, 234, 0.08),
+    0 2px 8px rgba(147, 51, 234, 0.08);
 }
 
 .project-card.demo-card:hover {
-  border-color: rgba(147, 51, 234, 0.35);
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-color: rgba(147, 51, 234, 0.3);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(147, 51, 234, 0.18),
+    inset 0 -1px 0 0 rgba(59, 130, 246, 0.05),
+    0 0 0 0.5px rgba(147, 51, 234, 0.12),
+    0 4px 16px rgba(147, 51, 234, 0.12),
+    0 8px 24px rgba(147, 51, 234, 0.06);
 }
 
 .project-card.demo-card.loading {
@@ -7231,20 +7437,23 @@ html, body {
   pointer-events: none;
 }
 
-/* Demo Badge */
+/* Demo Badge — Glass */
 .demo-badge {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   padding: 0.125rem 0;
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.85) 0%, rgba(59, 130, 246, 0.85) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-align: center;
   color: white;
+  box-shadow: inset 0 -1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
 /* Demo Size Tag */
@@ -7253,30 +7462,38 @@ html, body {
   font-weight: 500;
 }
 
-/* Demo Progress */
+/* Demo Progress — Glass */
 .demo-progress {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.375rem;
   padding: 0.375rem 0.625rem;
-  background: rgba(147, 51, 234, 0.15);
-  border-radius: 0.375rem;
+  background: rgba(147, 51, 234, 0.1);
+  border: 1px solid rgba(147, 51, 234, 0.12);
+  border-radius: 0.5rem;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(147, 51, 234, 0.1);
 }
 
-/* Demo Error */
+/* Demo Error — Glass */
 .demo-error {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.375rem;
   padding: 0.375rem 0.625rem;
-  background: rgba(239, 68, 68, 0.15);
-  border-radius: 0.375rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.12);
+  border-radius: 0.5rem;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(239, 68, 68, 0.1);
 }
 
 .demo-error span {
@@ -7284,40 +7501,50 @@ html, body {
 }
 
 .demo-error button {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.375rem;
   color: rgba(255, 255, 255, 0.6);
   padding: 0.125rem 0.5rem;
   font-size: 0.6875rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .demo-error button:hover {
   background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
   color: white;
 }
 
-/* Demo Open Button */
+/* Demo Open Button — Glass */
 .demo-open-btn {
   width: 36px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
-  border: 1px solid rgba(147, 51, 234, 0.3);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+  border: 1px solid rgba(147, 51, 234, 0.2);
   border-radius: 0.5rem;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(147, 51, 234, 0.1),
+    0 2px 6px rgba(147, 51, 234, 0.08);
 }
 
 .demo-open-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
-  border-color: rgba(147, 51, 234, 0.5);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border-color: rgba(147, 51, 234, 0.4);
   color: white;
+  box-shadow:
+    inset 0 1px 0 0 rgba(147, 51, 234, 0.15),
+    0 4px 12px rgba(147, 51, 234, 0.15);
 }
 
 .demo-open-btn:disabled {
@@ -7336,16 +7563,22 @@ html, body {
   font-size: 0.9375rem;
   font-weight: 500;
   color: white;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 0.5rem;
   outline: none;
   font-family: inherit;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 0 rgba(59, 130, 246, 0.1);
 }
 
 .project-name-input:focus {
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow:
+    inset 0 1px 0 0 rgba(59, 130, 246, 0.15),
+    0 0 0 2px rgba(59, 130, 246, 0.15),
+    0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
 .spinner-small {

@@ -109,7 +109,7 @@ const SourceUploader: React.FC = () => {
             <p className="uploader-subtitle">Create immersive 360° orbital videos</p>
           </div>
 
-          <LiquidGlassPanel cornerRadius={16} subtle>
+          <LiquidGlassPanel cornerRadius={16} subtle className="glass-brighten">
             <div
               className={`upload-area ${isDragOver ? 'dragover' : ''}`}
               onClick={handleClick}
@@ -169,7 +169,7 @@ const SourceUploader: React.FC = () => {
             <span className="uploader-or-line" />
           </div>
 
-          <LiquidGlassPanel cornerRadius={24} subtle style={{ marginTop: '0.875rem' }}>
+          <LiquidGlassPanel cornerRadius={24} subtle className="glass-brighten" style={{ marginTop: '0.875rem' }}>
             <button
               className={`uploader-load-projects-btn ${projectCount === 0 ? 'demo-variant' : 'existing-variant'}`}
               onClick={handleOpenProjects}
