@@ -33,7 +33,7 @@ export interface DemoProjectManifest {
  * R2 bucket base URL for demo projects
  * Uses Cloudflare R2 with public access for fast global CDN delivery
  */
-const DEMO_BASE_URL = 'https://pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev/sogni-360-demos';
+const DEMO_BASE_URL = 'https://cdn.sogni.ai/sogni-360-demos';
 
 /**
  * Available demo projects

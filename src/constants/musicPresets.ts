@@ -5,7 +5,7 @@
 
 // Base URL for Sogni assets
 const ASSET_BASE_URL = 'https://cdn.sogni.ai';
-const S2V_ASSET_BASE_URL = 'https://pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev';
+const S2V_ASSET_BASE_URL = 'https://cdn.sogni.ai';
 
 export interface MusicTrack {
   id: string;

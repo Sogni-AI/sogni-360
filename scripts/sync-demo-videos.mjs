@@ -24,7 +24,7 @@ import { basename, join, resolve } from 'path';
 const CONFIG = {
   demoDir: './demo',
   r2Bucket: 'sogni-r2:safetensor-sogni-ai/sogni-360/demo-videos/',
-  r2BaseUrl: 'https://pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev/sogni-360/demo-videos/',
+  r2BaseUrl: 'https://cdn.sogni.ai/sogni-360/demo-videos/',
   outputFile: './src/constants/demoVideos.ts',
   supportedExtensions: ['.mp4', '.webm', '.mov']
 };

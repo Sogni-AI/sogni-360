@@ -597,7 +597,8 @@ router.get('/proxy-image', async (req, res) => {
     's3.amazonaws.com',
     's3-accelerate.amazonaws.com',
     // Cloudflare R2 public bucket for demo projects
-    'pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev'
+    'pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev',
+    'cdn.sogni.ai'
   ];
 
   try {

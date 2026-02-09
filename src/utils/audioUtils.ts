@@ -4,7 +4,8 @@
 
 // Hosts that need to be proxied due to CORS restrictions
 const CORS_PROXY_HOSTS = [
-  'pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev'
+  'pub-5bc58981af9f42659ff8ada57bfea92c.r2.dev',
+  'cdn.sogni.ai'
 ];
 
 /**
