@@ -68,76 +68,76 @@ const DemoProjectCard: React.FC<DemoProjectCardProperties> = ({
 
   return (
     <div
-      className={`project-card demo-card ${isLoading ? 'loading' : ''}`}
-      onClick={handleClick}
-    >
-      <div className="project-thumbnail">
-        {thumbnailError ? (
-          <div className="thumbnail-placeholder">🎬</div>
-        ) : (
-          <img
-            src={demo.thumbnailUrl}
-            alt={demo.name}
-            onError={() => setThumbnailError(true)}
-          />
-        )}
-        <div className="demo-badge">Demo</div>
-      </div>
-      <div className="project-info">
-        <div className="project-name">{demo.name}</div>
-        <div className="project-meta">
-          <span>{demo.description}</span>
+        className={`project-card demo-card ${isLoading ? 'loading' : ''}`}
+        onClick={handleClick}
+      >
+        <div className="project-thumbnail">
+          {thumbnailError ? (
+            <div className="thumbnail-placeholder">🎬</div>
+          ) : (
+            <img
+              src={demo.thumbnailUrl}
+              alt={demo.name}
+              onError={() => setThumbnailError(true)}
+            />
+          )}
+          <div className="demo-badge">Demo</div>
         </div>
-        <div className="project-stats">
-          <span>{demo.waypointCount} angles</span>
-          <span className="meta-separator">•</span>
-          <span>{demo.segmentCount} videos</span>
-          {!isDownloaded && (
-            <>
-              <span className="meta-separator">•</span>
-              <span className="demo-size">{formatFileSize(demo.zipSizeBytes)}</span>
-            </>
+        <div className="project-info">
+          <div className="project-name">{demo.name}</div>
+          <div className="project-meta">
+            <span>{demo.description}</span>
+          </div>
+          <div className="project-stats">
+            <span>{demo.waypointCount} angles</span>
+            <span className="meta-separator">•</span>
+            <span>{demo.segmentCount} videos</span>
+            {!isDownloaded && (
+              <>
+                <span className="meta-separator">•</span>
+                <span className="demo-size">{formatFileSize(demo.zipSizeBytes)}</span>
+              </>
+            )}
+          </div>
+          {isLoading && (
+            <div className="demo-progress">
+              <div className="spinner-small" />
+              <span>{progress}</span>
+            </div>
+          )}
+          {error && (
+            <div className="demo-error">
+              <span>{error}</span>
+              <button onClick={(event_) => { event_.stopPropagation(); clearError(); }}>
+                Retry
+              </button>
+            </div>
           )}
         </div>
-        {isLoading && (
-          <div className="demo-progress">
+        <div className="project-actions">
+          {isLoading ? (
             <div className="spinner-small" />
-            <span>{progress}</span>
-          </div>
-        )}
-        {error && (
-          <div className="demo-error">
-            <span>{error}</span>
-            <button onClick={(event_) => { event_.stopPropagation(); clearError(); }}>
-              Retry
+          ) : (
+            <button
+              className="demo-open-btn"
+              title={isDownloaded ? 'Open demo' : 'Download and open demo'}
+              disabled={disabled}
+            >
+              {isDownloaded ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              )}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-      <div className="project-actions">
-        {isLoading ? (
-          <div className="spinner-small" />
-        ) : (
-          <button
-            className="demo-open-btn"
-            title={isDownloaded ? 'Open demo' : 'Download and open demo'}
-            disabled={disabled}
-          >
-            {isDownloaded ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            )}
-          </button>
-        )}
-      </div>
-    </div>
   );
 };
 

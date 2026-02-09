@@ -18,6 +18,12 @@ interface LiquidGlassPanelProperties {
   modalTint?: boolean;
   /** Use subtle treatment for small elements (buttons, badges) - minimal border/shadow */
   subtle?: boolean;
+  /** Override displacement warp intensity (default: 200 prominent, 80 subtle) */
+  displacementScale?: number;
+  /** Override SVG saturation (default: 320 prominent, 200 subtle) */
+  saturation?: number;
+  /** Override aberration intensity (default: 12 prominent, 2 subtle) */
+  aberrationIntensity?: number;
 }
 
 export function LiquidGlassPanel({
@@ -27,6 +33,9 @@ export function LiquidGlassPanel({
   className = '',
   modalTint = false,
   subtle = false,
+  displacementScale: displacementScaleOverride,
+  saturation: saturationOverride,
+  aberrationIntensity: aberrationOverride,
 }: LiquidGlassPanelProperties) {
   const { state } = useApp();
   const liquidGlassEnabled = state.liquidGlassEnabled;
@@ -63,10 +72,10 @@ export function LiquidGlassPanel({
     >
       <LiquidGlass
         cornerRadius={cornerRadius}
-        displacementScale={subtle ? 80 : 200}
+        displacementScale={displacementScaleOverride ?? (subtle ? 80 : 200)}
         blurAmount={subtle ? 0.15 : 0.6}
-        saturation={subtle ? 200 : 320}
-        aberrationIntensity={subtle ? 2 : 12}
+        saturation={saturationOverride ?? (subtle ? 200 : 320)}
+        aberrationIntensity={aberrationOverride ?? (subtle ? 2 : 12)}
         elasticity={0}
         mode={subtle ? 'standard' : 'prominent'}
         padding={paddingStr}

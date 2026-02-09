@@ -44,11 +44,13 @@ const WorkflowNavigationModal: React.FC<WorkflowNavigationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/15">
       <LiquidGlassPanel
         cornerRadius={16}
-        modalTint
-        className="w-full max-w-md mx-4"
+        className="w-full max-w-md mx-4 glass-modal"
+        displacementScale={60}
+        saturation={160}
+        aberrationIntensity={4}
         style={{ padding: 24 }}
       >
         <h2 className="text-xl font-semibold text-white mb-4">

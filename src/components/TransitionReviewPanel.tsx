@@ -530,11 +530,13 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
       {/* Partial Stitch Confirmation Modal */}
       {showPartialStitchConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/15 p-5">
           <LiquidGlassPanel
             cornerRadius={24}
-            modalTint
-            className="max-w-md w-full mx-4"
+            className="max-w-md w-full mx-4 glass-modal"
+            displacementScale={60}
+            saturation={160}
+            aberrationIntensity={4}
           >
             <div
               className="p-7"

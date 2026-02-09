@@ -246,9 +246,11 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
     <div className="project-manager-overlay" onClick={onClose}>
       <LiquidGlassPanel
         cornerRadius={24}
-        modalTint
-        className="project-manager-modal"
+        className="project-manager-modal glass-modal"
         style={{ padding: 0 }}
+        displacementScale={60}
+        saturation={160}
+        aberrationIntensity={4}
       >
         <div onClick={event => event.stopPropagation()}>
         <div className="project-manager-header">
@@ -331,95 +333,95 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
               ) : (
                 <div className="project-list">
                   {projects.map(project => (
-                <div
-                  key={project.id}
-                  className={`project-card ${project.id === currentProjectId ? 'current' : ''}`}
-                  onClick={() => onLoadProject(project.id)}
-                >
-                  <div className="project-thumbnail">
-                    {project.thumbnailUrl ? (
-                      <img src={project.thumbnailUrl} alt={project.name} />
-                    ) : (
-                      <div className="thumbnail-placeholder">📷</div>
-                    )}
-                    {project.id === currentProjectId && (
-                      <div className="current-badge">Current</div>
-                    )}
-                  </div>
-                  <div className="project-info">
-                    {editingId === project.id ? (
-                      <input
-                        ref={editInputReference}
-                        type="text"
-                        className="project-name-input"
-                        value={editingName}
-                        onChange={event => setEditingName(event.target.value)}
-                        onBlur={saveRename}
-                        onKeyDown={handleEditKeyDown}
-                        onClick={event => event.stopPropagation()}
-                      />
-                    ) : (
-                      <div className="project-name">{project.name}</div>
-                    )}
-                    <div className="project-meta">
-                      <span>{formatDate(project.updatedAt)}</span>
-                      <span className="meta-separator">•</span>
-                      <span>{formatTime(project.updatedAt)}</span>
-                    </div>
-                    <div className="project-stats">
-                      <span>{project.project.waypoints.length} angles</span>
-                      {project.project.segments.length > 0 && (
-                        <>
-                          <span className="meta-separator">•</span>
-                          <span>{project.project.segments.length} videos</span>
-                        </>
+                  <div
+                    key={project.id}
+                    className={`project-card ${project.id === currentProjectId ? 'current' : ''}`}
+                    onClick={() => onLoadProject(project.id)}
+                  >
+                    <div className="project-thumbnail">
+                      {project.thumbnailUrl ? (
+                        <img src={project.thumbnailUrl} alt={project.name} />
+                      ) : (
+                        <div className="thumbnail-placeholder">📷</div>
+                      )}
+                      {project.id === currentProjectId && (
+                        <div className="current-badge">Current</div>
                       )}
                     </div>
-                  </div>
-                  <div className="project-actions">
-                    <button
-                      className="project-export"
-                      onClick={event => handleExportClick(project, event)}
-                      disabled={exportingId === project.id}
-                      title="Export project"
-                    >
-                      {exportingId === project.id ? (
-                        <div className="spinner-small" />
+                    <div className="project-info">
+                      {editingId === project.id ? (
+                        <input
+                          ref={editInputReference}
+                          type="text"
+                          className="project-name-input"
+                          value={editingName}
+                          onChange={event => setEditingName(event.target.value)}
+                          onBlur={saveRename}
+                          onKeyDown={handleEditKeyDown}
+                          onClick={event => event.stopPropagation()}
+                        />
                       ) : (
+                        <div className="project-name">{project.name}</div>
+                      )}
+                      <div className="project-meta">
+                        <span>{formatDate(project.updatedAt)}</span>
+                        <span className="meta-separator">•</span>
+                        <span>{formatTime(project.updatedAt)}</span>
+                      </div>
+                      <div className="project-stats">
+                        <span>{project.project.waypoints.length} angles</span>
+                        {project.project.segments.length > 0 && (
+                          <>
+                            <span className="meta-separator">•</span>
+                            <span>{project.project.segments.length} videos</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="project-actions">
+                      <button
+                        className="project-export"
+                        onClick={event => handleExportClick(project, event)}
+                        disabled={exportingId === project.id}
+                        title="Export project"
+                      >
+                        {exportingId === project.id ? (
+                          <div className="spinner-small" />
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        )}
+                      </button>
+                      <button
+                        className="project-edit"
+                        onClick={event => startEditing(project, event)}
+                        disabled={editingId === project.id}
+                        title="Rename project"
+                      >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                      )}
-                    </button>
-                    <button
-                      className="project-edit"
-                      onClick={event => startEditing(project, event)}
-                      disabled={editingId === project.id}
-                      title="Rename project"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button
-                      className="project-delete"
-                      onClick={event => handleDeleteProject(project.id, event)}
-                      disabled={deletingId === project.id}
-                      title="Delete project"
-                    >
-                      {deletingId === project.id ? (
-                        <div className="spinner-small" />
-                      ) : (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      )}
-                    </button>
+                      </button>
+                      <button
+                        className="project-delete"
+                        onClick={event => handleDeleteProject(project.id, event)}
+                        disabled={deletingId === project.id}
+                        title="Delete project"
+                      >
+                        {deletingId === project.id ? (
+                          <div className="spinner-small" />
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
                   ))}
                 </div>
               )}
