@@ -549,6 +549,8 @@ The library's `LiquidGlass` component renders 5 Fragment siblings. Only the Glas
 
 7. **Do NOT add manual glass CSS** — No manual `backdrop-filter`, `box-shadow` insets, or `::before`/`::after` pseudo-elements to simulate glass. The library handles all glass visuals via `.glass__warp`.
 
+8. **Stale size cache on narrow viewports** — The library measures `getBoundingClientRect()` at mount (useEffect with `[]` deps) and stores the result in React state (`glassSize`). It ONLY re-measures on `window.resize` events. If layout hasn't fully settled when it measures (flex reflow, async content loading, CSS transitions), the cached dimensions are wrong — causing content to clip on narrow viewports like iPhone SE. **Fix:** `LiquidGlassPanel.tsx` dispatches a synthetic `window.resize` event via `requestAnimationFrame` after mount, forcing the library to re-measure once the browser has painted the final layout. If you still see clipping after this, add a second delayed dispatch (e.g., `setTimeout(() => window.dispatchEvent(new Event('resize')), 150)`) to catch async content that loads after initial render.
+
 #### Usage Patterns
 
 **Wrapping any element:**

@@ -260,18 +260,18 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
           </div>
 
           {showUserMenu && (
-            <div
-              className="auth-wallet-container"
-              style={{
-                position: 'absolute',
-                top: 'calc(100% + 4px)',
-                right: '0',
-                zIndex: 1001,
-                padding: '16px',
-                minWidth: '260px'
-              }}
-            >
-              <div className="auth-wallet-content">
+              <div
+                className="auth-wallet-container"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  right: '0',
+                  zIndex: 1001,
+                  padding: '16px',
+                  minWidth: '260px',
+                }}
+              >
+                <div className="auth-wallet-content">
                 {/* Payment Method Toggle */}
                 {authMode !== 'demo' && balances && (
                   <>
@@ -492,8 +492,8 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
                 }}>
                   v{APP_VERSION}
                 </div>
+                </div>
               </div>
-            </div>
           )}
 
           {/* Click outside to close */}

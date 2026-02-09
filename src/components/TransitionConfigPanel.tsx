@@ -202,6 +202,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   return (
     <LiquidGlassPanel
       cornerRadius={16}
+      modalTint
       className="transition-config-panel glass-modal"
       displacementScale={60}
       saturation={160}

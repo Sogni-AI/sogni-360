@@ -12,6 +12,7 @@
 import React, { useCallback, useState } from 'react';
 import { useAdvancedSettings } from '../../hooks/useAdvancedSettings';
 import { useApp } from '../../context/AppContext';
+import { LiquidGlassPanel } from './LiquidGlassPanel';
 import { PHOTO_QUALITY_PRESETS, type PhotoQualityTier } from '../../constants/cameraAngleSettings';
 import { VIDEO_QUALITY_PRESETS, type VideoQualityPreset } from '../../constants/videoSettings';
 import type { ImageModelId, OutputFormat } from '../../types';
@@ -91,6 +92,12 @@ export default function AdvancedSettingsPopup({
 
   return (
     <div className="advanced-settings-overlay" onClick={handleOverlayClick}>
+      <LiquidGlassPanel
+        cornerRadius={24}
+        modalTint
+        className="advanced-settings-glass"
+        style={{ width: '100%', maxWidth: '440px', maxHeight: '90vh' }}
+      >
       <div className="advanced-settings-popup">
         <div className="advanced-settings-header">
           <h2>Advanced Settings</h2>
@@ -339,6 +346,7 @@ export default function AdvancedSettingsPopup({
           </button>
         </div>
       </div>
+      </LiquidGlassPanel>
     </div>
   );
 }

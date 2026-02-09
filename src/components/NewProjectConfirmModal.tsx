@@ -1,4 +1,5 @@
 import React from 'react';
+import { LiquidGlassPanel } from './shared/LiquidGlassPanel';
 
 interface NewProjectConfirmModalProps {
   projectName?: string;
@@ -13,8 +14,13 @@ const NewProjectConfirmModal: React.FC<NewProjectConfirmModalProps> = ({
 }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5">
+      <LiquidGlassPanel
+        cornerRadius={24}
+        modalTint
+        style={{ width: '100%', maxWidth: '28rem', margin: '0 1rem' }}
+      >
       <div
-        className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-3xl p-7 max-w-md w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+        className="bg-gradient-to-br from-[rgba(17,24,39,0.55)] to-[rgba(3,7,18,0.65)] rounded-[inherit] p-7 w-full"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl font-semibold text-white mb-3">Create New Project?</h2>
@@ -40,6 +46,7 @@ const NewProjectConfirmModal: React.FC<NewProjectConfirmModalProps> = ({
           </button>
         </div>
       </div>
+      </LiquidGlassPanel>
     </div>
   );
 };

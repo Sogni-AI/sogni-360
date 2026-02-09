@@ -5,7 +5,7 @@
  * static frosted glass styling when disabled.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import LiquidGlass from 'liquid-glass-react';
 import { useApp } from '../../context/AppContext';
 
@@ -53,6 +53,19 @@ export function LiquidGlassPanel({
     subtle && liquidGlassEnabled ? 'liquid-glass-subtle' : '',
     className,
   ].filter(Boolean).join(' ');
+
+  // The liquid-glass-react library measures element dimensions via
+  // getBoundingClientRect() at mount and only re-measures on window resize.
+  // If layout hasn't fully settled by then (flex reflow, async content),
+  // the cached size is stale — causing content clipping on narrow viewports.
+  // Dispatch a synthetic resize after the next paint to force re-measurement.
+  useEffect(() => {
+    if (!liquidGlassEnabled) return;
+    const frame = requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [liquidGlassEnabled]);
 
   if (!liquidGlassEnabled) {
     return (

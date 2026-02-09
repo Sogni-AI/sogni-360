@@ -22,6 +22,7 @@ import PWAInstallPrompt from './shared/PWAInstallPrompt';
 import OutOfCreditsPopup from './shared/OutOfCreditsPopup';
 import SwitchCurrencyPopup from './shared/SwitchCurrencyPopup';
 import DemoCoachmark from './shared/DemoCoachmark';
+import { LiquidGlassPanel } from './shared/LiquidGlassPanel';
 import { ApiProvider } from '../hooks/useSogniApi';
 import { useWallet } from '../hooks/useWallet';
 import useAutoHideUI from '../hooks/useAutoHideUI';
@@ -778,7 +779,8 @@ const Sogni360Container: React.FC = () => {
       {currentWaypoint && !showWaypointEditor && (
         <div className="camera-angle-indicator-with-nav">
           {/* 3D Control */}
-          <div className="camera-angle-indicator-inner">
+          <LiquidGlassPanel subtle cornerRadius={16}>
+            <div className="camera-angle-indicator-inner">
             <CameraAngle3DControl
               azimuth={currentWaypoint.azimuth}
               elevation={currentWaypoint.elevation}
@@ -845,7 +847,8 @@ const Sogni360Container: React.FC = () => {
                 <span className="autoplay-checkbox-label">Auto-play</span>
               </label>
             )}
-          </div>
+            </div>
+          </LiquidGlassPanel>
         </div>
       )}
 
