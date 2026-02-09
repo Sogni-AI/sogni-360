@@ -40,6 +40,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     isDownloading,
     isStitching,
     stitchProgress,
+    stitchError,
     localStitchedUrl,
     currentSegmentIndex,
     musicSelection,
@@ -47,6 +48,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     setVideoDuration,
     handleMusicConfirm,
     handleRemoveMusic,
+    retryStitch,
     handleTimeUpdate,
     handleDownload,
     handleShare,
@@ -225,6 +227,24 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
           <div className="flex flex-col items-center justify-center h-full text-white">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mb-4" />
             <p className="text-lg">{stitchProgress || 'Stitching videos...'}</p>
+          </div>
+        ) : stitchError ? (
+          <div className="flex flex-col items-center justify-center h-full text-white gap-4 px-6 text-center">
+            <svg className="w-12 h-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <p className="text-lg font-medium">Video stitching failed</p>
+            <p className="text-sm text-white/60 max-w-md">{stitchError}</p>
+            <button
+              onClick={retryStitch}
+              className="mt-2 px-6 py-3 rounded-xl text-white font-medium"
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                minHeight: '44px'
+              }}
+            >
+              Retry Stitching
+            </button>
           </div>
         ) : localStitchedUrl ? (
           <>

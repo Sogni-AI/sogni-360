@@ -4,7 +4,7 @@ import { concatenateVideos } from '../utils/video-concatenation';
 import { loadAudioAsBuffer } from '../utils/audioUtils';
 import { ensureM4AFormat, needsTranscoding } from '../utils/audioTranscoder';
 import { trackDownload, trackShare, trackVideoExport } from '../utils/analytics';
-import { saveStitchedVideo, loadStitchedVideo, getMusicFingerprint } from '../utils/videoCache';
+import { saveStitchedVideo, loadStitchedVideo, deleteStitchedVideo, getMusicFingerprint } from '../utils/videoCache';
 import type { MusicSelection } from '../types';
 
 interface UseFinalVideoActionsProps {
@@ -28,6 +28,7 @@ export function useFinalVideoActions({
   const [isDownloading, setIsDownloading] = useState(false);
   const [isStitching, setIsStitching] = useState(false);
   const [stitchProgress, setStitchProgress] = useState('');
+  const [stitchError, setStitchError] = useState<string | null>(null);
   const [localStitchedUrl, setLocalStitchedUrl] = useState<string | null>(stitchedVideoUrl || null);
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
   const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(initialMusicSelection || null);
@@ -105,8 +106,19 @@ export function useFinalVideoActions({
         audioOptions
       );
 
+      // Validate the stitched blob
+      if (!blob || blob.size === 0) {
+        throw new Error('Stitched video is empty (0 bytes)');
+      }
+      const header = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+      const ftypTag = String.fromCharCode(header[4], header[5], header[6], header[7]);
+      if (ftypTag !== 'ftyp') {
+        throw new Error('Stitched video is not a valid MP4 (missing ftyp header)');
+      }
+
       const url = URL.createObjectURL(blob);
       setLocalStitchedUrl(url);
+      setStitchError(null);
 
       // Cache the stitched video with music fingerprint for validation
       if (projectId) {
@@ -120,7 +132,16 @@ export function useFinalVideoActions({
       onStitchCompleteRef.current?.(url, blob);
     } catch (error) {
       console.error('Stitch error:', error);
+      const message = error instanceof Error ? error.message : 'Failed to stitch videos';
+      setStitchError(message);
       showToast({ message: 'Failed to stitch videos', type: 'error' });
+
+      // Clear corrupted cache so retries start fresh
+      if (projectId) {
+        deleteStitchedVideo(projectId).catch(err => {
+          console.warn('[useFinalVideoActions] Failed to clear corrupted cache:', err);
+        });
+      }
     } finally {
       isStitchingRef.current = false;
       setIsStitching(false);
@@ -207,6 +228,24 @@ export function useFinalVideoActions({
     }
     await stitchVideos(null);
   }, [localStitchedUrl, stitchVideos, onMusicChange]);
+
+  // Retry stitching after a failure
+  const retryStitch = useCallback(async () => {
+    setStitchError(null);
+
+    // Revoke old blob URL if any
+    if (localStitchedUrl && localStitchedUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(localStitchedUrl);
+      setLocalStitchedUrl(null);
+    }
+
+    // Delete corrupted cache entry
+    if (projectId) {
+      await deleteStitchedVideo(projectId).catch(() => {});
+    }
+
+    await stitchVideos(musicSelection);
+  }, [localStitchedUrl, projectId, stitchVideos, musicSelection]);
 
   // Track current segment based on video time
   const handleTimeUpdate = useCallback((currentTime: number, duration: number) => {
@@ -351,6 +390,7 @@ export function useFinalVideoActions({
     isDownloading,
     isStitching,
     stitchProgress,
+    stitchError,
     localStitchedUrl,
     currentSegmentIndex,
     musicSelection,
@@ -358,6 +398,7 @@ export function useFinalVideoActions({
     setVideoDuration,
     handleMusicConfirm,
     handleRemoveMusic,
+    retryStitch,
     handleTimeUpdate,
     handleDownload,
     handleShare,

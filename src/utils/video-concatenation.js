@@ -258,21 +258,25 @@ async function concatenateMP4s_Base(buffers, options = {}) {
     const allVideoSizes = [];
     const allVideoSamples = [];
     const allCttsEntries = []; // Array of {sampleCount, sampleOffset}
-    
+    const perFileVideoSampleCounts = []; // Track actual extracted count per file
+
     for (let fileIdx = 0; fileIdx < parsedFiles.length; fileIdx++) {
       const p = parsedFiles[fileIdx];
       const moovBuf = p.moov.buffer.slice(p.moov.byteOffset, p.moov.byteOffset + p.moov.byteLength);
       const origBuf = new Uint8Array(buffers[fileIdx]);
-      
+
       const vTrak = findVideoTrak(moovBuf);
-      if (!vTrak) continue;
-      
+      if (!vTrak) {
+        perFileVideoSampleCounts.push(0);
+        continue;
+      }
+
       const stbl = findNestedBoxInRange(moovBuf, vTrak.contentStart, vTrak.end, ['mdia', 'minf', 'stbl']);
       const stsz = findBox(moovBuf, stbl.contentStart, stbl.end, 'stsz');
       const stco = findBox(moovBuf, stbl.contentStart, stbl.end, 'stco');
       const stsc = findBox(moovBuf, stbl.contentStart, stbl.end, 'stsc');
       const ctts = findBox(moovBuf, stbl.contentStart, stbl.end, 'ctts');
-      
+
       // Extract ctts entries for this file
       if (ctts) {
         const cttsView = new DataView(moovBuf, ctts.start, ctts.size);
@@ -284,17 +288,17 @@ async function concatenateMP4s_Base(buffers, options = {}) {
           });
         }
       }
-      
+
       const stszView = new DataView(moovBuf, stsz.start, stsz.size);
       const stcoView = new DataView(moovBuf, stco.start, stco.size);
       const sampleCount = stszView.getUint32(16);
       const chunkCount = stcoView.getUint32(12);
-      
+
       const sampleSizes = [];
       for (let i = 0; i < sampleCount; i++) sampleSizes.push(stszView.getUint32(20 + i * 4));
       const chunkOffsets = [];
       for (let i = 0; i < chunkCount; i++) chunkOffsets.push(stcoView.getUint32(16 + i * 4));
-      
+
       const stscEntries = [];
       if (stsc) {
         const stscView = new DataView(moovBuf, stsc.start, stsc.size);
@@ -306,7 +310,8 @@ async function concatenateMP4s_Base(buffers, options = {}) {
           });
         }
       }
-      
+
+      const videoSamplesBefore = allVideoSamples.length;
       let sampleIdx = 0;
       for (let chunkIdx = 0; chunkIdx < chunkCount && sampleIdx < sampleCount; chunkIdx++) {
         let samplesInChunk = 1;
@@ -319,10 +324,17 @@ async function concatenateMP4s_Base(buffers, options = {}) {
           if (byteOffset + sampleSize <= origBuf.length) {
             allVideoSamples.push(origBuf.slice(byteOffset, byteOffset + sampleSize));
             allVideoSizes.push(sampleSize);
+          } else {
+            console.error(`[Strategy CO] Video file ${fileIdx + 1}: dropped sample ${sampleIdx} — offset ${byteOffset} + size ${sampleSize} > buffer length ${origBuf.length}`);
           }
           byteOffset += sampleSize;
           sampleIdx++;
         }
+      }
+      const extractedFromFile = allVideoSamples.length - videoSamplesBefore;
+      perFileVideoSampleCounts.push(extractedFromFile);
+      if (extractedFromFile !== sampleCount) {
+        console.warn(`[Strategy CO] Video file ${fileIdx + 1}: declared ${sampleCount} samples, extracted ${extractedFromFile}`);
       }
     }
     
@@ -430,6 +442,8 @@ async function concatenateMP4s_Base(buffers, options = {}) {
               allAudioSamples.push(origBuf.slice(byteOffset, byteOffset + sampleSize));
               allAudioSizes.push(sampleSize);
               includedCount++;
+            } else {
+              console.error(`[Strategy CO] Audio file ${fileIdx + 1}: dropped sample ${sampleIdx} — offset ${byteOffset} + size ${sampleSize} > buffer length ${origBuf.length}`);
             }
             byteOffset += sampleSize;
             sampleIdx++;
@@ -502,12 +516,16 @@ async function concatenateMP4s_Base(buffers, options = {}) {
     const newVideoStco = buildStco(videoChunkOffsets);
     const newVideoStsc = buildStsc([{ firstChunk: 1, samplesPerChunk: allVideoSizes.length, sampleDescriptionIndex: 1 }]);
     const newVideoStts = buildStts(allVideoSizes.length, file1Tables.sampleDelta);
+    // Build sync sample (keyframe) table using ACTUAL extracted counts, not declared moov counts.
+    // If any samples were dropped during extraction, declared counts would be wrong and
+    // keyframe positions for segments 2+ would be offset, causing the decoder to freeze.
     const videoSyncSamples = [1];
-    let sOff = file1Tables.sampleCount;
+    let sOff = perFileVideoSampleCounts[0];
     for (let i = 1; i < parsedFiles.length; i++) {
       videoSyncSamples.push(sOff + 1);
-      sOff += parseSampleTables(parsedFiles[i].moov, true).sampleCount;
+      sOff += perFileVideoSampleCounts[i];
     }
+    console.log(`[Strategy CO] Sync samples (keyframes): [${videoSyncSamples.join(', ')}], total samples: ${allVideoSizes.length}`);
     const newVideoStss = buildStss(videoSyncSamples);
     const newVideoCtts = buildCttsFromEntriesCO(allCttsEntries);
     
@@ -575,7 +593,22 @@ async function concatenateMP4s_Base(buffers, options = {}) {
       console.log('[Strategy CO] Output is video-only (no source audio)');
     }
     const newMoov = wrapBox('moov', concatArrays(moovParts));
-    
+
+    // Post-build validation
+    if (allVideoSizes.length === 0) {
+      throw new Error('Concatenation produced 0 video samples — all samples were dropped during extraction');
+    }
+
+    // Validate ctts coverage matches actual sample count
+    if (allCttsEntries.length > 0) {
+      const cttsTotalSamples = allCttsEntries.reduce((sum, e) => sum + e.sampleCount, 0);
+      if (cttsTotalSamples !== allVideoSizes.length) {
+        console.warn(`[Strategy CO] ctts covers ${cttsTotalSamples} samples but ${allVideoSizes.length} were extracted — composition times may be inaccurate`);
+      }
+    }
+
+    console.log(`[Strategy CO] Final output: ${allVideoSizes.length} video samples, ${allAudioSizes.length} audio samples, per-file: [${perFileVideoSampleCounts.join(', ')}]`);
+
     return concatArrays([file1.ftyp, newMdat, newMoov]);
   }
 }

@@ -272,9 +272,10 @@ export async function saveProject(project: Sogni360Project): Promise<void> {
     'sourceImageUrl'
   ) || project.sourceImageUrl;
 
-  // Convert final loop URL if remote (not just blob:)
-  const processedFinalLoopUrl = isRemoteUrl(project.finalLoopUrl || '')
-    ? await convertUrlIfRemote(project.finalLoopUrl, 'finalLoopUrl')
+  // Clear finalLoopUrl blob URLs — the stitched video is too large for data URL conversion
+  // and blob URLs may already be GC'd. The stitched video is cached separately in videoCache.ts.
+  const processedFinalLoopUrl = project.finalLoopUrl?.startsWith('blob:')
+    ? undefined
     : project.finalLoopUrl;
 
   // Create a clean copy of the project with processed URLs
