@@ -19,6 +19,7 @@ export interface Waypoint {
   imageUrl?: string;
   status: 'pending' | 'generating' | 'ready' | 'failed';
   progress?: number;
+  workerName?: string; // Worker name for display during generation
   error?: string;
   projectId?: string; // SDK project ID for tracking
   isOriginal?: boolean; // If true, use source image directly (no generation needed)
@@ -210,6 +211,7 @@ export type Sogni360Action =
   | { type: 'SET_SHOW_LOGIN_PROMPT'; payload: boolean }
   | { type: 'SET_HAS_USED_FREE_GENERATION'; payload: boolean }
   | { type: 'SET_LIQUID_GLASS_ENABLED'; payload: boolean }
+  | { type: 'RESET_ADJACENT_SEGMENTS'; payload: string }
   | { type: 'RESET_STATE' };
 
 // Generation event types

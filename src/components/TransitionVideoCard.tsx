@@ -216,10 +216,10 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
             </div>
           </div>
         ) : (
-          /* Not ready - show thumbnails and separate progress row */
+          /* Not ready - show thumbnails with overlay on To image */
           <>
             {/* Thumbnails - stacked for landscape, side by side for portrait */}
-            <div className={`transition-thumbs-row ${thumbAspect > 1 ? 'stacked' : ''}`}>
+            <div className={`transition-thumbs-row ${thumbAspect >= 1 ? 'stacked' : ''}`}>
               <div className="transition-thumb" style={{ aspectRatio: thumbAspect }}>
                 {fromImageUrl && <img src={fromImageUrl} alt="From" loading="lazy" />}
                 <span className="thumb-label">From</span>
@@ -231,28 +231,33 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
               </div>
               <div className="transition-thumb" style={{ aspectRatio: thumbAspect }}>
                 {toImageUrl && <img src={toImageUrl} alt="To" loading="lazy" />}
-                <span className="thumb-label">To</span>
+                {segment.status !== 'generating' && <span className="thumb-label">To</span>}
+
+                {/* Progress overlay on To image */}
+                {segment.status === 'generating' && (
+                  <div className="review-card-overlay">
+                    <div className="review-progress-ring">
+                      <svg viewBox="0 0 100 100">
+                        <circle className="ring-bg" cx="50" cy="50" r="42" />
+                        <circle
+                          className="ring-fill"
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          strokeDasharray={`${(segment.progress || 0) * 2.64} 264`}
+                        />
+                      </svg>
+                      <span className="ring-text">{Math.round(segment.progress || 0)}%</span>
+                    </div>
+                    {segment.workerName && (
+                      <div className="worker-name-label">{segment.workerName}</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Progress/Status Row - separate from thumbnails */}
-            {segment.status === 'generating' && (
-              <div className="transition-progress-row">
-                <div className="progress-ring-inline">
-                  <svg viewBox="0 0 100 100">
-                    <circle className="ring-bg" cx="50" cy="50" r="42" />
-                    <circle
-                      className="ring-fill"
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      strokeDasharray={`${(segment.progress || 0) * 2.64} 264`}
-                    />
-                  </svg>
-                </div>
-                <span className="progress-text">Generating... {Math.round(segment.progress || 0)}%</span>
-              </div>
-            )}
+            {/* Status rows for non-generating states */}
             {segment.status === 'failed' && (
               <div className="transition-status-row failed">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">

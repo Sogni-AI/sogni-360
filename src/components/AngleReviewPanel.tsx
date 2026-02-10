@@ -38,7 +38,6 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   onClose,
   onApply,
   isGenerating,
-  onConfirmDestructiveAction,
   onWorkflowStepClick,
   onRequireAuth,
   onOutOfCredits
@@ -233,10 +232,10 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         currentProject.sourceImageDimensions.height,
         {
           tokenType, // Use wallet's tokenType directly
-          onWaypointProgress: (waypointId, progress) => {
+          onWaypointProgress: (waypointId, progress, workerName) => {
             dispatch({
               type: 'UPDATE_WAYPOINT',
-              payload: { id: waypointId, updates: { progress } }
+              payload: { id: waypointId, updates: { progress, workerName } }
             });
           },
           onWaypointComplete: (waypointId, result) => {
@@ -289,7 +288,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     }
   }, [currentProject, dispatch, showToast, onOutOfCredits]);
 
-  // Handle redo button click - confirms if work would be lost
+  // Handle redo button click - resets only adjacent segments instead of all
   const handleRedo = useCallback((waypoint: Waypoint) => {
     if (waypoint.isOriginal) return;
 
@@ -306,13 +305,13 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
     }
 
-    // Use confirmation callback if provided, otherwise execute directly
-    if (onConfirmDestructiveAction) {
-      onConfirmDestructiveAction('render-angles', () => executeRedo(waypoint));
-    } else {
-      executeRedo(waypoint);
+    // Reset only adjacent segments (preserves unrelated transitions)
+    if (currentProject?.segments.length) {
+      dispatch({ type: 'RESET_ADJACENT_SEGMENTS', payload: waypoint.id });
     }
-  }, [onConfirmDestructiveAction, executeRedo, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
+
+    executeRedo(waypoint);
+  }, [executeRedo, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch, currentProject?.segments.length]);
 
   // Navigate versions
   const handlePrevVersion = useCallback((waypoint: Waypoint) => {
@@ -634,10 +633,10 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         tokenType, // Use wallet's tokenType directly
         prompt,
         steps: enhanceSteps,
-        onProgress: (progress) => {
+        onProgress: (progress, workerName) => {
           dispatch({
             type: 'UPDATE_WAYPOINT',
-            payload: { id: waypoint.id, updates: { enhancementProgress: progress } }
+            payload: { id: waypoint.id, updates: { enhancementProgress: progress, workerName } }
           });
         },
         onComplete: (imageUrl) => {
@@ -941,6 +940,9 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                       </svg>
                       <span className="ring-text">{Math.round(waypoint.progress || 0)}%</span>
                     </div>
+                    {waypoint.workerName && (
+                      <div className="worker-name-label">{waypoint.workerName}</div>
+                    )}
                   </div>
                 )}
 
@@ -951,14 +953,34 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                   </div>
                 )}
 
-                {waypoint.status === 'ready' && (
-                  <>
-                    <div className="review-card-check">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                {waypoint.status === 'ready' && !(waypoint.enhancing || enhancingId === waypoint.id) && (
+                  <div className="review-card-check">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+
+                {/* Enhancement progress overlay - same style as generation */}
+                {(waypoint.enhancing || enhancingId === waypoint.id) && (
+                  <div className="review-card-overlay">
+                    <div className="review-progress-ring">
+                      <svg viewBox="0 0 100 100">
+                        <circle className="ring-bg" cx="50" cy="50" r="42" />
+                        <circle
+                          className="ring-fill enhancing"
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          strokeDasharray={`${(waypoint.enhancementProgress || 0) * 2.64} 264`}
+                        />
                       </svg>
+                      <span className="ring-text">{Math.round(waypoint.enhancementProgress || 0)}%</span>
                     </div>
-                  </>
+                    {waypoint.workerName && (
+                      <div className="worker-name-label">{waypoint.workerName}</div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1064,21 +1086,10 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                     disabled={waypoint.status !== 'ready' || !waypoint.imageUrl || waypoint.enhancing || enhancingId === waypoint.id || isEnhancingAll}
                     title="Enhance image quality"
                   >
-                    {waypoint.enhancing || enhancingId === waypoint.id ? (
-                      <>
-                        <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        {Math.round(waypoint.enhancementProgress || 0)}%
-                      </>
-                    ) : (
-                      <>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        Enhance
-                      </>
-                    )}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    {waypoint.enhancing || enhancingId === waypoint.id ? 'Enhancing...' : 'Enhance'}
                   </button>
 
                   {/* Regenerate Button - Always enabled to allow cancel & retry */}

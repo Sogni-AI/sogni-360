@@ -31,7 +31,7 @@ const getProjectForSaveComparison = (project: Sogni360Project): Sogni360Project 
     // Strip ephemeral fields from waypoints
     waypoints: project.waypoints.map(wp => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { progress, enhancing, enhancementProgress, ...persistentFields } = wp;
+      const { progress, workerName, enhancing, enhancementProgress, ...persistentFields } = wp;
       return persistentFields;
     }),
     // Strip ephemeral fields from segments
@@ -317,6 +317,23 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
           ...state.currentProject,
           segments: state.currentProject.segments.filter(s => s.id !== action.payload),
           // Clear final loop URL and export state since segments changed
+          finalLoopUrl: undefined,
+          exportCompleted: false,
+          updatedAt: Date.now()
+        }
+      };
+
+    case 'RESET_ADJACENT_SEGMENTS':
+      if (!state.currentProject) return state;
+      return {
+        ...state,
+        currentProject: {
+          ...state.currentProject,
+          segments: state.currentProject.segments.map(s =>
+            (s.fromWaypointId === action.payload || s.toWaypointId === action.payload)
+              ? { ...s, status: 'pending' as const, videoUrl: undefined, progress: undefined, error: undefined, versions: undefined, currentVersionIndex: undefined, sdkProjectId: undefined, sdkJobId: undefined }
+              : s
+          ),
           finalLoopUrl: undefined,
           exportCompleted: false,
           updatedAt: Date.now()

@@ -193,13 +193,18 @@ async function generateSingleAngle(
         let ourJobId: string | null = null;
 
         // Listen for job events
+        let cachedWorkerName: string | undefined; // Cache from started/initiating
         project.on('job', (event: any) => {
           // Filter to only handle events for our project
           if (event.projectId && event.projectId !== ourProjectId) {
             return;
           }
 
-          const { type, jobId, progress, workerName } = event;
+          const { type, jobId, progress } = event;
+
+          if ((type === 'started' || type === 'initiating') && event.workerName) {
+            cachedWorkerName = event.workerName;
+          }
 
           if (type === 'started' && jobId) {
             ourJobId = jobId;
@@ -207,11 +212,11 @@ async function generateSingleAngle(
 
           if (type === 'progress' && progress !== undefined) {
             const progressPercent = Math.floor((typeof progress === 'number' ? progress : 0) * 100);
-            callbacks.onItemProgress?.(index, progressPercent, undefined, workerName);
+            callbacks.onItemProgress?.(index, progressPercent, undefined, cachedWorkerName);
           }
 
           if (type === 'eta' && event.eta !== undefined) {
-            callbacks.onItemProgress?.(index, undefined as any, event.eta, workerName);
+            callbacks.onItemProgress?.(index, undefined as any, event.eta, cachedWorkerName);
           }
 
           if (type === 'queued' && event.queuePosition !== undefined) {

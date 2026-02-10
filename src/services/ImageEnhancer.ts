@@ -21,7 +21,7 @@ export interface EnhanceImageOptions {
   tokenType?: 'spark' | 'sogni';
   prompt?: string;
   steps?: number; // Z-Image inference steps (4-10 based on quality tier)
-  onProgress?: (progress: number) => void;
+  onProgress?: (progress: number, workerName?: string) => void;
   onComplete?: (imageUrl: string) => void;
   onError?: (error: Error) => void;
 }
@@ -120,6 +120,7 @@ async function enhanceWithFrontendSDK(options: EnhanceImageOptions): Promise<str
     let projectFinished = false;
     let resultUrl: string | null = null;
     const sentJobCompletions = new Set<string>();
+    let cachedWorkerName: string | undefined; // Cache worker name from started/initiating
 
     // Job event handler for progress
     const jobHandler = (event: any) => {
@@ -128,10 +129,16 @@ async function enhanceWithFrontendSDK(options: EnhanceImageOptions): Promise<str
       console.log(`[Enhancer-SDK] Event:`, event.type);
 
       switch (event.type) {
+        case 'started':
+        case 'initiating':
+          if (event.workerName) cachedWorkerName = event.workerName;
+          onProgress?.(0, cachedWorkerName);
+          break;
+
         case 'progress':
           if (event.step && event.stepCount) {
             const progress = (event.step / event.stepCount) * 100;
-            onProgress?.(progress);
+            onProgress?.(progress, cachedWorkerName);
           }
           break;
 
@@ -227,6 +234,7 @@ async function enhanceWithBackendAPI(options: EnhanceImageOptions): Promise<stri
 
   return new Promise((resolve) => {
     let resultUrl: string | null = null;
+    let cachedWorkerName: string | undefined; // Cache worker name from started/initiating
 
     const unsubscribe = api.subscribeToProgress(
       projectId,
@@ -238,10 +246,17 @@ async function enhanceWithBackendAPI(options: EnhanceImageOptions): Promise<stri
             console.log(`[Enhancer-API] SSE connected`);
             break;
 
+          case 'started':
+          case 'initiating':
+            if (event.workerName) cachedWorkerName = event.workerName;
+            onProgress?.(0, cachedWorkerName);
+            break;
+
           case 'progress':
             if (event.progress !== undefined) {
+              if (event.workerName) cachedWorkerName = event.workerName;
               const progressPct = event.progress * 100;
-              onProgress?.(progressPct);
+              onProgress?.(progressPct, cachedWorkerName);
             }
             break;
 

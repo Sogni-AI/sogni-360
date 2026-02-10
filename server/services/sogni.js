@@ -240,6 +240,7 @@ export async function generateImage(client, params, progressCallback, localProje
   return new Promise((resolve, reject) => {
     let projectFinished = false;
     const sentJobCompletions = new Set();
+    let cachedWorkerName = null; // Cache worker name from started/initiating events
 
     // Job event handler
     const jobHandler = (event) => {
@@ -252,11 +253,12 @@ export async function generateImage(client, params, progressCallback, localProje
       switch (event.type) {
         case 'started':
         case 'initiating':
+          if (event.workerName) cachedWorkerName = event.workerName;
           progressEvent = {
             type: event.type,
             jobId: event.jobId,
             projectId: localProjectId || event.projectId,
-            workerName: event.workerName || 'Worker'
+            workerName: cachedWorkerName || 'Worker'
           };
           break;
 
@@ -270,7 +272,7 @@ export async function generateImage(client, params, progressCallback, localProje
               stepCount: event.stepCount,
               jobId: event.jobId,
               projectId: localProjectId || event.projectId,
-              workerName: event.workerName || 'Worker'
+              workerName: cachedWorkerName || 'Worker'
             };
           }
           break;
@@ -460,6 +462,7 @@ export async function generateVideo(client, params, progressCallback, localProje
   return new Promise((resolve, reject) => {
     let projectFinished = false;
     const sentJobCompletions = new Set();
+    let cachedWorkerName = null; // Cache worker name from started/initiating events
 
     // Job event handler
     const jobHandler = (event) => {
@@ -472,11 +475,12 @@ export async function generateVideo(client, params, progressCallback, localProje
       switch (event.type) {
         case 'started':
         case 'initiating':
+          if (event.workerName) cachedWorkerName = event.workerName;
           progressEvent = {
             type: event.type,
             jobId: event.jobId,
             projectId: localProjectId || event.projectId,
-            workerName: event.workerName || 'Worker'
+            workerName: cachedWorkerName || 'Worker'
           };
           break;
 
@@ -490,7 +494,7 @@ export async function generateVideo(client, params, progressCallback, localProje
               stepCount: event.stepCount,
               jobId: event.jobId,
               projectId: localProjectId || event.projectId,
-              workerName: event.workerName || 'Worker'
+              workerName: cachedWorkerName || 'Worker'
             };
           }
           break;

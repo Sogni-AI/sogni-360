@@ -212,6 +212,7 @@ async function generateWithFrontendSDK(
     let projectFinished = false;
     let result: GenerateTransitionResult | null = null;
     const sentJobCompletions = new Set<string>();
+    let cachedWorkerName: string | undefined; // Cache worker name from started/initiating
 
     // Job event handler for progress
     const jobHandler = (event: any) => {
@@ -222,12 +223,14 @@ async function generateWithFrontendSDK(
       switch (event.type) {
         case 'started':
         case 'initiating':
+          if (event.workerName) cachedWorkerName = event.workerName;
+          onProgress?.(0, cachedWorkerName);
           break;
 
         case 'progress':
           if (event.step && event.stepCount) {
             const progress = (event.step / event.stepCount) * 100;
-            onProgress?.(progress, event.workerName || 'Worker');
+            onProgress?.(progress, cachedWorkerName);
           }
           break;
 
@@ -361,6 +364,7 @@ async function generateWithBackendAPI(
   // Subscribe to progress events
   return new Promise((resolve) => {
     let result: GenerateTransitionResult | null = null;
+    let cachedWorkerName: string | undefined; // Cache worker name from started/initiating
 
     const unsubscribe = api.subscribeToProgress(
       projectId,
@@ -372,10 +376,17 @@ async function generateWithBackendAPI(
             console.log(`[TransitionGenerator-API] SSE connected for segment ${segment.id}`);
             break;
 
+          case 'started':
+          case 'initiating':
+            if (event.workerName) cachedWorkerName = event.workerName;
+            onProgress?.(0, cachedWorkerName);
+            break;
+
           case 'progress':
             if (event.progress !== undefined) {
+              if (event.workerName) cachedWorkerName = event.workerName;
               const progressPct = event.progress * 100;
-              onProgress?.(progressPct, event.workerName);
+              onProgress?.(progressPct, cachedWorkerName);
             }
             break;
 

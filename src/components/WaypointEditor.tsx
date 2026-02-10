@@ -256,8 +256,8 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
           onWaypointStart: (waypointId) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'generating', progress: 0 } } });
           },
-          onWaypointProgress: (waypointId, progress) => {
-            dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { progress } } });
+          onWaypointProgress: (waypointId, progress, workerName) => {
+            dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { progress, workerName } } });
           },
           onWaypointComplete: (waypointId, result) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: {

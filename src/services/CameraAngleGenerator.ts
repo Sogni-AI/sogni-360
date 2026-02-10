@@ -178,6 +178,7 @@ async function generateWithFrontendSDK(
     let projectFinished = false;
     let result: GenerateAngleResult | null = null;
     const sentJobCompletions = new Set<string>();
+    let cachedWorkerName: string | undefined; // Cache worker name from started/initiating
 
     // Job event handler for progress
     const jobHandler = (event: any) => {
@@ -188,13 +189,14 @@ async function generateWithFrontendSDK(
       switch (event.type) {
         case 'started':
         case 'initiating':
-          // Generation started
+          if (event.workerName) cachedWorkerName = event.workerName;
+          onProgress?.(0, cachedWorkerName);
           break;
 
         case 'progress':
           if (event.step && event.stepCount) {
             const progress = (event.step / event.stepCount) * 100;
-            onProgress?.(progress, event.workerName || 'Worker');
+            onProgress?.(progress, cachedWorkerName);
           }
           break;
 
@@ -307,6 +309,7 @@ async function generateWithBackendAPI(
   console.log(`[Generator-API] Subscribing to progress for project ${projectId}`);
   return new Promise((resolve) => {
     let result: GenerateAngleResult | null = null;
+    let cachedWorkerName: string | undefined; // Cache worker name from started/initiating
 
     const unsubscribe = api.subscribeToProgress(
       projectId,
@@ -318,10 +321,17 @@ async function generateWithBackendAPI(
             console.log(`[Generator-API] SSE connected for waypoint ${waypoint.id}`);
             break;
 
+          case 'started':
+          case 'initiating':
+            if (event.workerName) cachedWorkerName = event.workerName;
+            onProgress?.(0, cachedWorkerName);
+            break;
+
           case 'progress':
             if (event.progress !== undefined) {
+              if (event.workerName) cachedWorkerName = event.workerName;
               const progressPct = event.progress * 100;
-              onProgress?.(progressPct, event.workerName);
+              onProgress?.(progressPct, cachedWorkerName);
             }
             break;
 
@@ -415,7 +425,7 @@ export async function generateMultipleAngles(
     tokenType?: 'spark' | 'sogni';
     loraStrength?: number;
     onWaypointStart?: (waypointId: string) => void;
-    onWaypointProgress?: (waypointId: string, progress: number) => void;
+    onWaypointProgress?: (waypointId: string, progress: number, workerName?: string) => void;
     onWaypointComplete?: (waypointId: string, result: GenerateAngleResult) => void;
     onWaypointError?: (waypointId: string, error: Error) => void;
     onOutOfCredits?: () => void;
@@ -474,8 +484,8 @@ export async function generateMultipleAngles(
           imageHeight,
           tokenType,
           loraStrength,
-          onProgress: (progress) => {
-            onWaypointProgress?.(waypoint.id, progress);
+          onProgress: (progress, workerName) => {
+            onWaypointProgress?.(waypoint.id, progress, workerName);
           },
           onComplete: (r) => {
             onWaypointComplete?.(waypoint.id, r);
