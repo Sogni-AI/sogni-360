@@ -456,10 +456,12 @@ export async function generateMultipleAngles(
   const processWaypoint = async (waypoint: Waypoint): Promise<void> => {
     onWaypointStart?.(waypoint.id);
 
-    // If this is an "original" waypoint, use the source image directly
+    // If this is an "original" waypoint, use its own imageUrl (could be a custom uploaded image)
+    // Only fall back to sourceImageUrl if no custom image was set
     if (waypoint.isOriginal) {
-      console.log(`[Generator] Waypoint ${waypoint.id} is original, using source image`);
-      const result: GenerateAngleResult = { imageUrl: sourceImageUrl };
+      const imageUrl = waypoint.imageUrl || sourceImageUrl;
+      console.log(`[Generator] Waypoint ${waypoint.id} is original, using ${waypoint.imageUrl ? 'custom uploaded image' : 'source image'}`);
+      const result: GenerateAngleResult = { imageUrl };
       results.set(waypoint.id, result);
       onWaypointProgress?.(waypoint.id, 100);
       onWaypointComplete?.(waypoint.id, result);
