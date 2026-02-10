@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAdvancedSettings } from '../hooks/useAdvancedSettings';
 import { PHOTO_QUALITY_PRESETS, type PhotoQualityTier } from '../constants/cameraAngleSettings';
 import { VIDEO_QUALITY_PRESETS, type VideoQualityPreset } from '../constants/videoSettings';
+import LiquidGlassPanel from './shared/LiquidGlassPanel';
 
 interface ProjectNameModalProps {
   suggestedName: string;
@@ -64,14 +65,23 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
   }, [setVideoQuality]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/15 p-5">
+      <LiquidGlassPanel
+        cornerRadius={24}
+        modalTint
+        className="glass-modal"
+        displacementScale={60}
+        saturation={160}
+        aberrationIntensity={4}
+        style={{ maxWidth: '28rem', width: '100%', margin: '0 1rem' }}
+      >
       <div
-        className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-3xl p-7 max-w-md w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+        className="p-7 rounded-[inherit]"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         <h2 className="text-xl font-semibold text-white mb-2">Name Your Project</h2>
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-gray-300 text-sm mb-4">
           Give your 360 portrait a memorable name
         </p>
 
@@ -88,7 +98,7 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
 
           {/* Quality Settings */}
           <div className="mt-5 pt-5 border-t border-white/10">
-            <p className="text-gray-400 text-sm mb-4">
+            <p className="text-gray-300 text-sm mb-4">
               Quality settings for this project
             </p>
 
@@ -109,7 +119,7 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
                     </option>
                   ))}
                 </select>
-                <p className="text-gray-500 text-xs mt-1.5">
+                <p className="text-gray-400 text-xs mt-1.5">
                   {PHOTO_QUALITY_PRESETS[settings.photoQuality].description}
                 </p>
               </div>
@@ -130,7 +140,7 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
                     </option>
                   ))}
                 </select>
-                <p className="text-gray-500 text-xs mt-1.5">
+                <p className="text-gray-400 text-xs mt-1.5">
                   {VIDEO_QUALITY_PRESETS[settings.videoQuality].description}
                 </p>
               </div>
@@ -141,7 +151,7 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium transition-all min-h-[44px] border border-white/10"
+              className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium transition-all min-h-[44px] border border-white/10"
             >
               Cancel
             </button>
@@ -155,6 +165,7 @@ const ProjectNameModal: React.FC<ProjectNameModalProps> = ({
           </div>
         </form>
       </div>
+      </LiquidGlassPanel>
     </div>
   );
 };
