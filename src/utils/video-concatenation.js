@@ -516,14 +516,11 @@ async function concatenateMP4s_Base(buffers, options = {}) {
     const newVideoStco = buildStco(videoChunkOffsets);
     const newVideoStsc = buildStsc([{ firstChunk: 1, samplesPerChunk: allVideoSizes.length, sampleDescriptionIndex: 1 }]);
     const newVideoStts = buildStts(allVideoSizes.length, file1Tables.sampleDelta);
-    // Build sync sample (keyframe) table using ACTUAL extracted counts, not declared moov counts.
-    // If any samples were dropped during extraction, declared counts would be wrong and
-    // keyframe positions for segments 2+ would be offset, causing the decoder to freeze.
     const videoSyncSamples = [1];
-    let sOff = perFileVideoSampleCounts[0];
+    let sOff = file1Tables.sampleCount;
     for (let i = 1; i < parsedFiles.length; i++) {
       videoSyncSamples.push(sOff + 1);
-      sOff += perFileVideoSampleCounts[i];
+      sOff += parseSampleTables(parsedFiles[i].moov, true).sampleCount;
     }
     console.log(`[Strategy CO] Sync samples (keyframes): [${videoSyncSamples.join(', ')}], total samples: ${allVideoSizes.length}`);
     const newVideoStss = buildStss(videoSyncSamples);
