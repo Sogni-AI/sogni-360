@@ -540,16 +540,27 @@ function appReducer(state: Sogni360State, action: Sogni360Action): Sogni360State
         videoTransition: { ...state.videoTransition, isVideoReady: action.payload }
       };
 
-    case 'SET_PROJECT_NAME':
+    case 'SET_PROJECT_NAME': {
       if (!state.currentProject) return state;
+      // Re-read advanced settings so quality changes made in ProjectNameModal are captured
+      const latestSettings = getAdvancedSettings();
       return {
         ...state,
         currentProject: {
           ...state.currentProject,
           name: action.payload,
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          settings: {
+            ...state.currentProject.settings,
+            videoQuality: latestSettings.videoQuality,
+            transitionQuality: latestSettings.videoQuality,
+            imageModel: latestSettings.imageModel,
+            imageSteps: latestSettings.imageSteps,
+            imageGuidance: latestSettings.imageGuidance
+          }
         }
       };
+    }
 
     case 'RESET_STATE':
       return initialState;

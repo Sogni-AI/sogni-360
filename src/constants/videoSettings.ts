@@ -83,7 +83,8 @@ export const DEFAULT_VIDEO_SETTINGS = {
   quality: 'balanced' as VideoQualityPreset,
   frames: 25, // 1.5 seconds at 16fps base rate, interpolated to 32fps in post
   fps: 32,    // Output fps (post-processing interpolation, adds ~10% to cost)
-  duration: 1.5 // 1.5 seconds per transition
+  duration: 1.5, // 1.5 seconds per transition
+  trimEndFrame: false // When true, worker trims last frame from each segment for seamless stitching
 };
 
 // Default negative prompt for video generation (WAN 2.1/2.2 I2V)

@@ -558,8 +558,7 @@ export async function generateMultipleTransitions(
           tokenType,
           sourceWidth,
           sourceHeight,
-          // Trim last frame for seamless stitching with next segment
-          trimEndFrame: true,
+          trimEndFrame: DEFAULT_VIDEO_SETTINGS.trimEndFrame,
           onProgress: (progress, workerName) => {
             onSegmentProgress?.(segment.id, progress, workerName);
           },

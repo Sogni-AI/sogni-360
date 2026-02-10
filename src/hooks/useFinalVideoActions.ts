@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import { concatenateVideos } from '../utils/video-concatenation';
+import { downloadVideosAsZip } from '../utils/bulkDownload';
 import { loadAudioAsBuffer } from '../utils/audioUtils';
 import { ensureM4AFormat, needsTranscoding } from '../utils/audioTranscoder';
 import { trackDownload, trackShare, trackVideoExport } from '../utils/analytics';
@@ -132,9 +133,20 @@ export function useFinalVideoActions({
       onStitchCompleteRef.current?.(url, blob);
     } catch (error) {
       console.error('Stitch error:', error);
-      const message = error instanceof Error ? error.message : 'Failed to stitch videos';
-      setStitchError(message);
-      showToast({ message: 'Failed to stitch videos', type: 'error' });
+
+      // Metadata mismatch — videos can't be stitched, download as zip instead
+      if (error instanceof Error && error.message === 'METADATA_MISMATCH') {
+        showToast({ message: 'There was a problem stitching your video, the clips will be downloaded separately', type: 'warning' });
+        setStitchError('Clips could not be combined — downloaded as separate files');
+        const items = videoUrls.map((url, i) => ({ url, filename: `clip-${i + 1}.mp4` }));
+        downloadVideosAsZip(items, `sogni-360-clips-${Date.now()}.zip`).catch(e =>
+          console.error('[useFinalVideoActions] Zip download failed:', e)
+        );
+      } else {
+        const message = error instanceof Error ? error.message : 'Failed to stitch videos';
+        setStitchError(message);
+        showToast({ message: 'Failed to stitch videos', type: 'error' });
+      }
 
       // Clear corrupted cache so retries start fresh
       if (projectId) {

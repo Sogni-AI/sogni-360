@@ -325,13 +325,63 @@ async function concatenateMP4s_Base(buffers, options = {}) {
         }
       }
     }
-    
+
+    // ── Input file metadata validation ──
+    // Strategy CO assumes all files share identical encoding parameters.
+    // Read key metadata from every file and warn/error on mismatches.
+    const file1Tables = parseSampleTables(parsedFiles[0].moov, true);
+    const fileMetadata = [];
+    for (let i = 0; i < parsedFiles.length; i++) {
+      const tables = i === 0 ? file1Tables : parseSampleTables(parsedFiles[i].moov, true);
+      const moovBuf = parsedFiles[i].moov.buffer.slice(
+        parsedFiles[i].moov.byteOffset,
+        parsedFiles[i].moov.byteOffset + parsedFiles[i].moov.byteLength
+      );
+      const vTrak = findVideoTrak(moovBuf);
+      const vMdia = vTrak ? findBox(moovBuf, vTrak.contentStart, vTrak.end, 'mdia') : null;
+      const vMdhd = vMdia ? findBox(moovBuf, vMdia.contentStart, vMdia.end, 'mdhd') : null;
+      let mediaTimescale = 0;
+      if (vMdhd) {
+        const v = new DataView(moovBuf, vMdhd.start, vMdhd.size);
+        mediaTimescale = v.getUint8(8) === 0 ? v.getUint32(20) : v.getUint32(28);
+      }
+      fileMetadata.push({
+        file: i + 1,
+        sampleCount: tables.sampleCount,
+        sampleDelta: tables.sampleDelta,
+        timescale: mediaTimescale,
+        width: tables.width,
+        height: tables.height,
+        sttsEntries: tables.sttsEntries.length,
+        cttsEntries: tables.cttsEntries.length,
+      });
+    }
+
+    console.log('[Strategy CO] Input file metadata:', JSON.stringify(fileMetadata, null, 2));
+
+    const ref = fileMetadata[0];
+    const mismatches = [];
+    for (let i = 1; i < fileMetadata.length; i++) {
+      const f = fileMetadata[i];
+      if (f.sampleCount !== ref.sampleCount) mismatches.push(`File ${f.file}: sampleCount ${f.sampleCount} (expected ${ref.sampleCount})`);
+      if (f.sampleDelta !== ref.sampleDelta) mismatches.push(`File ${f.file}: sampleDelta ${f.sampleDelta} (expected ${ref.sampleDelta})`);
+      if (f.timescale !== ref.timescale) mismatches.push(`File ${f.file}: timescale ${f.timescale} (expected ${ref.timescale})`);
+      if (f.width !== ref.width || f.height !== ref.height) mismatches.push(`File ${f.file}: resolution ${f.width}x${f.height} (expected ${ref.width}x${ref.height})`);
+    }
+    if (mismatches.length > 0) {
+      const msg = `[Strategy CO] Input file metadata mismatch:\n  ${mismatches.join('\n  ')}`;
+      console.error(msg);
+      const err = new Error('METADATA_MISMATCH');
+      err.details = mismatches.join('\n');
+      throw err;
+    }
+
     // Extract audio samples (unless stripping source audio for parent audio overlay)
     const allAudioSizes = [];
     const allAudioSamples = [];
     let audioSampleDelta = 1024;
     let audioTimescale = 44100;
-    
+
     if (options.stripSourceAudio) {
       console.log('[Strategy CO] Stripping source audio - will add parent audio later');
     }
@@ -442,7 +492,6 @@ async function concatenateMP4s_Base(buffers, options = {}) {
     }
     
     // Calculate durations to check if audio needs looping
-    const file1Tables = parseSampleTables(file1.moov, true);
     const videoMediaDuration = allVideoSizes.length * file1Tables.sampleDelta;
     const videoMovieDuration = Math.round(videoMediaDuration * movieTimescale / videoTimescale);
     
