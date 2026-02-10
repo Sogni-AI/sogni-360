@@ -2,15 +2,35 @@
  * Fetch with Retry Utility
  *
  * Provides automatic retry logic for fetch requests with exponential backoff.
- * Particularly useful for S3 presigned URLs that can occasionally fail with
- * transient CORS errors.
+ * After the first direct failure, falls back to the backend proxy to bypass
+ * browser CORS cache poisoning from <video> elements.
+ *
+ * Adapted from sogni-photobooth to match its proven behavior.
  */
+
+import { getProxiedUrl } from './s3FetchWithFallback';
+
+// Domains where the backend proxy can help bypass CORS cache poisoning
+const PROXYABLE_DOMAINS = [
+  's3-accelerate.amazonaws.com',
+  's3.amazonaws.com',
+  'cdn.sogni.ai',
+];
+
+function isProxyableUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname;
+    return PROXYABLE_DOMAINS.some(d => hostname.includes(d));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Options for fetchWithRetry
  */
 export interface FetchWithRetryOptions {
-  /** Maximum number of retry attempts (default: 3, meaning 4 total attempts) */
+  /** Maximum number of retry attempts (default: 2, meaning 3 total attempts) */
   maxRetries?: number;
   /** Initial delay in ms before first retry (default: 2000ms) */
   initialDelay?: number;
@@ -48,9 +68,10 @@ function isRetryableError(error: Error): boolean {
 }
 
 /**
- * Fetch with automatic retry for transient CORS/network errors
+ * Fetch with automatic retry for transient CORS/network errors.
  * S3 presigned URLs can occasionally fail with CORS errors even when valid.
- * Retrying after a short delay typically resolves these transient issues.
+ * After the first direct retry fails, falls back to the backend proxy
+ * to bypass browser CORS cache poisoning from <video> elements.
  *
  * @param url - The URL to fetch
  * @param options - Fetch options (same as native fetch)
@@ -63,7 +84,7 @@ export async function fetchWithRetry(
   retryOptions: FetchWithRetryOptions = {}
 ): Promise<Response> {
   const {
-    maxRetries = 3,
+    maxRetries = 2,
     initialDelay = 2000,
     backoffMultiplier = 2,
     context = 'fetch'
@@ -74,7 +95,12 @@ export async function fetchWithRetry(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, options);
+      // After first direct failure, try the backend proxy for S3/CDN URLs
+      const fetchUrl = (attempt > 0 && isProxyableUrl(url))
+        ? getProxiedUrl(url)
+        : url;
+
+      const response = await fetch(fetchUrl, options);
       // If we got a response (even non-2xx), return it - let caller handle HTTP errors
       return response;
     } catch (error) {
@@ -96,7 +122,7 @@ export async function fetchWithRetry(
       // Log retry attempt
       console.log(
         `[${context}] Attempt ${attempt + 1} failed (${lastError.message}), ` +
-        `retrying in ${currentDelay}ms...`
+        `retrying via ${isProxyableUrl(url) ? 'proxy' : 'direct'} in ${currentDelay}ms...`
       );
 
       await delay(currentDelay);

@@ -231,7 +231,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
               </div>
               <div className="transition-thumb" style={{ aspectRatio: thumbAspect }}>
                 {toImageUrl && <img src={toImageUrl} alt="To" loading="lazy" />}
-                {segment.status !== 'generating' && <span className="thumb-label">To</span>}
+                <span className="thumb-label">To</span>
 
                 {/* Progress overlay on To image */}
                 {segment.status === 'generating' && (

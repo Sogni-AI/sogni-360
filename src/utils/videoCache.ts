@@ -8,7 +8,7 @@
 import type { MusicSelection } from '../types';
 
 const DB_NAME = 'sogni360-video-cache';
-const DB_VERSION = 2; // Bumped for musicFingerprint support
+const DB_VERSION = 3; // Bumped to invalidate broken stitched videos from cf84773
 const STORE_NAME = 'videos';
 
 /**
@@ -53,10 +53,12 @@ function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
 
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'projectId' });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
+      // Delete existing store on version upgrade to purge stale/broken cached videos
+      if (db.objectStoreNames.contains(STORE_NAME)) {
+        db.deleteObjectStore(STORE_NAME);
       }
+      const store = db.createObjectStore(STORE_NAME, { keyPath: 'projectId' });
+      store.createIndex('createdAt', 'createdAt', { unique: false });
     };
   });
 
