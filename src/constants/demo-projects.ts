@@ -75,6 +75,17 @@ export const DEMO_PROJECTS: DemoProjectManifest[] = [{
     segmentCount: 23,
     zipSizeBytes: 69_856_863,
     featured: true
+  },
+  {
+    id: 'demo-backyard-fireworks',
+    name: 'Backyard Fireworks',
+    description: 'Backyard fireworks celebration captured in a stunning 360° orbital view',
+    thumbnailUrl: `${DEMO_BASE_URL}/demo-backyard-fireworks/thumbnail.jpg`,
+    projectZipUrl: `${DEMO_BASE_URL}/demo-backyard-fireworks/backyard-fireworks.s360.zip`,
+    waypointCount: 4,
+    segmentCount: 4,
+    zipSizeBytes: 18_341_408,
+    featured: true
   }
   // Add more demo projects using: local-scripts/demo-uploader/upload-demo.js
 ];
