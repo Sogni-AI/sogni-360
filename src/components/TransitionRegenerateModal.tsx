@@ -5,6 +5,12 @@ import {
   findPresetByPrompt
 } from '../constants/transitionPromptPresets';
 import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
+import {
+  VIDEO_QUALITY_PRESETS,
+  VIDEO_CONFIG,
+  DEFAULT_VIDEO_SETTINGS,
+  calculateVideoDimensions,
+} from '../constants/videoSettings';
 import type { VideoQualityPreset, VideoResolution } from '../constants/videoSettings';
 
 interface TransitionRegenerateModalProps {
@@ -44,6 +50,19 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
 }) => {
   const defaultPrompt = getDefaultTransitionPrompt();
   const [prompt, setPrompt] = useState(currentPrompt || defaultPrompt);
+
+  // Resolve settings with defaults
+  const effectiveResolution = resolution || DEFAULT_VIDEO_SETTINGS.resolution;
+  const effectiveQuality = quality || DEFAULT_VIDEO_SETTINGS.quality;
+  const effectiveDuration = duration || VIDEO_CONFIG.defaultDuration;
+  const effectiveFps = DEFAULT_VIDEO_SETTINGS.fps;
+  const qualityConfig = VIDEO_QUALITY_PRESETS[effectiveQuality];
+
+  // Compute actual video dimensions for display
+  const videoDimensions = useMemo(() => {
+    if (!imageWidth || !imageHeight) return null;
+    return calculateVideoDimensions(imageWidth, imageHeight, effectiveResolution);
+  }, [imageWidth, imageHeight, effectiveResolution]);
 
   // Cost estimation for a single transition regeneration
   const { loading: costLoading, formattedCost, formattedUSD } = useVideoCostEstimation({
@@ -184,6 +203,28 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
           <p className="mt-2 text-xs text-gray-500">
             Select a preset above or customize the prompt. Editing the text will switch to Custom mode.
           </p>
+        </div>
+
+        {/* Clip settings summary */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-gray-400">
+          {videoDimensions && (
+            <span>
+              <span className="text-gray-500">Resolution</span>{' '}
+              <span className="text-gray-300">{videoDimensions.width}×{videoDimensions.height}</span>
+            </span>
+          )}
+          <span>
+            <span className="text-gray-500">Quality</span>{' '}
+            <span className="text-gray-300">{qualityConfig.label}</span>
+          </span>
+          <span>
+            <span className="text-gray-500">Duration</span>{' '}
+            <span className="text-gray-300">{effectiveDuration}s</span>
+          </span>
+          <span>
+            <span className="text-gray-500">FPS</span>{' '}
+            <span className="text-gray-300">{effectiveFps}</span>
+          </span>
         </div>
 
         {/* Cost estimate + Action buttons */}
