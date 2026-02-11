@@ -923,6 +923,7 @@ const Sogni360Container: React.FC = () => {
           isGenerating={isTransitionGenerating}
           onWorkflowStepClick={handleWorkflowStepClick}
           onRequireAuth={handleRequireAuth}
+          onOpenTransitionConfig={() => dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true })}
         />
       )}
 

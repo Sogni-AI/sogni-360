@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import type { Segment, MusicSelection } from '../types';
@@ -92,6 +92,53 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
 
   // Settings popup state
   const [showSettings, setShowSettings] = useState(false);
+
+  // Track pending destructive setting change (resolution/duration change when videos exist)
+  const [pendingSettingChange, setPendingSettingChange] = useState<{
+    field: 'resolution' | 'duration';
+    value: VideoResolution | number;
+  } | null>(null);
+
+  // Check if any transition videos have already been generated
+  const segments = currentProject?.segments || [];
+  const hasGeneratedVideos = segments.some(
+    s => s.status === 'ready' || s.status === 'generating'
+  );
+
+  // Store the initial values so we know what the project was generated with
+  const initialResolution = useRef(resolution);
+  const initialDuration = useRef(duration);
+
+  // Intercept resolution changes — warn if videos exist
+  const handleResolutionChange = useCallback((newValue: VideoResolution) => {
+    if (hasGeneratedVideos && newValue !== initialResolution.current) {
+      setPendingSettingChange({ field: 'resolution', value: newValue });
+    } else {
+      setResolution(newValue);
+    }
+  }, [hasGeneratedVideos]);
+
+  // Intercept duration changes — warn if videos exist
+  const handleDurationChange = useCallback((newValue: number) => {
+    if (hasGeneratedVideos && newValue !== initialDuration.current) {
+      setPendingSettingChange({ field: 'duration', value: newValue });
+    } else {
+      setDuration(newValue);
+    }
+  }, [hasGeneratedVideos]);
+
+  // Confirm the destructive setting change
+  const confirmSettingChange = useCallback(() => {
+    if (!pendingSettingChange) return;
+    if (pendingSettingChange.field === 'resolution') {
+      setResolution(pendingSettingChange.value as VideoResolution);
+      initialResolution.current = pendingSettingChange.value as VideoResolution;
+    } else {
+      setDuration(pendingSettingChange.value as number);
+      initialDuration.current = pendingSettingChange.value as number;
+    }
+    setPendingSettingChange(null);
+  }, [pendingSettingChange]);
 
   const waypoints = currentProject?.waypoints || [];
   const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
@@ -286,7 +333,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
             <select
               className="config-select"
               value={resolution}
-              onChange={(e) => setResolution(e.target.value as VideoResolution)}
+              onChange={(e) => handleResolutionChange(e.target.value as VideoResolution)}
             >
               {Object.entries(VIDEO_RESOLUTIONS).map(([key, config]) => (
                 <option key={key} value={key}>{config.label}</option>
@@ -299,7 +346,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
             <select
               className="config-select"
               value={duration}
-              onChange={(e) => setDuration(parseFloat(e.target.value))}
+              onChange={(e) => handleDurationChange(parseFloat(e.target.value))}
             >
               {durationOptions.map((d) => (
                 <option key={d} value={d}>{d}s per clip</option>
@@ -378,6 +425,41 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Regeneration Warning Modal */}
+      {pendingSettingChange && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/15 p-5">
+          <LiquidGlassPanel
+            cornerRadius={24}
+            className="max-w-md w-full mx-4 glass-modal"
+            displacementScale={60}
+            saturation={160}
+            aberrationIntensity={4}
+          >
+            <div className="p-7" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-xl font-semibold text-white mb-3">Regeneration Required</h2>
+              <p className="text-gray-300 mb-6">
+                Changing the {pendingSettingChange.field === 'resolution' ? 'resolution' : 'duration'} will
+                require all transition videos to be regenerated. Continue?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setPendingSettingChange(null)}
+                  className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium transition-all min-h-[44px] border border-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSettingChange}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium transition-all min-h-[44px] shadow-lg shadow-purple-500/25"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </LiquidGlassPanel>
+        </div>
+      )}
     </LiquidGlassPanel>
   );
 };
