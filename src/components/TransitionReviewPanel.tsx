@@ -7,7 +7,7 @@ import {
   getAzimuthConfig,
   getElevationConfig
 } from '../constants/cameraAngleSettings';
-import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
+import WorkflowWizard, { WorkflowStep, computeWorkflowStep } from './shared/WorkflowWizard';
 import TransitionVideoCard from './TransitionVideoCard';
 import TransitionRegenerateModal from './TransitionRegenerateModal';
 import LiquidGlassPanel from './shared/LiquidGlassPanel';
@@ -192,8 +192,8 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
   const totalSegments = segments.length;
 
-  // Workflow step
-  const completedSteps: ('upload' | 'define-angles' | 'render-angles' | 'render-videos' | 'export')[] = ['upload', 'define-angles', 'render-angles'];
+  // Workflow step - compute from actual project state
+  const { currentStep: computedStep, completedSteps } = computeWorkflowStep(currentProject);
 
   // Handle version navigation
   const handlePrevVersion = useCallback((segment: Segment) => {
@@ -377,7 +377,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
       {/* Wizard Progress Bar */}
       <div className="review-wizard-wrap">
         <WorkflowWizard
-          currentStep="render-videos"
+          currentStep={computedStep}
           completedSteps={completedSteps}
           onStepClick={onWorkflowStepClick}
         />

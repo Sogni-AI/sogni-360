@@ -1,7 +1,8 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import MusicSelector from './shared/MusicSelector';
 import { useFinalVideoActions } from '../hooks/useFinalVideoActions';
-import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
+import WorkflowWizard, { WorkflowStep, computeWorkflowStep } from './shared/WorkflowWizard';
+import { useApp } from '../context/AppContext';
 import type { MusicSelection } from '../types';
 
 interface FinalVideoPanelProps {
@@ -29,6 +30,8 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   onMusicChange,
   onWorkflowStepClick
 }) => {
+  const { state } = useApp();
+  const { currentProject } = state;
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
@@ -200,9 +203,8 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     await handleMusicConfirm(selection);
   }, [handleMusicConfirm]);
 
-  // Completed steps: all prior steps. Don't add 'export' here — it's the currentStep,
-  // so the wizard shows it as "active" (selected indicator), consistent with other panels.
-  const completedSteps: WorkflowStep[] = ['upload', 'define-angles', 'render-angles', 'render-videos'];
+  // Workflow step - compute from actual project state
+  const { currentStep: computedStep, completedSteps } = computeWorkflowStep(currentProject);
 
   return (
     <div
@@ -214,7 +216,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
       {/* Workflow Progress */}
       <div className={`review-wizard-wrap final-video-ui-element ${uiVisible ? 'visible' : 'hidden'}`}>
         <WorkflowWizard
-          currentStep="export"
+          currentStep={computedStep}
           completedSteps={completedSteps}
           onStepClick={onWorkflowStepClick}
         />

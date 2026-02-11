@@ -13,7 +13,7 @@ import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 import type { AzimuthKey, ElevationKey, DistanceKey } from '../types';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import { enhanceImage } from '../services/ImageEnhancer';
-import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
+import WorkflowWizard, { WorkflowStep, computeWorkflowStep } from './shared/WorkflowWizard';
 import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 import { toKebabSlug } from '../utils/projectExport';
@@ -213,8 +213,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   const generatingCount = waypoints.filter(wp => wp.status === 'generating').length;
   const failedCount = waypoints.filter(wp => wp.status === 'failed').length;
 
-  // Workflow step
-  const completedSteps: ('upload' | 'define-angles' | 'render-angles' | 'render-videos' | 'export')[] = ['upload', 'define-angles'];
+  // Workflow step - compute from actual project state
+  const { currentStep: computedStep, completedSteps } = computeWorkflowStep(currentProject);
 
   // Execute redo for a single waypoint (called after confirmation)
   const executeRedo = useCallback(async (waypoint: Waypoint) => {
@@ -800,7 +800,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       {/* Wizard Progress Bar */}
       <div className="review-wizard-wrap">
         <WorkflowWizard
-          currentStep="render-angles"
+          currentStep={computedStep}
           completedSteps={completedSteps}
           onStepClick={onWorkflowStepClick}
         />
