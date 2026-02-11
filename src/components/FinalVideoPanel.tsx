@@ -198,12 +198,9 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     await handleMusicConfirm(selection);
   }, [handleMusicConfirm]);
 
-  // Compute completed steps dynamically based on stitching state
+  // Completed steps: all prior steps. Don't add 'export' here — it's the currentStep,
+  // so the wizard shows it as "active" (selected indicator), consistent with other panels.
   const completedSteps: WorkflowStep[] = ['upload', 'define-angles', 'render-angles', 'render-videos'];
-  // Add 'export' to completed steps when stitching is done
-  if (localStitchedUrl && !isStitching) {
-    completedSteps.push('export');
-  }
 
   return (
     <div

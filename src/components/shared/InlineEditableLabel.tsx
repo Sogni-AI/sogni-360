@@ -22,7 +22,11 @@ const InlineEditableLabel: React.FC<InlineEditableLabelProps> = ({ value, onSave
   const commit = () => {
     const trimmed = draft.trim();
     setEditing(false);
-    if (trimmed && trimmed !== value) {
+    if (!trimmed) {
+      // Empty input: signal to clear custom label and revert to automatic name
+      onSave('');
+      setDraft(value);
+    } else if (trimmed !== value) {
       onSave(trimmed);
     } else {
       setDraft(value);

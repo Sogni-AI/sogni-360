@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listProjects, deleteProject, renameProject, saveProject } from '../utils/localProjectsDB';
-import { exportProject, generateExportFilename, downloadZipBlob, ExportOptions } from '../utils/projectExport';
+import { exportProject, generateExportFilename, downloadZipBlob, type ExportOptions } from '../utils/projectExport';
+import { loadStitchedVideo } from '../utils/videoCache';
 import { importProject, ImportError } from '../utils/projectImport';
 import { DemoProjectsSection } from './demo-project-card';
 import type { LocalProject, Sogni360Project } from '../types';
@@ -155,6 +156,18 @@ const ProjectManagerModal: React.FC<ProjectManagerModalProperties> = ({
     const exportOptions: ExportOptions = {
       includeVersionHistory
     };
+
+    // Load cached final video if project doesn't have a finalLoopUrl but was previously stitched
+    if (!exportDialogProject.project.finalLoopUrl && exportDialogProject.project.exportCompleted) {
+      try {
+        const cachedBlob = await loadStitchedVideo(exportDialogProject.id);
+        if (cachedBlob) {
+          exportOptions.cachedFinalVideoBlob = cachedBlob;
+        }
+      } catch (error) {
+        console.warn('[ProjectManager] Failed to load cached video for export:', error);
+      }
+    }
 
     try {
       const zipBlob = await exportProject(

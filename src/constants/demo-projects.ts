@@ -73,7 +73,7 @@ export const DEMO_PROJECTS: DemoProjectManifest[] = [{
     projectZipUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/new-zealand-trip.s360.zip`,
     waypointCount: 23,
     segmentCount: 23,
-    zipSizeBytes: 48_585_818,
+    zipSizeBytes: 69_397_737,
     featured: true
   }
   // Add more demo projects using: local-scripts/demo-uploader/upload-demo.js

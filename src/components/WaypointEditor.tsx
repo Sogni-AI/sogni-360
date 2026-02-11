@@ -681,7 +681,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
                   <>
                     <InlineEditableLabel
                       value={getOriginalLabel(waypoints, waypoint.id)}
-                      onSave={(label) => dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypoint.id, updates: { customLabel: label } } })}
+                      onSave={(label) => dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypoint.id, updates: { customLabel: label || undefined } } })}
                     />
                     {' Image'}
                   </>
