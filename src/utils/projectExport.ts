@@ -106,7 +106,9 @@ async function urlToBlob(url: string, context: string): Promise<Blob | null> {
 }
 
 /**
- * Determine file extension from URL or blob type
+ * Determine file extension from blob type or URL.
+ * Blob type is preferred since S3 result URLs may have .png in the path
+ * even when the worker converted the output to JPG.
  */
 function getImageExtension(url: string, blob?: Blob): string {
   if (blob?.type) {
@@ -119,12 +121,21 @@ function getImageExtension(url: string, blob?: Blob): string {
     if (mimeToExt[blob.type]) return mimeToExt[blob.type];
   }
 
-  const urlLower = url.toLowerCase();
-  if (urlLower.includes('.png') || urlLower.includes('png')) return 'png';
-  if (urlLower.includes('.jpg') || urlLower.includes('.jpeg') || urlLower.includes('jpeg')) return 'jpg';
-  if (urlLower.includes('.webp') || urlLower.includes('webp')) return 'webp';
+  // For data URLs, check the declared MIME type
+  if (url.startsWith('data:image/png')) return 'png';
+  if (url.startsWith('data:image/jpeg') || url.startsWith('data:image/jpg')) return 'jpg';
+  if (url.startsWith('data:image/webp')) return 'webp';
 
-  return url.startsWith('data:image/png') ? 'png' : 'jpg';
+  // Check URL file extension (only match actual extensions, not substrings)
+  const extMatch = url.match(/\.(\w+?)(?:[?#]|$)/);
+  if (extMatch) {
+    const ext = extMatch[1].toLowerCase();
+    if (ext === 'png') return 'png';
+    if (ext === 'jpg' || ext === 'jpeg') return 'jpg';
+    if (ext === 'webp') return 'webp';
+  }
+
+  return 'jpg';
 }
 
 /**

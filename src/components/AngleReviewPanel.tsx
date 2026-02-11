@@ -475,17 +475,22 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     setShowAddAnglePopup(false);
   }, [dispatch, insertAfterIndex, showToast]);
 
-  // Detect image format from URL or use current setting
-  const getImageExtension = useCallback((url: string): string => {
-    // Check URL for format hints
-    if (url.includes('.png') || url.includes('format=png') || url.includes('outputFormat=png')) {
+  // Detect image format for download filename
+  const getImageExtension = useCallback((url: string, isOriginal?: boolean): string => {
+    // Generated images: use the outputFormat setting (what was requested during generation).
+    // S3 result URLs often keep a .png path even when the worker converted to JPG,
+    // so URL-based detection is unreliable for generated images.
+    if (!isOriginal) {
+      return getAdvancedSettings().outputFormat;
+    }
+    // Original/uploaded images: detect from URL
+    if (url.includes('.png') || url.includes('format=png')) {
       return 'png';
     }
-    if (url.includes('.jpg') || url.includes('.jpeg') || url.includes('format=jpg') || url.includes('outputFormat=jpg')) {
+    if (url.includes('.jpg') || url.includes('.jpeg') || url.includes('format=jpg')) {
       return 'jpg';
     }
-    // Fall back to current output format setting
-    return getAdvancedSettings().outputFormat;
+    return 'png'; // uploaded images are most commonly PNG
   }, []);
 
   // Download single image
@@ -497,7 +502,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       const angleLabel = waypoint.isOriginal
         ? 'original'
         : `${waypoint.azimuth}-${waypoint.elevation}-${waypoint.distance}`;
-      const ext = getImageExtension(waypoint.imageUrl);
+      const ext = getImageExtension(waypoint.imageUrl, waypoint.isOriginal);
       const filename = `sogni-360-step${index + 1}-${angleLabel}.${ext}`;
 
       const success = await downloadSingleImage(waypoint.imageUrl, filename);
@@ -530,7 +535,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         const angleLabel = wp.isOriginal
           ? 'original'
           : `${wp.azimuth}-${wp.elevation}-${wp.distance}`;
-        const ext = getImageExtension(wp.imageUrl!);
+        const ext = getImageExtension(wp.imageUrl!, wp.isOriginal);
         return {
           url: wp.imageUrl!,
           filename: `sogni-360-step${originalIndex + 1}-${angleLabel}.${ext}`
