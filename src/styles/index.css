@@ -3377,11 +3377,19 @@ html, body {
   display: block;
 }
 
-.config-card-main img.dimmed {
+.config-card-main > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.config-card-main img.dimmed,
+.config-card-main > svg.dimmed {
   opacity: 0.45;
 }
 
-.no-liquid-glass .config-card-main img.dimmed {
+.no-liquid-glass .config-card-main img.dimmed,
+.no-liquid-glass .config-card-main > svg.dimmed {
   opacity: 0.15;
 }
 

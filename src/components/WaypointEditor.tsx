@@ -23,6 +23,7 @@ import { useImageCostEstimation } from '../hooks/useImageCostEstimation';
 import { useWallet } from '../hooks/useWallet';
 import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 import ImageAdjuster from './shared/ImageAdjuster';
+import TestPatternPlaceholder from './shared/TestPatternPlaceholder';
 
 interface WaypointEditorProps {
   onClose: () => void;
@@ -638,11 +639,16 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
                   <div className="config-card-placeholder">No image</div>
                 )
               ) : (
-                // Non-original: Show source image dimmed with 3D control overlay
+                // Non-original: Show generated image if available, otherwise test pattern
                 <>
-                  {currentProject?.sourceImageUrl && (
-                    <img src={currentProject.sourceImageUrl} alt="Preview" className="dimmed" />
-                  )}
+                  {waypoint.imageUrl && waypoint.status === 'ready' ? (
+                    <img src={waypoint.imageUrl} alt="Generated angle" className="dimmed" />
+                  ) : currentProject?.sourceImageDimensions ? (
+                    <TestPatternPlaceholder
+                      width={currentProject.sourceImageDimensions.width}
+                      height={currentProject.sourceImageDimensions.height}
+                    />
+                  ) : null}
                   <div className="config-card-3d-overlay">
                     <LiquidGlassPanel cornerRadius={16} subtle className="glass-brighten">
                       <CameraAngle3DControl
