@@ -24,6 +24,7 @@ import { trackDownload } from '../utils/analytics';
 import { ensureDataUrl } from '../utils/imageUtils';
 import { useWallet } from '../hooks/useWallet';
 import { getOriginalLabel } from '../utils/waypointLabels';
+import InlineEditableLabel from './shared/InlineEditableLabel';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
@@ -1059,7 +1060,13 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               {/* Info Section - Fixed Height */}
               <div className="review-card-info">
                 {waypoint.isOriginal ? (
-                  <div className="review-card-angle">{getOriginalLabel(waypoints, waypoint.id)} Image</div>
+                  <div className="review-card-angle">
+                    <InlineEditableLabel
+                      value={getOriginalLabel(waypoints, waypoint.id)}
+                      onSave={(label) => dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypoint.id, updates: { customLabel: label } } })}
+                    />
+                    {' Image'}
+                  </div>
                 ) : (
                   <div className="review-card-angle-selectors">
                     <select

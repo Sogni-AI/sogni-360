@@ -23,6 +23,7 @@ export interface Waypoint {
   error?: string;
   projectId?: string; // SDK project ID for tracking
   isOriginal?: boolean; // If true, use source image directly (no generation needed)
+  customLabel?: string; // User-defined label for original waypoints (max 28 chars)
   imageHistory?: string[]; // History of all generated versions (for redo navigation)
   currentImageIndex?: number; // Index of currently displayed version in imageHistory
   // SDK IDs for URL refresh (needed when presigned URLs expire)
