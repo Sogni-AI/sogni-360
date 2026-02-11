@@ -861,6 +861,60 @@ Reference these sibling repos for debugging:
 
 ---
 
+## Adding Demo Projects
+
+Demo projects are pre-built showcases that appear in the "My Projects" list. They are hosted on Cloudflare R2 and lazy-loaded when the user opens them.
+
+### Quick Steps
+
+1. **Export** the project from the app as a `.s360.zip` file
+2. **Rename** the zip to remove spaces/parentheses (e.g. `my-project.s360.zip`)
+3. **Run the uploader script:**
+   ```bash
+   node local-scripts/demo-uploader/upload-demo.js <path-to-project.s360.zip>
+   ```
+   The script is interactive - it prompts for demo ID, description, and featured flag. It uploads the zip + thumbnail to R2 and updates `src/constants/demo-projects.ts` automatically.
+
+4. **Verify** the manifest entry in `src/constants/demo-projects.ts` has a clean `projectZipUrl` (no spaces or special characters in the filename)
+5. **Verify** CDN accessibility:
+   ```bash
+   curl -sI "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/thumbnail.jpg"
+   curl -sI "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/<filename>.s360.zip"
+   ```
+6. **Build** to confirm no errors: `npm run build`
+7. **Deploy** to make the new demo available to users
+
+### If the uploader script fails to extract a thumbnail
+
+The script looks for `assets/source.*` in the zip. If the project uses a waypoint as its source image (no separate `assets/source.jpg`), manually generate a thumbnail:
+
+```bash
+# Extract a waypoint image from the zip
+unzip -o project.s360.zip "assets/waypoints/wp-<id>.png" -d /tmp/thumb
+
+# Generate optimized thumbnail
+magick /tmp/thumb/assets/waypoints/wp-<id>.png -resize 400x400\> -quality 85 /tmp/thumb/thumbnail.jpg
+
+# Upload to R2
+rclone copyto /tmp/thumb/thumbnail.jpg "sogni-r2:safetensor-sogni-ai/sogni-360-demos/<demo-id>/thumbnail.jpg"
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/constants/demo-projects.ts` | Demo project manifest (metadata, CDN URLs) |
+| `src/utils/demo-project-loader.ts` | Downloads, extracts, and imports demo ZIPs |
+| `src/components/demo-project-card.tsx` | UI card shown in project list |
+| `local-scripts/demo-uploader/upload-demo.js` | Upload script (requires `rclone` with `sogni-r2` remote) |
+
+### Prerequisites
+
+- `rclone` configured with `sogni-r2` remote pointing to Cloudflare R2
+- `imagemagick` (optional, for thumbnail optimization): `brew install imagemagick`
+
+---
+
 ## Common Mistakes to Avoid (Lessons Learned)
 
 ### Image Display

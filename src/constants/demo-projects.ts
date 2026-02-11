@@ -43,8 +43,7 @@ const DEMO_BASE_URL = 'https://cdn.sogni.ai/sogni-360-demos';
  * 2. Upload to S3: the ZIP and a thumbnail image (first waypoint or source)
  * 3. Add an entry here with the S3 URLs
  */
-export const DEMO_PROJECTS: DemoProjectManifest[] = [
-  {
+export const DEMO_PROJECTS: DemoProjectManifest[] = [{
     id: 'demo-mid-west-van-travel',
     name: 'Mid-West Van Travel Video',
     description: 'Demo Travel Edit For IG Reels /  TikTok',
@@ -64,6 +63,17 @@ export const DEMO_PROJECTS: DemoProjectManifest[] = [
     waypointCount: 4,
     segmentCount: 4,
     zipSizeBytes: 4_973_611,
+    featured: true
+  },
+  {
+    id: 'demo-new-zealand-trip',
+    name: 'New Zealand Trip',
+    description: 'Demo New Zealand Travel Reel',
+    thumbnailUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/thumbnail.jpg`,
+    projectZipUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/new-zealand-trip.s360.zip`,
+    waypointCount: 23,
+    segmentCount: 23,
+    zipSizeBytes: 48_585_818,
     featured: true
   }
   // Add more demo projects using: local-scripts/demo-uploader/upload-demo.js
