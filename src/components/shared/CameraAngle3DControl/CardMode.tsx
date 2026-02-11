@@ -278,7 +278,9 @@ const CardMode: React.FC<CardModeProps> = ({
               fontWeight: '600',
               color: COLORS.textPrimary,
               textTransform: 'lowercase',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              minWidth: '68px',
+              textAlign: 'center'
             }}>
               {currentAzimuth.label.toLowerCase()}
             </span>

@@ -173,7 +173,7 @@ const FullMode: React.FC<FullModeProps> = ({
       boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.15), 0 2px 8px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.1)'
     }}>
       {/* Main Control Area - Height buttons on left, Orbital on right */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0px' }}>
         {/* Vertical Height Slider */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{
@@ -245,7 +245,7 @@ const FullMode: React.FC<FullModeProps> = ({
               inset: '12%',
               borderRadius: '50%',
               background: `radial-gradient(ellipse 70% 70% at 35% 35%, rgba(70, 70, 75, 0.6) 0%, rgba(45, 45, 50, 0.65) 40%, rgba(25, 25, 30, 0.7) 70%, rgba(15, 15, 18, 0.75) 100%)`,
-              boxShadow: `inset 0 0 40px rgba(0, 0, 0, 0.4), 0 8px 32px rgba(0, 0, 0, 0.4)`,
+              boxShadow: 'none',
               zIndex: 3,
               pointerEvents: 'none'
             }} />
@@ -284,7 +284,7 @@ const FullMode: React.FC<FullModeProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            marginTop: isMobilePortrait ? '2px' : '4px'
+            marginTop: '-16px'
           }}>
             <button
               onClick={(e) => { e.stopPropagation(); rotateCamera('ccw'); }}
@@ -314,7 +314,9 @@ const FullMode: React.FC<FullModeProps> = ({
               fontWeight: '600',
               color: COLORS.textPrimary,
               whiteSpace: 'nowrap',
-              textTransform: 'lowercase'
+              textTransform: 'lowercase',
+              minWidth: '68px',
+              textAlign: 'center'
             }}>
               {currentAzimuth.label.toLowerCase()}
             </span>
