@@ -721,6 +721,15 @@ export async function duplicateProject(
   return newProject;
 }
 
+/**
+ * Find the most recently updated project imported from a specific demo
+ */
+export async function findProjectByDemoId(demoId: string): Promise<Sogni360Project | null> {
+  const projects = await listProjects(); // Already sorted by updatedAt desc
+  const match = projects.find(p => p.project.importedFromDemoId === demoId);
+  return match ? sanitizeLoadedProject(match.project) : null;
+}
+
 export default {
   saveProject,
   loadProject,
@@ -733,5 +742,6 @@ export default {
   getCurrentProjectId,
   getMostRecentProject,
   saveCurrentProject,
-  duplicateProject
+  duplicateProject,
+  findProjectByDemoId
 };

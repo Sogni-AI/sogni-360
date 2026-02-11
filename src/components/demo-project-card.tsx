@@ -13,7 +13,7 @@ import {
   type DemoProjectManifest
 } from '../constants/demo-projects';
 import { loadDemoProject, DemoLoadError } from '../utils/demo-project-loader';
-import { saveProject } from '../utils/localProjectsDB';
+import { saveProject, findProjectByDemoId } from '../utils/localProjectsDB';
 import type { Sogni360Project } from '../types';
 
 interface DemoProjectCardProperties {
@@ -38,6 +38,19 @@ const DemoProjectCard: React.FC<DemoProjectCardProperties> = ({
 
   const handleClick = async () => {
     if (isLoading || disabled) return;
+
+    // If already downloaded, try to open the existing imported copy
+    if (isDownloaded) {
+      try {
+        const existing = await findProjectByDemoId(demo.id);
+        if (existing) {
+          onDemoLoaded(existing);
+          return;
+        }
+      } catch {
+        // Fall through to re-download if lookup fails
+      }
+    }
 
     setIsLoading(true);
     clearError();

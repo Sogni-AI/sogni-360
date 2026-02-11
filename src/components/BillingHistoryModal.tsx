@@ -169,7 +169,7 @@ const BillingHistoryModal: React.FC<BillingHistoryModalProps> = ({ isOpen, onClo
                   <div className="billing-line-details">
                     <div className="billing-line-primary">{getLineLabel(item)}</div>
                     <div className="billing-line-secondary">
-                      {[getLineDetail(item), item.projectName, formatTimestamp(item.timestamp)]
+                      {[formatTimestamp(item.timestamp), getLineDetail(item), item.projectName]
                         .filter(Boolean)
                         .join(' \u00b7 ')}
                     </div>

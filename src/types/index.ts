@@ -121,6 +121,7 @@ export interface Sogni360Project {
   settings: Sogni360Settings;
   finalLoopUrl?: string;
   exportCompleted?: boolean; // Persists export completion state (since blob URLs don't survive refresh)
+  importedFromDemoId?: string; // Tracks which demo project this was imported from
 }
 
 // Video transition state (for playing transitions between waypoints)

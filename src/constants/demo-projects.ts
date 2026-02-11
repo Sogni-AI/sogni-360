@@ -79,7 +79,7 @@ export const DEMO_PROJECTS: DemoProjectManifest[] = [{
   {
     id: 'demo-backyard-fireworks',
     name: 'Backyard Fireworks',
-    description: 'Backyard fireworks celebration captured in a stunning 360° orbital view',
+    description: 'Backyard fireworks in a stunning 360°',
     thumbnailUrl: `${DEMO_BASE_URL}/demo-backyard-fireworks/thumbnail.jpg`,
     projectZipUrl: `${DEMO_BASE_URL}/demo-backyard-fireworks/backyard-fireworks.s360.zip`,
     waypointCount: 4,

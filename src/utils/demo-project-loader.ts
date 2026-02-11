@@ -148,7 +148,7 @@ export async function loadDemoProject(
   onProgress?.(95, 100, 'Finalizing...');
 
   // 9. Create the imported project
-  const importedProject = createDemoProject(project, pathToDataUrl, demo.name, restoredMusicFile);
+  const importedProject = createDemoProject(project, pathToDataUrl, demo.name, restoredMusicFile, demo.id);
 
   // 9. Mark as downloaded
   markDemoAsDownloaded(demo.id);
@@ -297,7 +297,8 @@ function createDemoProject(
   project: Sogni360Project,
   pathToDataUrl: Map<string, string>,
   demoName: string,
-  restoredMusicFile?: File
+  restoredMusicFile?: File,
+  demoId?: string
 ): Sogni360Project {
   const now = Date.now();
   const finalLoopUrl = replaceAssetPath(project.finalLoopUrl, pathToDataUrl);
@@ -321,6 +322,7 @@ function createDemoProject(
     name: demoName,
     createdAt: now,
     updatedAt: now,
+    importedFromDemoId: demoId,
     settings,
     sourceImageUrl: replaceAssetPath(project.sourceImageUrl, pathToDataUrl) || project.sourceImageUrl,
     finalLoopUrl,
