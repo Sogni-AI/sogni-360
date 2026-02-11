@@ -28,9 +28,10 @@ import { useWallet } from '../hooks/useWallet';
 import useAutoHideUI from '../hooks/useAutoHideUI';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
+import { registerPendingCost, recordCompletion, discardPending } from '../services/billingHistoryService';
 import { duplicateProject, getProjectCount } from '../utils/localProjectsDB';
 import { playVideoCompleteIfEnabled, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
-import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
+import { DEFAULT_VIDEO_SETTINGS, VIDEO_QUALITY_PRESETS, calculateVideoDimensions, calculateVideoFrames } from '../constants/videoSettings';
 import { getAzimuthConfig, getElevationConfig, getDistanceConfig } from '../constants/cameraAngleSettings';
 import { isDemoProject, hasDemoCoachmarkBeenShown } from '../constants/demo-projects';
 import { getOriginalLabel } from '../utils/waypointLabels';
@@ -246,6 +247,42 @@ const Sogni360Container: React.FC = () => {
       console.error('[Sogni360Container] WARNING: sourceImageDimensions is missing! Video will generate at wrong size.');
     }
 
+    // Register pending billing costs for each segment
+    const billingCorrelations = new Map<string, string>();
+    const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
+    const fps = DEFAULT_VIDEO_SETTINGS.fps;
+
+    // Fetch per-segment video cost estimate (non-blocking, fallback to 0)
+    let perSegCostToken = 0;
+    let perSegCostUSD = 0;
+    try {
+      const dims = calculateVideoDimensions(sourceWidth || 1024, sourceHeight || 1024, resolution);
+      const frames = calculateVideoFrames(duration);
+      const estUrl = `https://socket.sogni.ai/api/v1/job-video/estimate/${tokenType}/${encodeURIComponent(qualityConfig.model)}/${dims.width}/${dims.height}/${frames}/${fps}/${qualityConfig.steps}/1`;
+      const estResp = await fetch(estUrl);
+      if (estResp.ok) {
+        const estData = await estResp.json();
+        const costRaw = tokenType === 'spark' ? estData?.quote?.project?.costInSpark : estData?.quote?.project?.costInSogni;
+        perSegCostToken = typeof costRaw === 'string' ? parseFloat(costRaw) : (costRaw || 0);
+        const usdRaw = estData?.quote?.project?.costInUSD;
+        perSegCostUSD = typeof usdRaw === 'string' ? parseFloat(usdRaw) : (usdRaw || 0);
+      }
+    } catch {
+      // Cost estimation failed — continue with 0
+    }
+
+    for (const seg of pendingSegments) {
+      const cid = registerPendingCost(perSegCostToken, perSegCostUSD, tokenType, {
+        type: 'video',
+        projectName: currentProject.name,
+        quality,
+        resolution,
+        duration,
+        fps
+      });
+      billingCorrelations.set(seg.id, cid);
+    }
+
     try {
       await generateMultipleTransitions(
         pendingSegments,
@@ -273,11 +310,17 @@ const Sogni360Container: React.FC = () => {
               sdkJobId: result.sdkJobId
             });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
+            // Record billing
+            const cid = billingCorrelations.get(segmentId);
+            if (cid) void recordCompletion(cid);
             // Play sound when each transition completes
             playVideoCompleteIfEnabled();
           },
           onSegmentError: (segmentId, error) => {
             updateSegment(segmentId, { status: 'failed', error: error.message });
+            // Discard billing for failed segment
+            const cid = billingCorrelations.get(segmentId);
+            if (cid) discardPending(cid);
           },
           onOutOfCredits: handleOutOfCredits,
           onAllComplete: () => {
@@ -319,6 +362,9 @@ const Sogni360Container: React.FC = () => {
     const redoSourceWidth = currentProject.sourceImageDimensions?.width;
     const redoSourceHeight = currentProject.sourceImageDimensions?.height;
     const redoResolution = currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
+    const redoQuality = (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'balanced';
+    const redoDuration = currentProject.settings.transitionDuration || 1.5;
+    const redoFps = DEFAULT_VIDEO_SETTINGS.fps;
 
     console.log('[Sogni360Container] Redo transition config:', {
       resolution: redoResolution,
@@ -327,6 +373,32 @@ const Sogni360Container: React.FC = () => {
       prompt: prompt.substring(0, 50) + '...'
     });
 
+    // Register pending billing cost for redo segment
+    let redoCid: string | undefined;
+    try {
+      const redoQualityConfig = VIDEO_QUALITY_PRESETS[redoQuality];
+      const redoDims = calculateVideoDimensions(redoSourceWidth || 1024, redoSourceHeight || 1024, redoResolution);
+      const redoFrames = calculateVideoFrames(redoDuration);
+      const estUrl = `https://socket.sogni.ai/api/v1/job-video/estimate/${tokenType}/${encodeURIComponent(redoQualityConfig.model)}/${redoDims.width}/${redoDims.height}/${redoFrames}/${redoFps}/${redoQualityConfig.steps}/1`;
+      const estResp = await fetch(estUrl);
+      if (estResp.ok) {
+        const estData = await estResp.json();
+        const costRaw = tokenType === 'spark' ? estData?.quote?.project?.costInSpark : estData?.quote?.project?.costInSogni;
+        const usdRaw = estData?.quote?.project?.costInUSD;
+        redoCid = registerPendingCost(
+          typeof costRaw === 'string' ? parseFloat(costRaw) : (costRaw || 0),
+          typeof usdRaw === 'string' ? parseFloat(usdRaw) : (usdRaw || 0),
+          tokenType,
+          { type: 'video', projectName: currentProject.name, quality: redoQuality, resolution: redoResolution, duration: redoDuration, fps: redoFps }
+        );
+      }
+    } catch {
+      // Cost estimation failed — continue with 0
+      redoCid = registerPendingCost(0, 0, tokenType, {
+        type: 'video', projectName: currentProject.name, quality: redoQuality, resolution: redoResolution, duration: redoDuration, fps: redoFps
+      });
+    }
+
     try {
       await generateMultipleTransitions(
         [segment],
@@ -334,34 +406,38 @@ const Sogni360Container: React.FC = () => {
         {
           prompt,
           resolution: redoResolution,
-          quality: (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'balanced',
-          duration: currentProject.settings.transitionDuration || 1.5,
+          quality: redoQuality,
+          duration: redoDuration,
           tokenType, // Use wallet's tokenType directly
           sourceWidth: redoSourceWidth || 1024,
           sourceHeight: redoSourceHeight || 1024,
-          onSegmentProgress: (segmentId, progress, workerName) => {
-            updateSegment(segmentId, { progress, workerName });
+          onSegmentProgress: (segId, progress, workerName) => {
+            updateSegment(segId, { progress, workerName });
           },
-          onSegmentComplete: (segmentId, result, version) => {
-            updateSegment(segmentId, {
+          onSegmentComplete: (segId, result, version) => {
+            updateSegment(segId, {
               status: 'ready',
               videoUrl: result.videoUrl,
               progress: 100,
               sdkProjectId: result.sdkProjectId,
               sdkJobId: result.sdkJobId
             });
-            dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
+            dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId: segId, version } });
+            // Record billing
+            if (redoCid) void recordCompletion(redoCid);
             // Play sound when redo transition completes
             playVideoCompleteIfEnabled();
           },
-          onSegmentError: (segmentId, error) => {
-            updateSegment(segmentId, { status: 'failed', error: error.message });
+          onSegmentError: (segId, error) => {
+            updateSegment(segId, { status: 'failed', error: error.message });
+            if (redoCid) discardPending(redoCid);
           },
           onOutOfCredits: handleOutOfCredits
         }
       );
     } catch (error) {
       console.error('Redo segment error:', error);
+      if (redoCid) discardPending(redoCid);
     }
   }, [currentProject, dispatch, updateSegment]);
 

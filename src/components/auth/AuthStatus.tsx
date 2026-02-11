@@ -6,6 +6,7 @@ import { useRewards } from '../../context/RewardsContext';
 import LoginModal, { LoginModalMode } from './LoginModal';
 import DailyBoostCelebration from '../shared/DailyBoostCelebration';
 import AdvancedSettingsPopup from '../shared/AdvancedSettingsPopup';
+import BillingHistoryModal from '../BillingHistoryModal';
 import { getAuthButtonText, getDefaultModalMode, markAsVisited } from '../../utils/visitorTracking';
 import '../../styles/components/AuthStatus.css';
 
@@ -44,6 +45,7 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   const [highlightDailyBoost, setHighlightDailyBoost] = useState(false);
   const [showDailyBoostCelebration, setShowDailyBoostCelebration] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [showBillingHistory, setShowBillingHistory] = useState(false);
   const [isNewSignup, setIsNewSignup] = useState(false); // Track if user just signed up (don't auto-show boost)
   const hasShownLoginBoostRef = useRef(false);
   const authButtonTextRef = useRef<string>(getAuthButtonText());
@@ -469,6 +471,23 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
                   </button>
                 </div>
 
+                {/* Billing History Link */}
+                <div style={{ paddingTop: '8px', textAlign: 'center' }}>
+                  <button
+                    className="auth-advanced-settings-link"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowBillingHistory(true);
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                      <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    billing history
+                  </button>
+                </div>
+
                 {/* Logout Button */}
                 <div style={{ paddingTop: '12px', textAlign: 'center' }}>
                   <button
@@ -530,6 +549,12 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
       <AdvancedSettingsPopup
         isOpen={showAdvancedSettings}
         onClose={() => setShowAdvancedSettings(false)}
+      />
+
+      {/* Billing History Modal */}
+      <BillingHistoryModal
+        isOpen={showBillingHistory}
+        onClose={() => setShowBillingHistory(false)}
       />
     </>
   );

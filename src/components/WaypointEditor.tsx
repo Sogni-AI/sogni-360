@@ -18,6 +18,8 @@ import AngleReviewPanel from './AngleReviewPanel';
 import { warmUpAudio, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
 import { useImageCostEstimation } from '../hooks/useImageCostEstimation';
 import { useWallet } from '../hooks/useWallet';
+import { registerPendingCost, recordCompletion, discardPending } from '../services/billingHistoryService';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 import ImageAdjuster from './shared/ImageAdjuster';
 import TestPatternPlaceholder from './shared/TestPatternPlaceholder';
@@ -109,7 +111,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
   const anglesToGenerate = waypoints.filter(wp => !wp.isOriginal).length;
 
   // Get cost estimate from API (use wallet's tokenType for accurate pricing)
-  const { loading: costLoading, formattedCost, formattedUSD } = useImageCostEstimation({
+  const { loading: costLoading, cost: totalImageCost, costInUSD: totalImageCostUSD, formattedCost, formattedUSD } = useImageCostEstimation({
     imageCount: anglesToGenerate,
     tokenType,
     enabled: anglesToGenerate > 0
@@ -369,6 +371,24 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
       source: 'upload'
     });
 
+    // Register pending billing costs (per-image cost from hook estimate)
+    const numToGenerate = waypointsToGenerate.length;
+    const perImageCost = (totalImageCost && numToGenerate > 0) ? totalImageCost / numToGenerate : 0;
+    const perImageUSD = (totalImageCostUSD && numToGenerate > 0) ? totalImageCostUSD / numToGenerate : 0;
+    const advSettings = getAdvancedSettings();
+    const billingCorrelations = new Map<string, string>();
+    for (const wp of waypointsToGenerate) {
+      const cid = registerPendingCost(perImageCost, perImageUSD, tokenType, {
+        type: 'angle',
+        projectName: currentProject.name,
+        model: advSettings.imageModel,
+        quality: advSettings.photoQuality,
+        steps: advSettings.imageSteps,
+        imageCount: 1
+      });
+      billingCorrelations.set(wp.id, cid);
+    }
+
     try {
       await generateMultipleAngles(
         currentProject.sourceImageUrl,
@@ -395,9 +415,15 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
                 sdkJobId: result.sdkJobId
               }
             } });
+            // Record billing
+            const cid = billingCorrelations.get(waypointId);
+            if (cid) void recordCompletion(cid);
           },
           onWaypointError: (waypointId, error) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined } } });
+            // Discard billing for failed job
+            const cid = billingCorrelations.get(waypointId);
+            if (cid) discardPending(cid);
           },
           onOutOfCredits: () => {
             onOutOfCredits?.();

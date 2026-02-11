@@ -24,6 +24,8 @@ import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
 import { trackDownload } from '../utils/analytics';
 import { ensureDataUrl } from '../utils/imageUtils';
 import { useWallet } from '../hooks/useWallet';
+import { api } from '../services/api';
+import { registerPendingCost, recordCompletion, discardPending } from '../services/billingHistoryService';
 import { getOriginalLabel } from '../utils/waypointLabels';
 import InlineEditableLabel from './shared/InlineEditableLabel';
 
@@ -258,6 +260,29 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       return next;
     });
 
+    // Register pending billing cost (estimate for 1 image)
+    const advSettings = getAdvancedSettings();
+    let redoCid: string | undefined;
+    try {
+      const est = await api.estimateCost({
+        model: advSettings.imageModel,
+        imageCount: 1,
+        stepCount: advSettings.imageSteps,
+        tokenType
+      });
+      redoCid = registerPendingCost(
+        typeof est.token === 'string' ? parseFloat(est.token) : est.token,
+        typeof est.usd === 'string' ? parseFloat(est.usd) : est.usd,
+        tokenType,
+        { type: 'angle', projectName: currentProject.name, model: advSettings.imageModel, quality: advSettings.photoQuality, steps: advSettings.imageSteps, imageCount: 1 }
+      );
+    } catch {
+      // Cost estimation failed — register with 0 as fallback
+      redoCid = registerPendingCost(0, 0, tokenType, {
+        type: 'angle', projectName: currentProject.name, model: advSettings.imageModel, quality: advSettings.photoQuality, steps: advSettings.imageSteps, imageCount: 1
+      });
+    }
+
     try {
       await generateMultipleAngles(
         referenceImageUrl,
@@ -298,6 +323,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                 }
               }
             });
+            // Record billing
+            if (redoCid) void recordCompletion(redoCid);
             // Play sound when single angle completes
             playVideoCompleteIfEnabled();
           },
@@ -306,6 +333,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               type: 'UPDATE_WAYPOINT',
               payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined } }
             });
+            if (redoCid) discardPending(redoCid);
             showToast({ message: 'Regeneration failed', type: 'error' });
           },
           onOutOfCredits: () => {
@@ -318,6 +346,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         type: 'UPDATE_WAYPOINT',
         payload: { id: waypoint.id, updates: { status: 'failed', error: 'Redo failed', progress: 0 } }
       });
+      if (redoCid) discardPending(redoCid);
       showToast({ message: 'Regeneration failed', type: 'error' });
     }
   }, [currentProject, dispatch, showToast, onOutOfCredits]);
@@ -661,10 +690,36 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       }
     });
 
+    let enhanceCid: string | undefined;
     try {
       // Get enhance steps based on current photo quality setting
       const advancedSettings = getAdvancedSettings();
       const enhanceSteps = getEnhanceSteps(advancedSettings.photoQuality);
+
+      // Register pending billing cost for enhancement
+      // Fire cost estimate async (non-blocking) — use 0 as fallback if not resolved in time
+      const costPromise = api.estimateCost({
+        model: 'z_image_turbo_bf16',
+        imageCount: 1,
+        stepCount: enhanceSteps,
+        tokenType,
+        guideImage: true,
+        denoiseStrength: 0.5
+      }).catch(() => null);
+
+      const costResult = await costPromise;
+      if (costResult) {
+        enhanceCid = registerPendingCost(
+          typeof costResult.token === 'string' ? parseFloat(costResult.token) : costResult.token,
+          typeof costResult.usd === 'string' ? parseFloat(costResult.usd) : costResult.usd,
+          tokenType,
+          { type: 'enhance', projectName: currentProject.name, steps: enhanceSteps, imageCount: 1 }
+        );
+      } else {
+        enhanceCid = registerPendingCost(0, 0, tokenType, {
+          type: 'enhance', projectName: currentProject.name, steps: enhanceSteps, imageCount: 1
+        });
+      }
 
       const enhancedUrl = await enhanceImage({
         imageUrl: waypoint.imageUrl,
@@ -698,6 +753,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               }
             }
           });
+          // Record billing
+          if (enhanceCid) void recordCompletion(enhanceCid);
         },
         onError: (error) => {
           dispatch({
@@ -711,6 +768,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               }
             }
           });
+          if (enhanceCid) discardPending(enhanceCid);
         }
       });
 
@@ -722,6 +780,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
             updates: { enhancing: false, enhancementProgress: 0 }
           }
         });
+        if (enhanceCid) discardPending(enhanceCid);
       }
       return !!enhancedUrl;
     } catch {
@@ -732,6 +791,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
           updates: { enhancing: false, enhancementProgress: 0 }
         }
       });
+      if (enhanceCid) discardPending(enhanceCid);
       return false;
     } finally {
       setEnhancingId(null);
