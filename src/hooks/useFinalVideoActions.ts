@@ -6,10 +6,12 @@ import { loadAudioAsBuffer } from '../utils/audioUtils';
 import { ensureM4AFormat, needsTranscoding } from '../utils/audioTranscoder';
 import { trackDownload, trackShare, trackVideoExport } from '../utils/analytics';
 import { saveStitchedVideo, loadStitchedVideo, deleteStitchedVideo, getMusicFingerprint } from '../utils/videoCache';
+import { toKebabSlug } from '../utils/projectExport';
 import type { MusicSelection } from '../types';
 
 interface UseFinalVideoActionsProps {
   projectId: string;
+  projectName: string;
   videoUrls: string[];
   stitchedVideoUrl?: string;
   onStitchComplete?: (url: string, blob?: Blob) => void;
@@ -19,6 +21,7 @@ interface UseFinalVideoActionsProps {
 
 export function useFinalVideoActions({
   projectId,
+  projectName,
   videoUrls,
   stitchedVideoUrl,
   onStitchComplete,
@@ -138,8 +141,9 @@ export function useFinalVideoActions({
       if (error instanceof Error && error.message === 'METADATA_MISMATCH') {
         showToast({ message: 'There was a problem stitching your video, the clips will be downloaded separately', type: 'warning' });
         setStitchError('Clips could not be combined — downloaded as separate files');
+        const clipSlug = toKebabSlug(projectName);
         const items = videoUrls.map((url, i) => ({ url, filename: `clip-${i + 1}.mp4` }));
-        downloadVideosAsZip(items, `sogni-360-clips-${Date.now()}.zip`).catch(e =>
+        downloadVideosAsZip(items, `sogni-360-clips-${clipSlug}.zip`).catch(e =>
           console.error('[useFinalVideoActions] Zip download failed:', e)
         );
       } else {
@@ -325,7 +329,8 @@ export function useFinalVideoActions({
       if (!response.ok) throw new Error('Download failed');
 
       const blob = await response.blob();
-      const filename = `sogni-360-loop-${Date.now()}.mp4`;
+      const slug = toKebabSlug(projectName);
+      const filename = `sogni-360-loop-${slug}.mp4`;
 
       // On mobile, use native share sheet (better UX - save to photos, share, etc.)
       if (isMobile()) {
@@ -355,7 +360,7 @@ export function useFinalVideoActions({
     } finally {
       setIsDownloading(false);
     }
-  }, [localStitchedUrl, showToast, isDownloading, isMobile, tryNativeShare, videoDuration]);
+  }, [localStitchedUrl, showToast, isDownloading, isMobile, tryNativeShare, videoDuration, projectName]);
 
   // Share video
   const handleShare = useCallback(async () => {

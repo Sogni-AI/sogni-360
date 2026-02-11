@@ -12,6 +12,7 @@ import TransitionVideoCard from './TransitionVideoCard';
 import TransitionRegenerateModal from './TransitionRegenerateModal';
 import LiquidGlassPanel from './shared/LiquidGlassPanel';
 import { downloadSingleVideo, downloadVideosAsZip, type VideoDownloadItem } from '../utils/bulkDownload';
+import { toKebabSlug } from '../utils/projectExport';
 import { getOriginalLabel } from '../utils/waypointLabels';
 import { DEFAULT_VIDEO_SETTINGS, type VideoQualityPreset, type VideoResolution } from '../constants/videoSettings';
 import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
@@ -232,11 +233,12 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
     setDownloadingId(segment.id);
     try {
+      const slug = toKebabSlug(currentProject?.name || 'project');
       const fromWp = waypoints.find(wp => wp.id === segment.fromWaypointId);
       const toWp = waypoints.find(wp => wp.id === segment.toWaypointId);
       const fromLabel = fromWp?.isOriginal ? 'original' : fromWp?.azimuth || 'unknown';
       const toLabel = toWp?.isOriginal ? 'original' : toWp?.azimuth || 'unknown';
-      const filename = `sogni-360-transition${index + 1}-${fromLabel}-to-${toLabel}.mp4`;
+      const filename = `sogni-360-${slug}-transition${index + 1}-${fromLabel}-to-${toLabel}.mp4`;
 
       const success = await downloadSingleVideo(segment.videoUrl, filename);
       if (success) {
@@ -262,6 +264,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
     setDownloadProgress('Preparing download...');
 
     try {
+      const slug = toKebabSlug(currentProject?.name || 'project');
       const videos: VideoDownloadItem[] = readySegments.map((seg) => {
         const originalIndex = segments.indexOf(seg);
         const fromWp = waypoints.find(wp => wp.id === seg.fromWaypointId);
@@ -270,14 +273,13 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
         const toLabel = toWp?.isOriginal ? 'original' : toWp?.azimuth || 'unknown';
         return {
           url: seg.videoUrl!,
-          filename: `sogni-360-transition${originalIndex + 1}-${fromLabel}-to-${toLabel}.mp4`
+          filename: `sogni-360-${slug}-transition${originalIndex + 1}-${fromLabel}-to-${toLabel}.mp4`
         };
       });
 
-      const timestamp = new Date().toISOString().slice(0, 10);
       const success = await downloadVideosAsZip(
         videos,
-        `sogni-360-transitions-${timestamp}.zip`,
+        `sogni-360-transitions-${slug}.zip`,
         (_current, _total, message) => {
           setDownloadProgress(message);
         }

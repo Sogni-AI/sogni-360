@@ -16,6 +16,7 @@ import { enhanceImage } from '../services/ImageEnhancer';
 import WorkflowWizard, { WorkflowStep } from './shared/WorkflowWizard';
 import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
+import { toKebabSlug } from '../utils/projectExport';
 import EnhancePromptPopup from './shared/EnhancePromptPopup';
 import AddAnglePopup from './AddAnglePopup';
 import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
@@ -532,11 +533,12 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
 
     setDownloadingId(waypoint.id);
     try {
+      const slug = toKebabSlug(currentProject?.name || 'project');
       const angleLabel = waypoint.isOriginal
         ? 'original'
         : `${waypoint.azimuth}-${waypoint.elevation}-${waypoint.distance}`;
       const ext = getImageExtension(waypoint.imageUrl, waypoint.isOriginal);
-      const filename = `sogni-360-step${index + 1}-${angleLabel}.${ext}`;
+      const filename = `sogni-360-${slug}-step${index + 1}-${angleLabel}.${ext}`;
 
       const success = await downloadSingleImage(waypoint.imageUrl, filename);
       if (success) {
@@ -563,6 +565,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
     setDownloadProgress('Preparing download...');
 
     try {
+      const slug = toKebabSlug(currentProject?.name || 'project');
       const images: ImageDownloadItem[] = readyWaypoints.map((wp) => {
         const originalIndex = waypoints.indexOf(wp);
         const angleLabel = wp.isOriginal
@@ -571,14 +574,13 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
         const ext = getImageExtension(wp.imageUrl!, wp.isOriginal);
         return {
           url: wp.imageUrl!,
-          filename: `sogni-360-step${originalIndex + 1}-${angleLabel}.${ext}`
+          filename: `sogni-360-${slug}-step${originalIndex + 1}-${angleLabel}.${ext}`
         };
       });
 
-      const timestamp = new Date().toISOString().slice(0, 10);
       const success = await downloadImagesAsZip(
         images,
-        `sogni-360-angles-${timestamp}.zip`,
+        `sogni-360-angles-${slug}.zip`,
         (_current, _total, message) => {
           setDownloadProgress(message);
         }

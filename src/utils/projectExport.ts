@@ -454,15 +454,21 @@ function createExportedProject(
 }
 
 /**
- * Generate a safe filename from project name
+ * Convert a project name to a safe kebab-case slug for use in filenames.
  */
-export function generateExportFilename(projectName: string): string {
-  const safeName = projectName
+export function toKebabSlug(name: string): string {
+  return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 50) || 'project';
-  return `${safeName}.s360.zip`;
+}
+
+/**
+ * Generate a safe filename from project name
+ */
+export function generateExportFilename(projectName: string): string {
+  return `${toKebabSlug(projectName)}.s360.zip`;
 }
 
 /**

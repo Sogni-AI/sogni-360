@@ -6,6 +6,7 @@ import type { MusicSelection } from '../types';
 
 interface FinalVideoPanelProps {
   projectId: string;
+  projectName: string;
   videoUrls: string[];
   stitchedVideoUrl?: string;
   onClose: () => void;
@@ -18,6 +19,7 @@ interface FinalVideoPanelProps {
 
 const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   projectId,
+  projectName,
   videoUrls,
   stitchedVideoUrl,
   onClose,
@@ -53,7 +55,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
     handleDownload,
     handleShare,
     setCurrentSegmentIndex
-  } = useFinalVideoActions({ projectId, videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection, onMusicChange });
+  } = useFinalVideoActions({ projectId, projectName, videoUrls, stitchedVideoUrl, onStitchComplete, initialMusicSelection, onMusicChange });
 
   // Reset inactivity timer on user interaction
   const resetInactivityTimer = useCallback(() => {

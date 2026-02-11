@@ -948,6 +948,7 @@ const Sogni360Container: React.FC = () => {
       {showFinalVideoPreview && currentProject?.segments && (
         <FinalVideoPanel
           projectId={currentProject.id}
+          projectName={currentProject.name}
           videoUrls={currentProject.segments.filter(s => s.status === 'ready' && s.videoUrl).map(s => s.videoUrl) as string[]}
           stitchedVideoUrl={currentProject.finalLoopUrl}
           onClose={handleCloseFinalVideo}
