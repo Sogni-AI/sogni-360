@@ -3308,6 +3308,10 @@ html, body {
 }
 
 .config-card-main img.dimmed {
+  opacity: 0.45;
+}
+
+.no-liquid-glass .config-card-main img.dimmed {
   opacity: 0.15;
 }
 

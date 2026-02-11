@@ -14,6 +14,7 @@ import {
 import type { MultiAnglePreset } from '../types/cameraAngle';
 import WorkflowWizard, { WorkflowStep, computeWorkflowStep } from './shared/WorkflowWizard';
 import CameraAngle3DControl from './shared/CameraAngle3DControl';
+import { LiquidGlassPanel } from './shared/LiquidGlassPanel';
 import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
 import { generateMultipleAngles } from '../services/CameraAngleGenerator';
 import AngleReviewPanel from './AngleReviewPanel';
@@ -468,15 +469,17 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
                     <img src={currentProject.sourceImageUrl} alt="Preview" className="dimmed" />
                   )}
                   <div className="config-card-3d-overlay">
-                    <CameraAngle3DControl
-                      azimuth={waypoint.azimuth}
-                      elevation={waypoint.elevation}
-                      distance={waypoint.distance}
-                      onAzimuthChange={(azimuth) => handleUpdateWaypoint(waypoint.id, { azimuth })}
-                      onElevationChange={(elevation) => handleUpdateWaypoint(waypoint.id, { elevation })}
-                      onDistanceChange={(distance) => handleUpdateWaypoint(waypoint.id, { distance })}
-                      size="full"
-                    />
+                    <LiquidGlassPanel cornerRadius={16} subtle className="glass-brighten">
+                      <CameraAngle3DControl
+                        azimuth={waypoint.azimuth}
+                        elevation={waypoint.elevation}
+                        distance={waypoint.distance}
+                        onAzimuthChange={(azimuth) => handleUpdateWaypoint(waypoint.id, { azimuth })}
+                        onElevationChange={(elevation) => handleUpdateWaypoint(waypoint.id, { elevation })}
+                        onDistanceChange={(distance) => handleUpdateWaypoint(waypoint.id, { distance })}
+                        size="full"
+                      />
+                    </LiquidGlassPanel>
                   </div>
                 </>
               )}

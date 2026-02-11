@@ -5,6 +5,7 @@ import ImageAdjuster, {
   AdjustmentParams,
   applyAdjustmentToImage
 } from '../shared/ImageAdjuster';
+import { normalizeImageToTargetDimensions } from '../../utils/imageUtils';
 
 interface UploadAngleModeProps {
   insertAfterIndex: number;
@@ -34,76 +35,6 @@ async function getImageDimensions(
       reject(new Error('Failed to load image'));
     };
     img.src = url;
-  });
-}
-
-/**
- * Normalize an image to match target dimensions using center+cover crop.
- * Scales the image to cover the target area, then crops from center.
- */
-async function normalizeImageToTargetDimensions(
-  imageUrl: string,
-  targetDimensions: { width: number; height: number }
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = targetDimensions.width;
-      canvas.height = targetDimensions.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'));
-        return;
-      }
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-
-      // Calculate cover dimensions (scale to fill, then crop from center)
-      const sourceAspect = img.naturalWidth / img.naturalHeight;
-      const targetAspect = targetDimensions.width / targetDimensions.height;
-
-      let drawWidth: number, drawHeight: number;
-      let offsetX: number, offsetY: number;
-
-      if (sourceAspect > targetAspect) {
-        // Source is wider - fit by height, crop width
-        drawHeight = targetDimensions.height;
-        drawWidth = drawHeight * sourceAspect;
-        offsetX = (targetDimensions.width - drawWidth) / 2;
-        offsetY = 0;
-      } else {
-        // Source is taller - fit by width, crop height
-        drawWidth = targetDimensions.width;
-        drawHeight = drawWidth / sourceAspect;
-        offsetX = 0;
-        offsetY = (targetDimensions.height - drawHeight) / 2;
-      }
-
-      ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-      // Return as blob URL
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(URL.createObjectURL(blob));
-          } else {
-            reject(new Error('Failed to create blob'));
-          }
-        },
-        'image/jpeg',
-        0.95
-      );
-    };
-
-    img.onerror = () => {
-      reject(new Error('Failed to load image'));
-    };
-
-    img.src = imageUrl;
   });
 }
 

@@ -13,14 +13,18 @@ const NewProjectConfirmModal: React.FC<NewProjectConfirmModalProps> = ({
   onCancel
 }) => {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/15 p-5">
       <LiquidGlassPanel
         cornerRadius={24}
         modalTint
+        className="glass-modal"
+        displacementScale={60}
+        saturation={160}
+        aberrationIntensity={4}
         style={{ width: '100%', maxWidth: '28rem', margin: '0 1rem' }}
       >
       <div
-        className="bg-gradient-to-br from-[rgba(17,24,39,0.55)] to-[rgba(3,7,18,0.65)] rounded-[inherit] p-7 w-full"
+        className="p-7 rounded-[inherit]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl font-semibold text-white mb-3">Create New Project?</h2>

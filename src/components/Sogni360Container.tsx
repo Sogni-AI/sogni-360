@@ -96,11 +96,10 @@ const Sogni360Container: React.FC = () => {
     getProjectCount().then(setProjectCount).catch(() => setProjectCount(0));
   }, []);
 
-  // Show project name modal when image is uploaded but no waypoints exist (and name is default)
+  // Show project name modal when image is uploaded (and name is default)
   useEffect(() => {
     if (
       currentProject?.sourceImageUrl &&
-      waypoints.length === 0 &&
       !showWaypointEditor &&
       !hasAutoOpenedEditor.current &&
       !isRestoring &&
@@ -110,7 +109,7 @@ const Sogni360Container: React.FC = () => {
       hasAutoOpenedEditor.current = true;
       setShowProjectNameModal(true);
     }
-  }, [currentProject?.sourceImageUrl, currentProject?.name, waypoints.length, showWaypointEditor, isRestoring, showProjectNameModal]);
+  }, [currentProject?.sourceImageUrl, currentProject?.name, showWaypointEditor, isRestoring, showProjectNameModal]);
 
   // Reset auto-open flag when project changes
   useEffect(() => {

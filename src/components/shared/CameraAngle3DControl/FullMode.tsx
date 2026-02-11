@@ -163,17 +163,14 @@ const FullMode: React.FC<FullModeProps> = ({
       flexDirection: 'column',
       gap: isMobilePortrait ? '10px' : '12px',
       padding: isMobilePortrait ? '12px' : '14px',
-      background: 'linear-gradient(145deg, rgba(45, 48, 55, 0.95) 0%, rgba(25, 28, 32, 0.98) 100%)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
       borderRadius: '16px',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderTopColor: 'rgba(255, 255, 255, 0.15)',
       overflow: 'hidden',
       width: 'fit-content',
       maxWidth: '100%',
       margin: '0 auto',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+      background: 'rgba(15, 15, 20, 0.3)',
+      border: '1px solid transparent',
+      boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.15), 0 2px 8px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.1)'
     }}>
       {/* Main Control Area - Height buttons on left, Orbital on right */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

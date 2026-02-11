@@ -1,10 +1,44 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { getProjectCount } from '../utils/localProjectsDB';
-import { resizeImageIfNeeded } from '../utils/imageUtils';
+import { resizeImageIfNeeded, normalizeImageToTargetDimensions } from '../utils/imageUtils';
+import { AZIMUTHS } from '../constants/cameraAngleSettings';
+import type { Waypoint, AzimuthKey } from '../types';
 import DemoVideoBackground from './DemoVideoBackground';
 import LiquidGlassPanel from './shared/LiquidGlassPanel';
+
+/** Distribute N azimuths evenly around the 8 available positions. */
+function distributeAzimuths(count: number): AzimuthKey[] {
+  if (count <= 0) return [];
+  if (count >= AZIMUTHS.length) return AZIMUTHS.map(a => a.key);
+  const step = AZIMUTHS.length / count;
+  return Array.from({ length: count }, (_, i) => {
+    const idx = Math.round(i * step) % AZIMUTHS.length;
+    return AZIMUTHS[idx].key;
+  });
+}
+
+/** Read a File as a data URL. */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Get the natural dimensions of an image from its data URL. */
+function getImageDims(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
 
 const SourceUploader: React.FC = () => {
   const { setSourceImage, dispatch } = useApp();
@@ -19,57 +53,95 @@ const SourceUploader: React.FC = () => {
     getProjectCount().then(setProjectCount).catch(() => setProjectCount(0));
   }, []);
 
-  const processImage = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      showToast({ message: 'Please upload an image file', type: 'error' });
+  const processImages = useCallback(async (files: File[]) => {
+    // Validate all files upfront
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      showToast({ message: 'Please upload image files', type: 'error' });
       return;
     }
-
-    if (file.size > 20 * 1024 * 1024) {
-      showToast({ message: 'Image must be less than 20MB', type: 'error' });
+    const oversized = imageFiles.find(f => f.size > 20 * 1024 * 1024);
+    if (oversized) {
+      showToast({ message: 'Each image must be less than 20MB', type: 'error' });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Read file as data URL
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      // Process first image — becomes the source image
+      const firstDataUrl = await readFileAsDataUrl(imageFiles[0]);
+      const firstDims = await getImageDims(firstDataUrl);
+      const { dataUrl: sourceDataUrl, dimensions: sourceDims } = await resizeImageIfNeeded(firstDataUrl, firstDims);
+
+      setSourceImage(sourceDataUrl, sourceDims);
+
+      // Single image: existing flow — no waypoints, preset auto-loads in WaypointEditor
+      if (imageFiles.length === 1) return;
+
+      // Multiple images: create waypoints for all files
+      const azimuths = distributeAzimuths(imageFiles.length);
+      const waypoints: Waypoint[] = [];
+
+      // First image becomes the first waypoint (already processed)
+      waypoints.push({
+        id: uuidv4(),
+        azimuth: azimuths[0],
+        elevation: 'eye-level',
+        distance: 'close-up',
+        status: 'ready',
+        imageUrl: sourceDataUrl,
+        isOriginal: true,
       });
 
-      // Get image dimensions
-      const originalDimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-        img.onerror = reject;
-        img.src = dataUrl;
-      });
+      // Process remaining images — normalize to match source dimensions
+      for (let i = 1; i < imageFiles.length; i++) {
+        try {
+          const dataUrl = await readFileAsDataUrl(imageFiles[i]);
+          const dims = await getImageDims(dataUrl);
+          const { dataUrl: resizedUrl } = await resizeImageIfNeeded(dataUrl, dims);
 
-      // Resize if longest dimension exceeds 2048px
-      const { dataUrl: finalDataUrl, dimensions } = await resizeImageIfNeeded(dataUrl, originalDimensions);
+          // Normalize to source dimensions if different
+          let finalUrl = resizedUrl;
+          const resizedDims = await getImageDims(resizedUrl);
+          if (resizedDims.width !== sourceDims.width || resizedDims.height !== sourceDims.height) {
+            finalUrl = await normalizeImageToTargetDimensions(resizedUrl, sourceDims);
+          }
 
-      setSourceImage(finalDataUrl, dimensions);
+          waypoints.push({
+            id: uuidv4(),
+            azimuth: azimuths[i],
+            elevation: 'eye-level',
+            distance: 'close-up',
+            status: 'ready',
+            imageUrl: finalUrl,
+            isOriginal: true,
+          });
+        } catch (err) {
+          console.error(`Failed to process image ${i + 1}:`, err);
+        }
+      }
+
+      if (waypoints.length > 1) {
+        dispatch({ type: 'SET_WAYPOINTS', payload: waypoints });
+      }
     } catch (error) {
-      console.error('Error processing image:', error);
-      showToast({ message: 'Failed to process image', type: 'error' });
+      console.error('Error processing images:', error);
+      showToast({ message: 'Failed to process images', type: 'error' });
     } finally {
       setIsLoading(false);
     }
-  }, [setSourceImage, showToast]);
+  }, [setSourceImage, showToast, dispatch]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
 
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      processImage(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      processImages(files);
     }
-  }, [processImage]);
+  }, [processImages]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -82,11 +154,13 @@ const SourceUploader: React.FC = () => {
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processImage(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      processImages(Array.from(files));
     }
-  }, [processImage]);
+    // Reset input so the same files can be selected again
+    e.target.value = '';
+  }, [processImages]);
 
   const handleClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -130,6 +204,7 @@ const SourceUploader: React.FC = () => {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 onChange={handleFileSelect}
               />
@@ -152,10 +227,10 @@ const SourceUploader: React.FC = () => {
                     </div>
                   </div>
                   <p className="upload-text">
-                    Drop an image or tap to upload
+                    Drop images or tap to upload
                   </p>
                   <p className="upload-text-secondary">
-                    PNG, JPG up to 20MB
+                    PNG, JPG up to 20MB — multiple images supported
                   </p>
                 </>
               )}
