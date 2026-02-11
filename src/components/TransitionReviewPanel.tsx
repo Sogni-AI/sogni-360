@@ -12,6 +12,7 @@ import TransitionVideoCard from './TransitionVideoCard';
 import TransitionRegenerateModal from './TransitionRegenerateModal';
 import LiquidGlassPanel from './shared/LiquidGlassPanel';
 import { downloadSingleVideo, downloadVideosAsZip, type VideoDownloadItem } from '../utils/bulkDownload';
+import { getOriginalLabel } from '../utils/waypointLabels';
 import { DEFAULT_VIDEO_SETTINGS, type VideoQualityPreset, type VideoResolution } from '../constants/videoSettings';
 import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
@@ -176,7 +177,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   const getAngleLabel = (waypointId: string): string => {
     const wp = getWaypoint(waypointId);
     if (!wp) return 'Unknown';
-    if (wp.isOriginal) return 'Original';
+    if (wp.isOriginal) return getOriginalLabel(waypoints, waypointId);
     const az = getAzimuthConfig(wp.azimuth);
     const el = getElevationConfig(wp.elevation);
     return `${az.label} · ${el.label}`;
