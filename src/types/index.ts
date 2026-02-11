@@ -61,6 +61,7 @@ export interface Segment {
   projectId?: string; // SDK project ID for tracking
   isReverse?: boolean; // If true, plays the video in reverse
   workerName?: string; // Worker name for display during generation
+  prompt?: string; // The prompt used to generate this segment (for regenerate modal recall)
   versions?: TransitionVersion[]; // History of all generated versions
   currentVersionIndex?: number; // Index of currently selected version
   // SDK IDs for URL refresh (needed when presigned URLs expire)

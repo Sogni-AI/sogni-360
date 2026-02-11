@@ -516,7 +516,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
           fromImageUrl={getWaypoint(regenerateModalSegment.fromWaypointId)?.imageUrl}
           toImageUrl={getWaypoint(regenerateModalSegment.toWaypointId)?.imageUrl}
           thumbAspect={thumbAspect}
-          currentPrompt={currentProject?.settings.transitionPrompt}
+          currentPrompt={regenerateModalSegment.prompt || currentProject?.settings.transitionPrompt}
           onConfirm={handleRegenerateConfirm}
           onCancel={handleRegenerateCancel}
         />

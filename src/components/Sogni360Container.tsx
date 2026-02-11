@@ -248,7 +248,7 @@ const Sogni360Container: React.FC = () => {
           sourceWidth: sourceWidth || 1024,  // Default to 1024 if missing
           sourceHeight: sourceHeight || 1024,  // Default to 1024 if missing
           onSegmentStart: (segmentId) => {
-            updateSegment(segmentId, { status: 'generating', progress: 0 });
+            updateSegment(segmentId, { status: 'generating', progress: 0, prompt });
           },
           onSegmentProgress: (segmentId, progress, workerName) => {
             updateSegment(segmentId, { progress, workerName });
@@ -298,16 +298,16 @@ const Sogni360Container: React.FC = () => {
       }
     });
 
-    // Reset segment to generating
-    updateSegment(segmentId, { status: 'generating', progress: 0 });
+    // Use custom prompt if provided, otherwise fall back to segment's last prompt, then project settings
+    const prompt = customPrompt || segment.prompt || currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.';
+
+    // Reset segment to generating and store the prompt used
+    updateSegment(segmentId, { status: 'generating', progress: 0, prompt });
 
     // Get source dimensions - MUST use actual dimensions
     const redoSourceWidth = currentProject.sourceImageDimensions?.width;
     const redoSourceHeight = currentProject.sourceImageDimensions?.height;
     const redoResolution = currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
-
-    // Use custom prompt if provided, otherwise fall back to project settings
-    const prompt = customPrompt || currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.';
 
     console.log('[Sogni360Container] Redo transition config:', {
       resolution: redoResolution,
