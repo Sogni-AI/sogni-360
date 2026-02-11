@@ -909,9 +909,8 @@ When replacing a demo asset:
 
 The upload script (`extractThumbnailImage`) MUST use the **exact same fallback chain** as `localProjectsDB.ts saveProject()`:
 
-1. First **generated** (non-original) ready waypoint image
-2. First **any** ready waypoint image
-3. `project.sourceImageUrl`
+1. First ready waypoint image (in array order, including originals)
+2. `project.sourceImageUrl`
 
 This ensures demo project card thumbnails match regular project card thumbnails for the same project. Most projects store their source image at a waypoint path (e.g., `assets/waypoints/wp-xxx.png`), NOT at `assets/source.*`.
 

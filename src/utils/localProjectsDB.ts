@@ -287,12 +287,9 @@ export async function saveProject(project: Sogni360Project): Promise<void> {
     finalLoopUrl: processedFinalLoopUrl
   };
 
-  // Get thumbnail URL: prefer a generated angle over the original uploaded image,
-  // since generated angles are more representative of the 360 experience.
-  // Fallback chain: first generated ready waypoint → first ready waypoint → source image
-  const generatedWaypoint = cleanProject.waypoints.find(wp => wp.imageUrl && wp.status === 'ready' && !wp.isOriginal);
-  const anyReadyWaypoint = cleanProject.waypoints.find(wp => wp.imageUrl && wp.status === 'ready');
-  const thumbnailUrl = generatedWaypoint?.imageUrl || anyReadyWaypoint?.imageUrl || cleanProject.sourceImageUrl;
+  // Get thumbnail URL: first ready waypoint in array order, fallback to source image
+  const firstReadyWaypoint = cleanProject.waypoints.find(wp => wp.imageUrl && wp.status === 'ready');
+  const thumbnailUrl = firstReadyWaypoint?.imageUrl || cleanProject.sourceImageUrl;
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -508,7 +505,15 @@ export async function listProjects(): Promise<LocalProject[]> {
     request.onsuccess = () => {
       const cursor = request.result;
       if (cursor) {
-        projects.push(cursor.value as LocalProject);
+        const localProject = cursor.value as LocalProject;
+        // Recompute thumbnail from current logic (fixes stale cached thumbnails)
+        if (localProject.project) {
+          const firstReady = localProject.project.waypoints.find(
+            (wp: { imageUrl?: string; status: string }) => wp.imageUrl && wp.status === 'ready'
+          );
+          localProject.thumbnailUrl = firstReady?.imageUrl || localProject.project.sourceImageUrl;
+        }
+        projects.push(localProject);
         cursor.continue();
       } else {
         resolve(projects);
