@@ -12,6 +12,8 @@ import TransitionVideoCard from './TransitionVideoCard';
 import TransitionRegenerateModal from './TransitionRegenerateModal';
 import LiquidGlassPanel from './shared/LiquidGlassPanel';
 import { downloadSingleVideo, downloadVideosAsZip, type VideoDownloadItem } from '../utils/bulkDownload';
+import { DEFAULT_VIDEO_SETTINGS, type VideoQualityPreset, type VideoResolution } from '../constants/videoSettings';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 interface TransitionReviewPanelProps {
   onClose: () => void;
@@ -517,6 +519,12 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
           toImageUrl={getWaypoint(regenerateModalSegment.toWaypointId)?.imageUrl}
           thumbAspect={thumbAspect}
           currentPrompt={regenerateModalSegment.prompt || currentProject?.settings.transitionPrompt}
+          imageWidth={currentProject?.sourceImageDimensions?.width}
+          imageHeight={currentProject?.sourceImageDimensions?.height}
+          resolution={(currentProject?.settings.videoResolution as VideoResolution) || DEFAULT_VIDEO_SETTINGS.resolution}
+          quality={(currentProject?.settings.transitionQuality as VideoQualityPreset) || getAdvancedSettings().videoQuality}
+          duration={currentProject?.settings.transitionDuration || DEFAULT_VIDEO_SETTINGS.duration}
+          tokenType={currentProject?.settings.tokenType as 'spark' | 'sogni' || 'spark'}
           onConfirm={handleRegenerateConfirm}
           onCancel={handleRegenerateCancel}
         />

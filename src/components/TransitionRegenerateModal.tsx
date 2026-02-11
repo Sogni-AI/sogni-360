@@ -4,6 +4,8 @@ import {
   getDefaultTransitionPrompt,
   findPresetByPrompt
 } from '../constants/transitionPromptPresets';
+import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
+import type { VideoQualityPreset, VideoResolution } from '../constants/videoSettings';
 
 interface TransitionRegenerateModalProps {
   fromLabel: string;
@@ -12,6 +14,14 @@ interface TransitionRegenerateModalProps {
   toImageUrl?: string;
   thumbAspect: number;
   currentPrompt?: string;
+  /** Source image dimensions for cost estimation */
+  imageWidth?: number;
+  imageHeight?: number;
+  /** Video settings for cost estimation */
+  resolution?: VideoResolution;
+  quality?: VideoQualityPreset;
+  duration?: number;
+  tokenType?: 'spark' | 'sogni';
   onConfirm: (customPrompt: string) => void;
   onCancel: () => void;
 }
@@ -23,11 +33,29 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
   toImageUrl,
   thumbAspect,
   currentPrompt,
+  imageWidth,
+  imageHeight,
+  resolution,
+  quality,
+  duration,
+  tokenType = 'spark',
   onConfirm,
   onCancel
 }) => {
   const defaultPrompt = getDefaultTransitionPrompt();
   const [prompt, setPrompt] = useState(currentPrompt || defaultPrompt);
+
+  // Cost estimation for a single transition regeneration
+  const { loading: costLoading, formattedCost, formattedUSD } = useVideoCostEstimation({
+    imageWidth,
+    imageHeight,
+    resolution,
+    quality,
+    duration,
+    jobCount: 1,
+    tokenType,
+    enabled: !!(imageWidth && imageHeight)
+  });
 
   // Determine if current prompt matches a preset (for dropdown display)
   const selectedPresetId = useMemo(() => {
@@ -158,23 +186,35 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
           </p>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors min-h-[44px]"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors min-h-[44px] flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Regenerate
-          </button>
+        {/* Cost estimate + Action buttons */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm text-gray-400">
+            {costLoading ? (
+              <span className="text-gray-500">Calculating cost...</span>
+            ) : formattedCost !== '—' ? (
+              <span>
+                <span className="text-white font-medium">{formattedCost} {tokenType.toUpperCase()}</span>
+                <span className="text-gray-500 ml-1.5">≈ {formattedUSD}</span>
+              </span>
+            ) : null}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors min-h-[44px]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors min-h-[44px] flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Regenerate
+            </button>
+          </div>
         </div>
       </div>
     </div>
