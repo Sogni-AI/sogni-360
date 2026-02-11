@@ -132,10 +132,23 @@ export async function loadDemoProject(
     onProgress?.(progress, 100, `Loaded ${loadedAssets} of ${totalAssets} assets...`);
   }
 
+  // 8. Restore uploaded music file from zip
+  let restoredMusicFile: File | undefined;
+  if (project.settings?.musicSelection?.type === 'upload') {
+    const musicFile = await findAndExtractMusicFile(zip);
+    if (musicFile) {
+      restoredMusicFile = new File(
+        [musicFile.blob],
+        project.settings.musicSelection.title || 'uploaded-music',
+        { type: musicFile.blob.type }
+      );
+    }
+  }
+
   onProgress?.(95, 100, 'Finalizing...');
 
-  // 8. Create the imported project
-  const importedProject = createDemoProject(project, pathToDataUrl, demo.name);
+  // 9. Create the imported project
+  const importedProject = createDemoProject(project, pathToDataUrl, demo.name, restoredMusicFile);
 
   // 9. Mark as downloaded
   markDemoAsDownloaded(demo.id);
@@ -200,9 +213,32 @@ function getMimeType(filePath: string): string {
     webp: 'image/webp',
     mp4: 'video/mp4',
     webm: 'video/webm',
-    mov: 'video/quicktime'
+    mov: 'video/quicktime',
+    m4a: 'audio/mp4',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    aac: 'audio/aac',
+    ogg: 'audio/ogg',
+    flac: 'audio/flac'
   };
   return mimeTypes[extension || ''] || 'application/octet-stream';
+}
+
+/**
+ * Find and extract an uploaded music file from the zip
+ */
+async function findAndExtractMusicFile(zip: JSZip): Promise<{ blob: Blob } | null> {
+  const musicExtensions = ['m4a', 'mp3', 'wav', 'aac', 'ogg', 'flac'];
+  for (const ext of musicExtensions) {
+    const path = `assets/music.${ext}`;
+    const file = zip.file(path);
+    if (file) {
+      const blob = await file.async('blob');
+      const mimeType = getMimeType(path);
+      return { blob: new Blob([blob], { type: mimeType }) };
+    }
+  }
+  return null;
 }
 
 /**
@@ -260,9 +296,23 @@ function getWaypointStatus(hasImage: boolean, isOriginal?: boolean): 'ready' | '
 function createDemoProject(
   project: Sogni360Project,
   pathToDataUrl: Map<string, string>,
-  demoName: string
+  demoName: string,
+  restoredMusicFile?: File
 ): Sogni360Project {
   const now = Date.now();
+  const finalLoopUrl = replaceAssetPath(project.finalLoopUrl, pathToDataUrl);
+
+  // Restore music selection with the extracted File object
+  let settings = project.settings;
+  if (restoredMusicFile && settings?.musicSelection?.type === 'upload') {
+    settings = {
+      ...settings,
+      musicSelection: {
+        ...settings.musicSelection,
+        file: restoredMusicFile
+      }
+    };
+  }
 
   return {
     ...project,
@@ -271,8 +321,9 @@ function createDemoProject(
     name: demoName,
     createdAt: now,
     updatedAt: now,
+    settings,
     sourceImageUrl: replaceAssetPath(project.sourceImageUrl, pathToDataUrl) || project.sourceImageUrl,
-    finalLoopUrl: replaceAssetPath(project.finalLoopUrl, pathToDataUrl),
+    finalLoopUrl,
     waypoints: project.waypoints.map(wp => {
       const imageUrl = replaceAssetPath(wp.imageUrl, pathToDataUrl);
       const hasImage = imageUrl && pathToDataUrl.has(wp.imageUrl || '');
@@ -309,15 +360,23 @@ function createDemoProject(
         ];
       }
 
+      // Preserve the user's selected version index from the exported project.
+      // Only fall back to last version for newly-created single-version arrays.
+      const preservedVersionIndex = versions
+        ? (seg.currentVersionIndex !== undefined
+          ? Math.min(seg.currentVersionIndex, versions.length - 1)
+          : versions.length - 1)
+        : undefined;
+
       return {
         ...seg,
         videoUrl,
         versions,
-        currentVersionIndex: versions ? versions.length - 1 : undefined,
+        currentVersionIndex: preservedVersionIndex,
         status: hasVideo ? 'ready' : 'pending'
       };
     }),
-    exportCompleted: false,
+    exportCompleted: !!finalLoopUrl,
     status: 'complete' // Demo projects are already complete
   };
 }

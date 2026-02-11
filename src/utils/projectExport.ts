@@ -28,6 +28,8 @@ export interface ExportProgressCallback {
 export interface ExportOptions {
   /** Include version history for images and video segments. Defaults to true. */
   includeVersionHistory?: boolean;
+  /** Pre-loaded final video blob from videoCache (for when finalLoopUrl is cleared from project) */
+  cachedFinalVideoBlob?: Blob;
 }
 
 const EXPORT_FORMAT_VERSION = 1;
@@ -139,6 +141,26 @@ function getImageExtension(url: string, blob?: Blob): string {
 }
 
 /**
+ * Get file extension from a filename or File object
+ */
+function getAudioExtension(file: Blob & { name?: string }): string {
+  if (file.name) {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext && ['m4a', 'mp3', 'wav', 'aac', 'ogg', 'flac'].includes(ext)) return ext;
+  }
+  const mimeToExt: Record<string, string> = {
+    'audio/mp4': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/aac': 'aac',
+    'audio/ogg': 'ogg',
+    'audio/flac': 'flac'
+  };
+  return mimeToExt[file.type] || 'm4a';
+}
+
+/**
  * Collect all unique URLs from a project that need to be exported
  */
 function collectAllUrls(
@@ -204,10 +226,15 @@ function collectAllUrls(
  * Export a project to a downloadable zip file
  */
 export async function exportProject(
-  project: Sogni360Project,
+  sourceProject: Sogni360Project,
   onProgress?: ExportProgressCallback,
   options: ExportOptions = {}
 ): Promise<Blob> {
+  // Deep clone the project to ensure we never mutate the caller's data.
+  // This is critical when exporting without version history — the stripping
+  // must only affect the exported zip, not the original project in memory/IndexedDB.
+  const project = structuredClone(sourceProject);
+
   const zip = new JSZip();
   const assetsFolder = zip.folder('assets');
   const waypointsFolder = assetsFolder?.folder('waypoints');
@@ -219,7 +246,16 @@ export async function exportProject(
 
   // Collect all URLs that need to be exported
   const { images, videos } = collectAllUrls(project, options);
-  const totalAssets = images.size + videos.size;
+
+  // Track extra assets (cached video, music) for progress counting
+  let extraAssets = 0;
+  const hasCachedFinalVideo = !project.finalLoopUrl && options.cachedFinalVideoBlob;
+  if (hasCachedFinalVideo) extraAssets++;
+  const musicSelection = project.settings?.musicSelection;
+  const hasMusicFile = musicSelection?.type === 'upload' && musicSelection.file instanceof Blob;
+  if (hasMusicFile) extraAssets++;
+
+  const totalAssets = images.size + videos.size + extraAssets;
   let currentAsset = 0;
   let exportedImages = 0;
   let exportedVideos = 0;
@@ -262,6 +298,27 @@ export async function exportProject(
     }
   }
 
+  // Export cached final video if project.finalLoopUrl was cleared but we have the blob
+  if (hasCachedFinalVideo && options.cachedFinalVideoBlob) {
+    currentAsset++;
+    onProgress?.(currentAsset, totalAssets, 'Exporting final video...');
+    const finalVideoPath = 'assets/final-loop.mp4';
+    zip.file(finalVideoPath, options.cachedFinalVideoBlob);
+    // Use a synthetic key so createExportedProject can detect it
+    urlToPath.set('__cached_final_loop__', finalVideoPath);
+    exportedVideos++;
+  }
+
+  // Export uploaded music file
+  if (hasMusicFile && musicSelection?.file) {
+    currentAsset++;
+    onProgress?.(currentAsset, totalAssets, 'Exporting music...');
+    const ext = getAudioExtension(musicSelection.file as Blob & { name?: string });
+    const musicPath = `assets/music.${ext}`;
+    zip.file(musicPath, musicSelection.file);
+    urlToPath.set('__music_file__', musicPath);
+  }
+
   // Create project.json with URLs replaced by asset paths
   const exportedProject = createExportedProject(project, urlToPath, options);
   zip.file('project.json', JSON.stringify(exportedProject, null, 2));
@@ -297,7 +354,8 @@ export async function exportProject(
     }
   );
 
-  const skipped = totalAssets - exportedImages - exportedVideos;
+  const exportedOther = (hasMusicFile && musicSelection?.file ? 1 : 0);
+  const skipped = totalAssets - exportedImages - exportedVideos - exportedOther;
   if (skipped > 0) {
     console.warn(`[Export] Completed with ${skipped} skipped assets`);
   }
@@ -331,10 +389,30 @@ function createExportedProject(
 ): Sogni360Project {
   const { includeVersionHistory = true } = options;
 
+  // Determine finalLoopUrl: use mapped URL, or cached video path
+  const mappedFinalLoop = replaceUrl(project.finalLoopUrl, urlToPath);
+  const cachedFinalLoopPath = urlToPath.get('__cached_final_loop__');
+  const finalLoopUrl = mappedFinalLoop || cachedFinalLoopPath;
+
+  // Handle music: replace File with asset path for uploaded music
+  const musicPath = urlToPath.get('__music_file__');
+  let exportedSettings = project.settings;
+  if (musicPath && project.settings?.musicSelection?.type === 'upload') {
+    exportedSettings = {
+      ...project.settings,
+      musicSelection: {
+        ...project.settings.musicSelection,
+        // Replace File object with the asset path string
+        file: musicPath as unknown as File
+      }
+    };
+  }
+
   return {
     ...project,
+    settings: exportedSettings,
     sourceImageUrl: replaceUrl(project.sourceImageUrl, urlToPath) || project.sourceImageUrl,
-    finalLoopUrl: replaceUrl(project.finalLoopUrl, urlToPath),
+    finalLoopUrl,
     waypoints: project.waypoints.map(wp => ({
       ...wp,
       imageUrl: replaceUrl(wp.imageUrl, urlToPath),
@@ -371,7 +449,7 @@ function createExportedProject(
       error: undefined,
       workerName: undefined
     } as Segment)),
-    exportCompleted: false
+    exportCompleted: !!finalLoopUrl
   };
 }
 
