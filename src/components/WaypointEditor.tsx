@@ -49,6 +49,13 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
   const carouselRef = useRef<HTMLDivElement>(null);
   const hasAutoLoadedPreset = useRef(false);
 
+  // Drag-and-drop state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Mobile reorder menu state (shows arrows instead of drag on touch devices)
+  const [reorderMenuId, setReorderMenuId] = useState<string | null>(null);
+
   // Upload image for waypoint state — ref avoids stale closure when file picker
   // resolves before React re-renders with the updated value
   const uploadingForWaypointIdRef = useRef<string | null>(null);
@@ -76,6 +83,29 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     hasAutoLoadedPreset.current = false;
   }, [currentProject?.sourceImageUrl]);
 
+  // Close reorder menu when clicking outside
+  useEffect(() => {
+    if (!reorderMenuId) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.reorder-menu') && !target.closest('.config-card-drag-handle')) {
+        setReorderMenuId(null);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('touchend', handleClickOutside);
+    }, 10);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('touchend', handleClickOutside);
+    };
+  }, [reorderMenuId]);
+
   const anglesToGenerate = waypoints.filter(wp => !wp.isOriginal).length;
 
   // Get cost estimate from API (use wallet's tokenType for accurate pricing)
@@ -87,6 +117,91 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
 
   // Workflow step
   const { currentStep, completedSteps } = computeWorkflowStep(currentProject);
+
+  // Drag-and-drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, waypointId: string) => {
+    setDraggedId(waypointId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', waypointId);
+    setTimeout(() => {
+      const target = e.target as HTMLElement;
+      target.classList.add('dragging');
+    }, 0);
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    const target = e.target as HTMLElement;
+    target.classList.remove('dragging');
+    setDraggedId(null);
+    setDragOverId(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, waypointId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedId && waypointId !== draggedId) {
+      setDragOverId(waypointId);
+    }
+  }, [draggedId]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverId(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const draggedWaypointId = e.dataTransfer.getData('text/plain');
+
+    if (!draggedWaypointId || draggedWaypointId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const currentOrder = waypoints.map(wp => wp.id);
+    const draggedIndex = currentOrder.indexOf(draggedWaypointId);
+    const targetIndex = currentOrder.indexOf(targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newOrder = [...currentOrder];
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedWaypointId);
+
+    dispatch({ type: 'REORDER_WAYPOINTS', payload: newOrder });
+    setDraggedId(null);
+    setDragOverId(null);
+    setSelectedPresetKey('custom');
+  }, [waypoints, dispatch]);
+
+  // Mobile reorder handlers
+  const handleReorderMenuToggle = useCallback((waypointId: string, e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setReorderMenuId(prev => prev === waypointId ? null : waypointId);
+  }, []);
+
+  const handleMoveEarlier = useCallback((waypointId: string) => {
+    const currentIndex = waypoints.findIndex(wp => wp.id === waypointId);
+    if (currentIndex <= 0) return;
+
+    const newOrder = waypoints.map(wp => wp.id);
+    [newOrder[currentIndex - 1], newOrder[currentIndex]] = [newOrder[currentIndex], newOrder[currentIndex - 1]];
+
+    dispatch({ type: 'REORDER_WAYPOINTS', payload: newOrder });
+    setSelectedPresetKey('custom');
+  }, [waypoints, dispatch]);
+
+  const handleMoveLater = useCallback((waypointId: string) => {
+    const currentIndex = waypoints.findIndex(wp => wp.id === waypointId);
+    if (currentIndex < 0 || currentIndex >= waypoints.length - 1) return;
+
+    const newOrder = waypoints.map(wp => wp.id);
+    [newOrder[currentIndex], newOrder[currentIndex + 1]] = [newOrder[currentIndex + 1], newOrder[currentIndex]];
+
+    dispatch({ type: 'REORDER_WAYPOINTS', payload: newOrder });
+    setSelectedPresetKey('custom');
+  }, [waypoints, dispatch]);
 
   const handleLoadPreset = useCallback((preset: MultiAnglePreset) => {
     const anglesToAdd = preset.angles.slice(0, MAX_WAYPOINTS);
@@ -438,11 +553,63 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
 
       {/* Carousel - Cards expand to fill vertical space */}
       <div className="config-carousel-wrap" ref={carouselRef}>
-        {waypoints.map((waypoint, index) => (
-          <div key={waypoint.id} className="config-card">
+        {waypoints.map((waypoint, index) => {
+          const isDragging = draggedId === waypoint.id;
+          const isDragOver = dragOverId === waypoint.id;
+          return (
+          <div
+            key={waypoint.id}
+            className={`config-card ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
+            draggable={!isGenerating}
+            onDragStart={(e) => handleDragStart(e, waypoint.id)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, waypoint.id)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, waypoint.id)}
+          >
             {/* Card Header */}
             <div className="config-card-top">
               <div className="config-card-top-left">
+                <div
+                  className={`config-card-drag-handle ${reorderMenuId === waypoint.id ? 'menu-open' : ''}`}
+                  title="Reorder"
+                  onClick={(e) => handleReorderMenuToggle(waypoint.id, e)}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                    <circle cx="9" cy="6" r="1.5" />
+                    <circle cx="15" cy="6" r="1.5" />
+                    <circle cx="9" cy="12" r="1.5" />
+                    <circle cx="15" cy="12" r="1.5" />
+                    <circle cx="9" cy="18" r="1.5" />
+                    <circle cx="15" cy="18" r="1.5" />
+                  </svg>
+                  {/* Mobile Reorder Menu */}
+                  {reorderMenuId === waypoint.id && (
+                    <div className="reorder-menu" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="reorder-btn"
+                        onClick={(e) => { e.stopPropagation(); handleMoveEarlier(waypoint.id); }}
+                        disabled={index === 0}
+                        title="Move earlier"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="reorder-label">Move</span>
+                      <button
+                        className="reorder-btn"
+                        onClick={(e) => { e.stopPropagation(); handleMoveLater(waypoint.id); }}
+                        disabled={index === waypoints.length - 1}
+                        title="Move later"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <span className="config-card-step-num">Step {index + 1}</span>
                 {waypoint.isOriginal && <span className="config-card-orig-tag">Original</span>}
               </div>
@@ -565,7 +732,8 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {/* Add Step Card */}
         {waypoints.length < MAX_WAYPOINTS && (

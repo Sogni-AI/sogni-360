@@ -3290,6 +3290,72 @@ html, body {
   cursor: not-allowed;
 }
 
+/* Drag Handle */
+.config-card-drag-handle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
+  margin-right: -4px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.config-card-drag-handle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.config-card-drag-handle:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.config-card-drag-handle:active {
+  cursor: grabbing;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.config-card-drag-handle.menu-open {
+  color: rgba(59, 130, 246, 0.9);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+@media (max-width: 767px) {
+  .config-card-drag-handle {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* Drag States */
+.config-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.config-card.drag-over {
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(59, 130, 246, 0.08);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.config-card[draggable="true"] {
+  cursor: grab;
+}
+
+.config-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 /* Main Content Area - Expands to fill available space */
 .config-card-main {
   position: relative;
