@@ -756,12 +756,18 @@ const Sogni360Container: React.FC = () => {
             completedSteps={completedSteps}
             onStepClick={handleWorkflowStepClick}
           />
-          <div className="project-actions-bar">
-            <AuthStatus
-              ref={authStatusRef}
-              onPurchaseClick={() => setShowPurchaseModal(true)}
-              textColor="#ffffff"
-            />
+        </div>
+      )}
+
+      {/* Project actions (auth + new/projects) - outside wizard bar stacking context so it stays above full-screen panels */}
+      {currentProject && (
+        <div className="project-actions-bar">
+          <AuthStatus
+            ref={authStatusRef}
+            onPurchaseClick={() => setShowPurchaseModal(true)}
+            textColor="#ffffff"
+          />
+          {!showWaypointEditor && !showAngleReview && !showTransitionConfig && !showTransitionReview && !showFinalVideoPreview && (
             <div className="project-action-buttons">
               <button className="project-action-btn" onClick={handleNewProject} title="New Project">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -777,7 +783,7 @@ const Sogni360Container: React.FC = () => {
                 <span>Projects</span>
               </button>
             </div>
-          </div>
+          )}
         </div>
       )}
 
