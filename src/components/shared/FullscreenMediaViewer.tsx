@@ -199,10 +199,36 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
         </button>
       )}
 
-      {/* Version indicator */}
+      {/* Version cycling control - matches card's < v1/3 > style */}
       {showVersionNav && (
-        <div className="fullscreen-version-indicator">
-          Version {versionInfo.current} of {versionInfo.total}
+        <div className="fullscreen-version-controls">
+          <button
+            className="ver-btn-fullscreen"
+            onClick={(e) => {
+              e.stopPropagation();
+              if ((versionInfo.canPrev || loop) && onPrevVersion) onPrevVersion();
+            }}
+            disabled={!versionInfo.canPrev && !loop}
+            aria-label="Previous version"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span className="fullscreen-version-label">v{versionInfo.current}/{versionInfo.total}</span>
+          <button
+            className="ver-btn-fullscreen"
+            onClick={(e) => {
+              e.stopPropagation();
+              if ((versionInfo.canNext || loop) && onNextVersion) onNextVersion();
+            }}
+            disabled={!versionInfo.canNext && !loop}
+            aria-label="Next version"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       )}
 
