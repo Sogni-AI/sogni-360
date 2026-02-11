@@ -876,28 +876,44 @@ Demo projects are pre-built showcases that appear in the "My Projects" list. The
    The script is interactive - it prompts for demo ID, description, and featured flag. It uploads the zip + thumbnail to R2 and updates `src/constants/demo-projects.ts` automatically.
 
 4. **Verify** the manifest entry in `src/constants/demo-projects.ts` has a clean `projectZipUrl` (no spaces or special characters in the filename)
-5. **Verify** CDN accessibility:
+5. **Verify** CDN serves correct files (download and check size, don't just check headers):
    ```bash
-   curl -sI "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/thumbnail.jpg"
-   curl -sI "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/<filename>.s360.zip"
+   curl -s "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/<thumbnail-filename>" -o /tmp/check-thumb.jpg
+   ls -la /tmp/check-thumb.jpg  # Must match uploaded file size
+   curl -sI "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/<filename>.s360.zip" | grep content-length
    ```
 6. **Build** to confirm no errors: `npm run build`
 7. **Deploy** to make the new demo available to users
 
-### If the uploader script fails to extract a thumbnail
+### 🚨 CDN Cache: Query Params Do NOT Bust Cache
 
-The script looks for `assets/source.*` in the zip. If the project uses a waypoint as its source image (no separate `assets/source.jpg`), manually generate a thumbnail:
+`cdn.sogni.ai` (Cloudflare) **ignores query string parameters** for caching. Adding `?v=2` or `?v=timestamp` to a URL does nothing — the CDN serves the old cached file.
 
-```bash
-# Extract a waypoint image from the zip
-unzip -o project.s360.zip "assets/waypoints/wp-<id>.png" -d /tmp/thumb
-
-# Generate optimized thumbnail
-magick /tmp/thumb/assets/waypoints/wp-<id>.png -resize 400x400\> -quality 85 /tmp/thumb/thumbnail.jpg
-
-# Upload to R2
-rclone copyto /tmp/thumb/thumbnail.jpg "sogni-r2:safetensor-sogni-ai/sogni-360-demos/<demo-id>/thumbnail.jpg"
+**To force a cache update, you MUST change the actual filename:**
 ```
+❌ thumbnail.jpg?v=2  → CDN ignores ?v=2, serves stale cache
+✅ thumbnail-v3.jpg   → New filename, fresh CDN entry
+```
+
+When replacing a demo asset:
+1. Upload with a **new filename** (e.g., `thumbnail-v3.jpg`, `thumbnail-v4.jpg`)
+2. Update `demo-projects.ts` to reference the new filename
+3. Verify the CDN serves the correct content-length:
+   ```bash
+   curl -s "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/thumbnail-v3.jpg" -o /tmp/check.jpg
+   ls -la /tmp/check.jpg  # Verify file size matches what you uploaded
+   ```
+4. Do NOT rely on `curl -sI` (HEAD) headers alone — they can be misleading. Always download the file and verify its actual size/hash.
+
+### Demo Thumbnail Selection Logic
+
+The upload script (`extractThumbnailImage`) MUST use the **exact same fallback chain** as `localProjectsDB.ts saveProject()`:
+
+1. First **generated** (non-original) ready waypoint image
+2. First **any** ready waypoint image
+3. `project.sourceImageUrl`
+
+This ensures demo project card thumbnails match regular project card thumbnails for the same project. Most projects store their source image at a waypoint path (e.g., `assets/waypoints/wp-xxx.png`), NOT at `assets/source.*`.
 
 ### Key Files
 
