@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState, useEffect } from 'react';
 import type { Segment } from '../types';
 import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
 import { useLazyLoad } from '../hooks/useLazyLoad';
-import { getCachedBlobUrl, preloadVideo } from '../utils/videoBlobCache';
+import { getCachedBlobUrl, preloadVideo, invalidateCacheEntry } from '../utils/videoBlobCache';
 
 interface TransitionVideoCardProps {
   segment: Segment;
@@ -50,6 +50,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | undefined>(undefined);
   const hasEverBeenVisible = useRef(false); // Track if card has ever been visible (for lazy loading)
+  const errorRetryCount = useRef(0); // Prevent infinite error→retry loops
 
   // Single observer for real-time visibility tracking
   const { ref: cardRef, isVisible: isCurrentlyVisible } = useLazyLoad({ rootMargin: '50px', once: false });
@@ -84,6 +85,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   useEffect(() => {
     setVideoLoaded(false);
     setUserPaused(false); // Reset user pause preference for new video
+    errorRetryCount.current = 0; // Reset error retry counter for new video
     // Check if new URL is already cached
     if (segment.videoUrl) {
       const cached = getCachedBlobUrl(segment.videoUrl);
@@ -135,6 +137,23 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
 
   // Track when video has loaded enough to display
   const handleVideoLoaded = useCallback(() => setVideoLoaded(true), []);
+
+  // Handle video load errors (e.g., blob URL revoked by cache eviction)
+  // Clears the stale blob URL so <video> falls back to segment.videoUrl,
+  // then re-preloads in the background for a fresh blob URL.
+  const handleVideoError = useCallback(() => {
+    if (!segment.videoUrl || !blobUrl) return;
+    if (errorRetryCount.current >= 2) return;
+    errorRetryCount.current++;
+
+    invalidateCacheEntry(segment.videoUrl);
+    setBlobUrl(undefined);
+    setVideoLoaded(false);
+
+    preloadVideo(segment.videoUrl).then(url => {
+      if (url) setBlobUrl(url);
+    });
+  }, [segment.videoUrl, blobUrl]);
 
   return (
     <div ref={cardRef} className="transition-card">
@@ -188,6 +207,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
               onPlay={handlePlay}
               onPause={handlePause}
               onLoadedData={handleVideoLoaded}
+              onError={handleVideoError}
               style={{ opacity: videoLoaded ? 1 : 0 }}
             />
             {/* Corner play/pause button */}

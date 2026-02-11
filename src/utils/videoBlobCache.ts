@@ -16,7 +16,7 @@ import { API_URL } from '../config/urls';
 // Maximum number of videos to keep in cache (prevents memory issues with many segments)
 // Set high enough to avoid evicting videos that are still visible/playing
 // With typical viewport showing 4-6 videos, 24 allows comfortable scrolling
-const MAX_CACHE_SIZE = 24;
+const MAX_CACHE_SIZE = 48;
 
 // Cache entry with last access time for LRU eviction
 interface CacheEntry {
@@ -235,6 +235,16 @@ export function clearVideoCache(): void {
   videoBlobCache.clear();
   videoFetchInProgress.clear();
   videoFetchFailed.clear();
+}
+
+/**
+ * Invalidate a cache entry (e.g., when its blob URL has been revoked by eviction
+ * and the video element reports an error). Does NOT call revokeObjectURL since
+ * the URL is already invalid. Also clears the failed set so re-fetch is allowed.
+ */
+export function invalidateCacheEntry(originalUrl: string): void {
+  videoBlobCache.delete(originalUrl);
+  videoFetchFailed.delete(originalUrl);
 }
 
 /**
