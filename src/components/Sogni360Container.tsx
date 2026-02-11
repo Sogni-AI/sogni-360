@@ -193,8 +193,18 @@ const Sogni360Container: React.FC = () => {
     if (!currentProject) return;
 
     // Use passed segments (from TransitionConfigPanel) or fall back to state
-    const segments = passedSegments || currentProject.segments;
-    if (segments.length === 0) return;
+    const allSegments = passedSegments || currentProject.segments;
+    if (allSegments.length === 0) return;
+
+    // Filter to only segments that need generation (not already ready)
+    const pendingSegments = allSegments.filter(s => s.status !== 'ready');
+
+    // If everything is already ready, just navigate to review — no generation needed
+    if (pendingSegments.length === 0) {
+      dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: false });
+      dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: true });
+      return;
+    }
 
     // Build waypoint image map
     const waypointImages = new Map<string, string>();
@@ -237,7 +247,7 @@ const Sogni360Container: React.FC = () => {
 
     try {
       await generateMultipleTransitions(
-        segments,
+        pendingSegments,
         waypointImages,
         {
           prompt,

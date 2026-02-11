@@ -127,7 +127,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     }
   }, [hasGeneratedVideos]);
 
-  // Confirm the destructive setting change
+  // Confirm the destructive setting change — reset all existing segments to pending
   const confirmSettingChange = useCallback(() => {
     if (!pendingSettingChange) return;
     if (pendingSettingChange.field === 'resolution') {
@@ -137,8 +137,20 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
       setDuration(pendingSettingChange.value as number);
       initialDuration.current = pendingSettingChange.value as number;
     }
+    // Reset all existing segments to pending so they get regenerated
+    const existingSegments = currentProject?.segments || [];
+    if (existingSegments.length > 0) {
+      const resetSegments = existingSegments.map(s => ({
+        ...s,
+        status: 'pending' as const,
+        videoUrl: undefined,
+        progress: undefined,
+        error: undefined
+      }));
+      dispatch({ type: 'SET_SEGMENTS', payload: resetSegments });
+    }
     setPendingSettingChange(null);
-  }, [pendingSettingChange]);
+  }, [pendingSettingChange, currentProject?.segments, dispatch]);
 
   const waypoints = currentProject?.waypoints || [];
   const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
@@ -146,19 +158,56 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   // Calculate number of transitions needed (between consecutive waypoints, looping back)
   const transitionCount = readyWaypoints.length >= 2 ? readyWaypoints.length : 0;
 
+  // Reconcile existing segments with current waypoint pairs
+  // Keep ready segments that match, create pending ones for missing transitions
+  const { reconciledSegments, pendingCount, allReady } = useMemo(() => {
+    if (transitionCount === 0) return { reconciledSegments: [], pendingCount: 0, allReady: false };
+
+    const existingSegments = currentProject?.segments || [];
+    const existingByPair = new Map<string, Segment>();
+    for (const seg of existingSegments) {
+      existingByPair.set(`${seg.fromWaypointId}->${seg.toWaypointId}`, seg);
+    }
+
+    const reconciled: Segment[] = [];
+    let pending = 0;
+
+    for (let i = 0; i < readyWaypoints.length; i++) {
+      const fromWp = readyWaypoints[i];
+      const toWp = readyWaypoints[(i + 1) % readyWaypoints.length];
+      const key = `${fromWp.id}->${toWp.id}`;
+      const existing = existingByPair.get(key);
+
+      if (existing && existing.status === 'ready') {
+        reconciled.push(existing);
+      } else {
+        pending++;
+        reconciled.push(existing || {
+          id: uuidv4(),
+          fromWaypointId: fromWp.id,
+          toWaypointId: toWp.id,
+          status: 'pending' as const,
+          versions: []
+        });
+      }
+    }
+
+    return { reconciledSegments: reconciled, pendingCount: pending, allReady: pending === 0 };
+  }, [transitionCount, readyWaypoints, currentProject?.segments]);
+
   // Total video duration for all transitions
   const totalSeconds = transitionCount * duration;
 
-  // Get cost estimate from Sogni API (use wallet's tokenType for accurate pricing)
+  // Get cost estimate from Sogni API — only for pending segments
   const { loading: costLoading, formattedCost, formattedUSD } = useVideoCostEstimation({
     imageWidth: currentProject?.sourceImageDimensions?.width,
     imageHeight: currentProject?.sourceImageDimensions?.height,
     resolution,
     quality,
     duration,
-    jobCount: transitionCount,
+    jobCount: pendingCount,
     tokenType,
-    enabled: transitionCount > 0
+    enabled: pendingCount > 0
   });
 
   // Duration options
@@ -196,27 +245,12 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
       }
     });
 
-    // Create segments for each transition
-    const newSegments: Segment[] = [];
-    for (let i = 0; i < readyWaypoints.length; i++) {
-      const fromWaypoint = readyWaypoints[i];
-      const toWaypoint = readyWaypoints[(i + 1) % readyWaypoints.length]; // Loop back to first
-
-      newSegments.push({
-        id: uuidv4(),
-        fromWaypointId: fromWaypoint.id,
-        toWaypointId: toWaypoint.id,
-        status: 'pending',
-        versions: []
-      });
-    }
-
-    // Set segments in project
-    dispatch({ type: 'SET_SEGMENTS', payload: newSegments });
+    // Use reconciled segments (mix of ready + pending) instead of creating all-new
+    dispatch({ type: 'SET_SEGMENTS', payload: reconciledSegments });
 
     // Pass settings directly to avoid async state timing issues
-    onStartGeneration(newSegments, settings);
-  }, [readyWaypoints, transitionPrompt, resolution, duration, quality, musicSelection, dispatch, onStartGeneration]);
+    onStartGeneration(reconciledSegments, settings);
+  }, [reconciledSegments, transitionPrompt, resolution, duration, quality, musicSelection, dispatch, onStartGeneration]);
 
   // Handle start generation button click - confirms if work would be lost
   const handleStartGeneration = useCallback(() => {
@@ -225,17 +259,20 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
       return;
     }
 
-    // Auth gating: require login if user has already used their free generation
-    if (!isAuthenticated && hasUsedFreeGeneration) {
-      if (onRequireAuth) {
-        onRequireAuth();
+    // If all segments are ready, skip auth/cost gating — just view them
+    if (!allReady) {
+      // Auth gating: require login if user has already used their free generation
+      if (!isAuthenticated && hasUsedFreeGeneration) {
+        if (onRequireAuth) {
+          onRequireAuth();
+        }
+        return;
       }
-      return;
-    }
 
-    // Mark that user has used their free generation (for unauthenticated users)
-    if (!isAuthenticated && !hasUsedFreeGeneration) {
-      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+      // Mark that user has used their free generation (for unauthenticated users)
+      if (!isAuthenticated && !hasUsedFreeGeneration) {
+        dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+      }
     }
 
     // Use confirmation callback if provided, otherwise execute directly
@@ -244,7 +281,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     } else {
       executeStartGeneration();
     }
-  }, [readyWaypoints.length, onConfirmDestructiveAction, executeStartGeneration, showToast, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
+  }, [readyWaypoints.length, onConfirmDestructiveAction, executeStartGeneration, showToast, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch, allReady]);
 
   return (
     <LiquidGlassPanel
@@ -279,7 +316,12 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
               </button>
             </h2>
             <p className="config-subtitle">
-              Create {transitionCount} video{transitionCount !== 1 ? 's' : ''} connecting your {readyWaypoints.length} camera angles into a seamless 360° loop.
+              {allReady
+                ? `All ${transitionCount} transition video${transitionCount !== 1 ? 's are' : ' is'} ready.`
+                : pendingCount < transitionCount && pendingCount > 0
+                  ? `${pendingCount} of ${transitionCount} transition video${transitionCount !== 1 ? 's need' : ' needs'} to be generated.`
+                  : `Create ${transitionCount} video${transitionCount !== 1 ? 's' : ''} connecting your ${readyWaypoints.length} camera angles into a seamless 360° loop.`
+              }
             </p>
           </div>
         </div>
@@ -376,34 +418,48 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           onRemoveMusic={() => setMusicSelection(null)}
         />
 
-        {/* Cost estimate */}
-        <div className="config-cost">
-          <div className="config-cost-left">
-            <span className="config-cost-videos">{transitionCount} videos × {duration}s each</span>
+        {/* Cost estimate — hidden when all segments are ready */}
+        {!allReady && (
+          <div className="config-cost">
+            <div className="config-cost-left">
+              <span className="config-cost-videos">{pendingCount} video{pendingCount !== 1 ? 's' : ''} × {duration}s each</span>
+            </div>
+            <div className="config-cost-right">
+              {costLoading ? (
+                <span className="config-cost-loading">Calculating...</span>
+              ) : (
+                <>
+                  <span className="config-cost-spark">{formattedCost} {tokenType.toUpperCase()}</span>
+                  <span className="config-cost-usd">≈ {formattedUSD}</span>
+                </>
+              )}
+            </div>
           </div>
-          <div className="config-cost-right">
-            {costLoading ? (
-              <span className="config-cost-loading">Calculating...</span>
-            ) : (
-              <>
-                <span className="config-cost-spark">{formattedCost} {tokenType.toUpperCase()}</span>
-                <span className="config-cost-usd">≈ {formattedUSD}</span>
-              </>
-            )}
-          </div>
-        </div>
+        )}
 
-        {/* Generate Button */}
+        {/* Generate / View Button */}
         <button
           className="generate-btn"
           onClick={handleStartGeneration}
           disabled={readyWaypoints.length < 2}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Generate {transitionCount} Transition Video{transitionCount !== 1 ? 's' : ''}
+          {allReady ? (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              View Transition Videos
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Generate {pendingCount} Transition Video{pendingCount !== 1 ? 's' : ''}
+            </>
+          )}
         </button>
       </div>
 
