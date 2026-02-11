@@ -137,6 +137,24 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
     setPosition({ x: 0, y: 0 });
     setScale(1);
     setImageLoaded(false);
+
+    // For data URLs and cached images, the browser may decode the image and
+    // fire onLoad BEFORE this effect runs (effects run after paint). In that
+    // case, we just reset imageLoaded to false above, and onLoad won't fire
+    // again. Use rAF to detect already-decoded images and restore loaded state.
+    const raf = requestAnimationFrame(() => {
+      const img = imageRef.current;
+      if (img?.complete && img.naturalWidth > 0) {
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const tgtAspect = targetDimensions.width / targetDimensions.height;
+        const coverScale = imgAspect > tgtAspect
+          ? imgAspect / tgtAspect
+          : tgtAspect / imgAspect;
+        setScale(coverScale);
+        setImageLoaded(true);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [imageUrl]);
 
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
