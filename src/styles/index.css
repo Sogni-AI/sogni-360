@@ -4510,9 +4510,17 @@ html, body {
   color: rgba(255, 255, 255, 0.85);
 }
 
-.reference-select {
+/* Custom reference dropdown with thumbnails */
+.reference-dropdown-wrap {
+  position: relative;
+}
+
+.reference-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
   font-size: 0.75rem;
-  padding: 0.375rem 0.625rem;
+  padding: 0.3rem 0.5rem;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -4520,25 +4528,78 @@ html, body {
   border-radius: 8px;
   color: white;
   cursor: pointer;
-  max-width: 160px;
-  text-overflow: ellipsis;
+  max-width: 200px;
   transition: all 0.2s ease;
+  font-family: inherit;
 }
 
-.reference-select:hover {
+.reference-dropdown:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-.reference-select:focus {
-  outline: none;
-  border-color: rgba(102, 126, 234, 0.5);
-  background: rgba(255, 255, 255, 0.05);
+.reference-dropdown-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
 }
 
-.reference-select option {
-  background: rgba(17, 24, 39, 0.98);
+.reference-dropdown-chevron {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.reference-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  max-width: 260px;
+  background: rgba(17, 24, 39, 0.97);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 4px;
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.reference-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.reference-dropdown-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reference-dropdown-option.selected {
+  background: rgba(102, 126, 234, 0.2);
   color: white;
+}
+
+.reference-dropdown-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Responsive reference selector for mobile */
@@ -4553,10 +4614,15 @@ html, body {
     font-size: 0.625rem;
   }
 
-  .reference-select {
+  .reference-dropdown {
     font-size: 0.625rem;
     padding: 0.2rem 0.35rem;
-    max-width: 120px;
+    max-width: 140px;
+  }
+
+  .reference-dropdown-menu {
+    min-width: 160px;
+    max-width: 220px;
   }
 
   .reference-tooltip-bubble {

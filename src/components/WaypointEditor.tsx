@@ -21,6 +21,7 @@ import { useWallet } from '../hooks/useWallet';
 import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 import ImageAdjuster from './shared/ImageAdjuster';
 import TestPatternPlaceholder from './shared/TestPatternPlaceholder';
+import { getOriginalLabel } from '../utils/waypointLabels';
 
 interface WaypointEditorProps {
   onClose: () => void;
@@ -609,7 +610,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
                   )}
                 </div>
                 <span className="config-card-step-num">Step {index + 1}</span>
-                {waypoint.isOriginal && <span className="config-card-orig-tag">Original</span>}
+                {waypoint.isOriginal && <span className="config-card-orig-tag">{getOriginalLabel(waypoints, waypoint.id)}</span>}
               </div>
               {/* Delete button */}
               {waypoints.length > 1 && (
@@ -675,7 +676,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
             {/* Info Section */}
             <div className="config-card-info">
               <div className="config-card-angle">
-                {waypoint.isOriginal ? 'Original Image' : '\u00A0'}
+                {waypoint.isOriginal ? `${getOriginalLabel(waypoints, waypoint.id)} Image` : '\u00A0'}
               </div>
 
               {/* Use original toggle with upload option */}

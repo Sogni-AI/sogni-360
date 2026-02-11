@@ -33,6 +33,7 @@ import { playVideoCompleteIfEnabled, playSogniSignatureIfEnabled } from '../util
 import { DEFAULT_VIDEO_SETTINGS } from '../constants/videoSettings';
 import { getAzimuthConfig, getElevationConfig, getDistanceConfig } from '../constants/cameraAngleSettings';
 import { isDemoProject, hasDemoCoachmarkBeenShown } from '../constants/demo-projects';
+import { getOriginalLabel } from '../utils/waypointLabels';
 import '../services/pwaInstaller'; // Initialize PWA installer service
 
 // Type for pending destructive action that needs confirmation
@@ -814,7 +815,7 @@ const Sogni360Container: React.FC = () => {
             {/* Angle label */}
             <div className="angle-label">
               {currentWaypoint.isOriginal ? (
-                'Original Photo'
+                getOriginalLabel(waypoints, currentWaypoint.id)
               ) : (
                 <>
                   {getAzimuthConfig(currentWaypoint.azimuth).label} · {getElevationConfig(currentWaypoint.elevation).label}

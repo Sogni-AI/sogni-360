@@ -23,6 +23,7 @@ import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
 import { trackDownload } from '../utils/analytics';
 import { ensureDataUrl } from '../utils/imageUtils';
 import { useWallet } from '../hooks/useWallet';
+import { getOriginalLabel } from '../utils/waypointLabels';
 
 interface AngleReviewPanelProps {
   onClose: () => void;
@@ -109,6 +110,37 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
   // Tooltip visibility state (waypointId or null)
   const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null);
 
+  // Custom reference dropdown state (waypointId or null)
+  const [openReferenceDropdown, setOpenReferenceDropdown] = useState<string | null>(null);
+
+  // Close reference dropdown on click-outside or Escape
+  useEffect(() => {
+    if (!openReferenceDropdown) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.reference-dropdown-wrap')) {
+        setOpenReferenceDropdown(null);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenReferenceDropdown(null);
+    };
+
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('touchend', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }, 10);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('touchend', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [openReferenceDropdown]);
+
   // Angle overrides for regeneration (waypointId -> {azimuth, elevation, distance})
   interface AngleOverride {
     azimuth?: AzimuthKey;
@@ -157,8 +189,8 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
 
   // Get available reference options for a waypoint (excludes itself)
   const getReferenceOptions = useCallback((waypointId: string) => {
-    const options: { id: string; label: string }[] = [
-      { id: 'original', label: 'Original Photo' }
+    const options: { id: string; label: string; imageUrl?: string }[] = [
+      { id: 'original', label: 'Original Photo', imageUrl: currentProject?.sourceImageUrl }
     ];
 
     waypoints.forEach((wp, index) => {
@@ -166,13 +198,13 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
       if (wp.id === waypointId || wp.status !== 'ready' || !wp.imageUrl) return;
 
       const label = wp.isOriginal
-        ? `Step ${index + 1}: Original`
+        ? `Step ${index + 1}: ${getOriginalLabel(waypoints, wp.id)}`
         : `Step ${index + 1}: ${getAzimuthConfig(wp.azimuth).label}`;
-      options.push({ id: wp.id, label });
+      options.push({ id: wp.id, label, imageUrl: wp.imageUrl });
     });
 
     return options;
-  }, [waypoints]);
+  }, [waypoints, currentProject?.sourceImageUrl]);
 
   // Count statuses
   const readyCount = waypoints.filter(wp => wp.status === 'ready').length;
@@ -857,7 +889,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                     )}
                   </div>
                   <span className="review-card-step-num">Step {index + 1}</span>
-                  {waypoint.isOriginal && <span className="review-card-orig-tag">Original</span>}
+                  {waypoint.isOriginal && <span className="review-card-orig-tag">{getOriginalLabel(waypoints, waypoint.id)}</span>}
                 </div>
                 {/* Reference selector for non-original waypoints */}
                 {!waypoint.isOriginal && (
@@ -877,18 +909,53 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                         </svg>
                       </button>
                     </label>
-                    <select
-                      className="reference-select"
-                      value={referenceSelections[waypoint.id] || 'original'}
-                      onChange={(e) => setReferenceSelections(prev => ({
-                        ...prev,
-                        [waypoint.id]: e.target.value
-                      }))}
-                    >
-                      {getReferenceOptions(waypoint.id).map(opt => (
-                        <option key={opt.id} value={opt.id}>{opt.label}</option>
-                      ))}
-                    </select>
+                    <div className="reference-dropdown-wrap">
+                      <button
+                        type="button"
+                        className="reference-dropdown"
+                        onClick={() => setOpenReferenceDropdown(openReferenceDropdown === waypoint.id ? null : waypoint.id)}
+                      >
+                        {(() => {
+                          const selected = referenceSelections[waypoint.id] || 'original';
+                          const opts = getReferenceOptions(waypoint.id);
+                          const match = opts.find(o => o.id === selected);
+                          return (
+                            <>
+                              {match?.imageUrl && (
+                                <img className="reference-dropdown-thumb" src={match.imageUrl} alt="" />
+                              )}
+                              <span className="reference-dropdown-text">{match?.label || 'Original Photo'}</span>
+                              <svg className="reference-dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </>
+                          );
+                        })()}
+                      </button>
+                      {openReferenceDropdown === waypoint.id && (
+                        <div className="reference-dropdown-menu">
+                          {getReferenceOptions(waypoint.id).map(opt => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              className={`reference-dropdown-option ${(referenceSelections[waypoint.id] || 'original') === opt.id ? 'selected' : ''}`}
+                              onClick={() => {
+                                setReferenceSelections(prev => ({
+                                  ...prev,
+                                  [waypoint.id]: opt.id
+                                }));
+                                setOpenReferenceDropdown(null);
+                              }}
+                            >
+                              {opt.imageUrl && (
+                                <img className="reference-dropdown-thumb" src={opt.imageUrl} alt="" />
+                              )}
+                              <span>{opt.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {visibleTooltip === waypoint.id && (
                       <div className="reference-tooltip-bubble" onClick={() => setVisibleTooltip(null)}>
                         <div className="tooltip-arrow" />
@@ -992,7 +1059,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               {/* Info Section - Fixed Height */}
               <div className="review-card-info">
                 {waypoint.isOriginal ? (
-                  <div className="review-card-angle">Original Image</div>
+                  <div className="review-card-angle">{getOriginalLabel(waypoints, waypoint.id)} Image</div>
                 ) : (
                   <div className="review-card-angle-selectors">
                     <select
