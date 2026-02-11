@@ -49,8 +49,9 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
   const carouselRef = useRef<HTMLDivElement>(null);
   const hasAutoLoadedPreset = useRef(false);
 
-  // Upload image for waypoint state
-  const [uploadingForWaypointId, setUploadingForWaypointId] = useState<string | null>(null);
+  // Upload image for waypoint state — ref avoids stale closure when file picker
+  // resolves before React re-renders with the updated value
+  const uploadingForWaypointIdRef = useRef<string | null>(null);
   const [pendingUploadImageUrl, setPendingUploadImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,21 +161,27 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
 
   // Trigger file input for a specific waypoint
   const handleUploadClick = useCallback((waypointId: string) => {
-    setUploadingForWaypointId(waypointId);
+    uploadingForWaypointIdRef.current = waypointId;
     fileInputRef.current?.click();
   }, []);
 
-  // Handle file selection
+  // Handle file selection — uses ref to avoid stale closure when file picker
+  // resolves before React re-renders with the updated value
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !uploadingForWaypointId) {
-      setUploadingForWaypointId(null);
+    const waypointId = uploadingForWaypointIdRef.current;
+    if (!file || !waypointId) {
+      uploadingForWaypointIdRef.current = null;
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
+    // Accept by MIME type, or fall back to file extension for edge cases
+    // where the browser doesn't report a MIME type
+    const isImage = file.type.startsWith('image/') ||
+      /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|avif|tiff?)$/i.test(file.name);
+    if (!isImage) {
       showToast({ message: 'Please select an image file', type: 'error' });
-      setUploadingForWaypointId(null);
+      uploadingForWaypointIdRef.current = null;
       return;
     }
 
@@ -185,23 +192,24 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     };
     reader.onerror = () => {
       showToast({ message: 'Failed to read image file', type: 'error' });
-      setUploadingForWaypointId(null);
+      uploadingForWaypointIdRef.current = null;
     };
     reader.readAsDataURL(file);
 
     // Reset input so same file can be selected again
     e.target.value = '';
-  }, [uploadingForWaypointId, showToast]);
+  }, [showToast]);
 
   // Handle image adjuster confirm
   const handleAdjusterConfirm = useCallback((blob: Blob) => {
-    if (!uploadingForWaypointId) return;
+    const waypointId = uploadingForWaypointIdRef.current;
+    if (!waypointId) return;
 
     const imageUrl = URL.createObjectURL(blob);
     dispatch({
       type: 'UPDATE_WAYPOINT',
       payload: {
-        id: uploadingForWaypointId,
+        id: waypointId,
         updates: {
           isOriginal: true,
           status: 'ready',
@@ -211,13 +219,13 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     });
     setSelectedPresetKey('custom');
     setPendingUploadImageUrl(null);
-    setUploadingForWaypointId(null);
-  }, [uploadingForWaypointId, dispatch]);
+    uploadingForWaypointIdRef.current = null;
+  }, [dispatch]);
 
   // Handle image adjuster cancel
   const handleAdjusterCancel = useCallback(() => {
     setPendingUploadImageUrl(null);
-    setUploadingForWaypointId(null);
+    uploadingForWaypointIdRef.current = null;
   }, []);
 
   // Actual generation logic (called after confirmation if needed)

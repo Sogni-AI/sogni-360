@@ -54,8 +54,11 @@ const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
   const handleFilesSelect = useCallback(async (files: File[]) => {
     setError(null);
 
-    // Filter for image files only
-    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    // Filter for image files — check MIME type first, fall back to extension
+    const imageFiles = files.filter((f) =>
+      f.type.startsWith('image/') ||
+      /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|avif|tiff?)$/i.test(f.name)
+    );
     if (imageFiles.length === 0) {
       setError('Please select image files');
       return;

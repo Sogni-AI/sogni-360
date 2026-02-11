@@ -249,7 +249,9 @@ const CardMode: React.FC<CardModeProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            marginTop: '2px'
+            marginTop: '2px',
+            position: 'relative',
+            zIndex: 20
           }}>
             <button
               onClick={() => rotateCamera('ccw')}

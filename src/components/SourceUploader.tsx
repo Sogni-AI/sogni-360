@@ -55,7 +55,11 @@ const SourceUploader: React.FC = () => {
 
   const processImages = useCallback(async (files: File[]) => {
     // Validate all files upfront
-    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    // Filter for image files — check MIME type first, fall back to extension
+    const imageFiles = files.filter(f =>
+      f.type.startsWith('image/') ||
+      /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|avif|tiff?)$/i.test(f.name)
+    );
     if (imageFiles.length === 0) {
       showToast({ message: 'Please upload image files', type: 'error' });
       return;

@@ -146,10 +146,10 @@ const CompactMode: React.FC<CompactModeProps> = ({
         background: `
           radial-gradient(
             ellipse 70% 70% at 35% 35%,
-            rgba(70, 70, 75, 0.6) 0%,
-            rgba(45, 45, 50, 0.65) 40%,
-            rgba(25, 25, 30, 0.7) 70%,
-            rgba(15, 15, 18, 0.75) 100%
+            rgba(70, 70, 75, 0.7) 0%,
+            rgba(45, 45, 50, 0.73) 40%,
+            rgba(25, 25, 30, 0.77) 70%,
+            rgba(15, 15, 18, 0.81) 100%
           )
         `,
         boxShadow: `
