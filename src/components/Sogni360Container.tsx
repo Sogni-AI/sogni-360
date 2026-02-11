@@ -898,7 +898,7 @@ const Sogni360Container: React.FC = () => {
 
       {/* Transition Config Panel */}
       {showTransitionConfig && (
-        <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/15">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/15">
           <TransitionConfigPanel
             onClose={() => dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: false })}
             onStartGeneration={handleStartTransitionGeneration}
