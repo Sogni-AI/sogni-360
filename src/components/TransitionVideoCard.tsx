@@ -310,7 +310,9 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 onClick={onPrevVersion}
                 disabled={!versionInfo.canPrev}
               >
-                ‹
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
               <span>v{versionInfo.current}/{versionInfo.total}</span>
               <button
@@ -318,7 +320,9 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 onClick={onNextVersion}
                 disabled={!versionInfo.canNext}
               >
-                ›
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             </>
           ) : (
