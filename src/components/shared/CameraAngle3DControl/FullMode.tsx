@@ -108,8 +108,7 @@ const FullMode: React.FC<FullModeProps> = ({
       transform: `translate(-50%, -50%) scale(${cameraScale})`,
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       pointerEvents: 'none',
-      zIndex: isBehindSphere ? 2 : 10,
-      opacity: isBehindSphere ? 0.7 : 1
+      zIndex: isBehindSphere ? 2 : 10
     }}>
       <svg
         width="100"
@@ -123,7 +122,7 @@ const FullMode: React.FC<FullModeProps> = ({
           transformOrigin: '50px 60px',
           pointerEvents: 'none',
           zIndex: 20,
-          opacity: coneVisibility * (isBehindSphere ? 0.75 : 1),
+          opacity: coneVisibility,
           transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
@@ -149,8 +148,7 @@ const FullMode: React.FC<FullModeProps> = ({
         justifyContent: 'center',
         position: 'relative',
         zIndex: 10,
-        boxShadow: `0 2px 12px ${COLORS.accentGlow}`,
-        filter: isBehindSphere ? 'brightness(0.8)' : 'none'
+        boxShadow: `0 2px 12px ${COLORS.accentGlow}`
       }}>
         <span style={{ fontSize: '16px' }}>📷</span>
       </div>

@@ -6,10 +6,7 @@ import type { Waypoint, AzimuthKey, ElevationKey, DistanceKey } from '../types';
 import {
   MIN_WAYPOINTS,
   MAX_WAYPOINTS,
-  MULTI_ANGLE_PRESETS,
-  AZIMUTHS,
-  ELEVATIONS,
-  DISTANCES
+  MULTI_ANGLE_PRESETS
 } from '../constants/cameraAngleSettings';
 import type { MultiAnglePreset } from '../types/cameraAngle';
 import WorkflowWizard, { WorkflowStep, computeWorkflowStep } from './shared/WorkflowWizard';
@@ -677,44 +674,9 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
 
             {/* Info Section */}
             <div className="config-card-info">
-              {waypoint.isOriginal ? (
-                <div className="config-card-angle">Original Image</div>
-              ) : (
-                <div className="config-card-angle-selectors">
-                  <select
-                    className="angle-select"
-                    value={waypoint.azimuth}
-                    onChange={(e) => handleUpdateWaypoint(waypoint.id, { azimuth: e.target.value as AzimuthKey })}
-                    disabled={isGenerating}
-                  >
-                    {AZIMUTHS.map(az => (
-                      <option key={az.key} value={az.key}>{az.label}</option>
-                    ))}
-                  </select>
-                  <span className="angle-separator">·</span>
-                  <select
-                    className="angle-select"
-                    value={waypoint.elevation}
-                    onChange={(e) => handleUpdateWaypoint(waypoint.id, { elevation: e.target.value as ElevationKey })}
-                    disabled={isGenerating}
-                  >
-                    {ELEVATIONS.map(el => (
-                      <option key={el.key} value={el.key}>{el.label}</option>
-                    ))}
-                  </select>
-                  <span className="angle-separator">·</span>
-                  <select
-                    className="angle-select"
-                    value={waypoint.distance}
-                    onChange={(e) => handleUpdateWaypoint(waypoint.id, { distance: e.target.value as DistanceKey })}
-                    disabled={isGenerating}
-                  >
-                    {DISTANCES.map(d => (
-                      <option key={d.key} value={d.key}>{d.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="config-card-angle">
+                {waypoint.isOriginal ? 'Original Image' : '\u00A0'}
+              </div>
 
               {/* Use original toggle with upload option */}
               <div className="config-card-image-options">

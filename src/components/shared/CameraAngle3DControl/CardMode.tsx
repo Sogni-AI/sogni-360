@@ -198,8 +198,7 @@ const CardMode: React.FC<CardModeProps> = ({
               transform: `translate(-50%, -50%) scale(${cameraScale * 0.8})`,
               transition: 'all 0.3s ease',
               pointerEvents: 'none',
-              zIndex: isBehindSphere ? 2 : 10,
-              opacity: isBehindSphere ? 0.6 : 1
+              zIndex: isBehindSphere ? 2 : 10
             }}>
               {/* View cone SVG */}
               <svg
@@ -214,7 +213,7 @@ const CardMode: React.FC<CardModeProps> = ({
                   transformOrigin: '40px 50px',
                   pointerEvents: 'none',
                   zIndex: 20,
-                  opacity: coneVisibility * (isBehindSphere ? 0.75 : 1),
+                  opacity: coneVisibility,
                   transition: 'opacity 0.3s ease'
                 }}
               >
