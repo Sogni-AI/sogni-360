@@ -392,7 +392,14 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
         />
         <ActionButton
           icon="music"
-          onClick={() => setShowMusicSelector(true)}
+          onClick={() => {
+            // Pause video to avoid conflicting audio when music selector opens
+            if (videoRef.current && !videoRef.current.paused) {
+              videoRef.current.pause();
+              setIsPlaying(false);
+            }
+            setShowMusicSelector(true);
+          }}
           disabled={isStitching || !localStitchedUrl}
           title={musicSelection ? 'Change music' : 'Add music'}
           active={!!musicSelection}
