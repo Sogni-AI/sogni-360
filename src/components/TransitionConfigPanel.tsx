@@ -210,6 +210,18 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
     enabled: pendingCount > 0
   });
 
+  // Cost estimate for regenerating ALL segments (shown when allReady)
+  const { loading: regenCostLoading, formattedCost: regenFormattedCost, formattedUSD: regenFormattedUSD } = useVideoCostEstimation({
+    imageWidth: currentProject?.sourceImageDimensions?.width,
+    imageHeight: currentProject?.sourceImageDimensions?.height,
+    resolution,
+    quality,
+    duration,
+    jobCount: transitionCount,
+    tokenType,
+    enabled: allReady && transitionCount > 0
+  });
+
   // Duration options
   const durationOptions = useMemo(() => {
     const options = [];
@@ -282,6 +294,64 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
       executeStartGeneration();
     }
   }, [readyWaypoints.length, onConfirmDestructiveAction, executeStartGeneration, showToast, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch, allReady]);
+
+  // Handle "Regenerate All" — reset all segments to pending, then start generation
+  const executeRegenerateAll = useCallback(() => {
+    warmUpAudio();
+
+    const settings: TransitionGenerationSettings = {
+      resolution,
+      quality,
+      duration,
+      transitionPrompt,
+      musicSelection: musicSelection || undefined
+    };
+
+    dispatch({
+      type: 'UPDATE_SETTINGS',
+      payload: {
+        transitionPrompt,
+        videoResolution: resolution,
+        transitionDuration: duration,
+        transitionQuality: quality,
+        musicSelection: musicSelection || undefined
+      }
+    });
+
+    // Reset ALL segments to pending for full regeneration
+    const resetSegments = reconciledSegments.map(s => ({
+      ...s,
+      status: 'pending' as const,
+      videoUrl: undefined,
+      progress: undefined,
+      error: undefined
+    }));
+
+    dispatch({ type: 'SET_SEGMENTS', payload: resetSegments });
+    onStartGeneration(resetSegments, settings);
+  }, [reconciledSegments, transitionPrompt, resolution, duration, quality, musicSelection, dispatch, onStartGeneration]);
+
+  const handleRegenerateAll = useCallback(() => {
+    if (readyWaypoints.length < 2) {
+      showToast({ message: 'Need at least 2 ready angles to create transitions', type: 'warning' });
+      return;
+    }
+
+    // Auth gating
+    if (!isAuthenticated && hasUsedFreeGeneration) {
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
+    if (!isAuthenticated && !hasUsedFreeGeneration) {
+      dispatch({ type: 'SET_HAS_USED_FREE_GENERATION', payload: true });
+    }
+
+    if (onConfirmDestructiveAction) {
+      onConfirmDestructiveAction('render-videos', executeRegenerateAll);
+    } else {
+      executeRegenerateAll();
+    }
+  }, [readyWaypoints.length, onConfirmDestructiveAction, executeRegenerateAll, showToast, isAuthenticated, hasUsedFreeGeneration, onRequireAuth, dispatch]);
 
   return (
     <LiquidGlassPanel
@@ -418,8 +488,24 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           onRemoveMusic={() => setMusicSelection(null)}
         />
 
-        {/* Cost estimate — hidden when all segments are ready */}
-        {!allReady && (
+        {/* Cost estimate */}
+        {allReady ? (
+          <div className="config-cost">
+            <div className="config-cost-left">
+              <span className="config-cost-videos">Regenerate all: {transitionCount} video{transitionCount !== 1 ? 's' : ''} × {duration}s each</span>
+            </div>
+            <div className="config-cost-right">
+              {regenCostLoading ? (
+                <span className="config-cost-loading">Calculating...</span>
+              ) : (
+                <>
+                  <span className="config-cost-spark">{regenFormattedCost} {tokenType.toUpperCase()}</span>
+                  <span className="config-cost-usd">≈ {regenFormattedUSD}</span>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
           <div className="config-cost">
             <div className="config-cost-left">
               <span className="config-cost-videos">{pendingCount} video{pendingCount !== 1 ? 's' : ''} × {duration}s each</span>
@@ -437,30 +523,44 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
           </div>
         )}
 
-        {/* Generate / View Button */}
-        <button
-          className="generate-btn"
-          onClick={handleStartGeneration}
-          disabled={readyWaypoints.length < 2}
-        >
-          {allReady ? (
-            <>
+        {/* Generate / View Buttons */}
+        {allReady ? (
+          <div className="config-action-buttons">
+            <button
+              className="generate-btn generate-btn-secondary"
+              onClick={handleRegenerateAll}
+              disabled={readyWaypoints.length < 2}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Regenerate All
+            </button>
+            <button
+              className="generate-btn"
+              onClick={onClose}
+              disabled={readyWaypoints.length < 2}
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               View Transition Videos
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Generate {pendingCount} Transition Video{pendingCount !== 1 ? 's' : ''}
-            </>
-          )}
-        </button>
+            </button>
+          </div>
+        ) : (
+          <button
+            className="generate-btn"
+            onClick={handleStartGeneration}
+            disabled={readyWaypoints.length < 2}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Generate {pendingCount} Transition Video{pendingCount !== 1 ? 's' : ''}
+          </button>
+        )}
       </div>
 
       {/* Music Selector Modal */}

@@ -481,7 +481,12 @@ const Sogni360Container: React.FC = () => {
   const handleStandaloneAngleReviewApply = useCallback(() => {
     dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: false });
     dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
-  }, [dispatch]);
+    // If all transition videos are already ready, show review panel behind config
+    const segments = currentProject?.segments || [];
+    if (segments.length > 0 && segments.every(s => s.status === 'ready')) {
+      dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: true });
+    }
+  }, [dispatch, currentProject?.segments]);
 
   // Check if current project has work that would be lost
   const hasUnsavedWork = useCallback(() => {

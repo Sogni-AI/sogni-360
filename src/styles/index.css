@@ -6476,6 +6476,27 @@ html, body {
   height: 20px;
 }
 
+/* Two-button layout when all transitions are ready */
+.config-action-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.config-action-buttons .generate-btn {
+  flex: 1;
+}
+
+.generate-btn.generate-btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.generate-btn.generate-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
 /* Legacy settings bar - keeping for backwards compatibility */
 .config-settings-bar {
   display: flex;
