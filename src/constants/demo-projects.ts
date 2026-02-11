@@ -69,11 +69,11 @@ export const DEMO_PROJECTS: DemoProjectManifest[] = [{
     id: 'demo-new-zealand-trip',
     name: 'New Zealand Trip',
     description: 'Demo New Zealand Travel Reel',
-    thumbnailUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/thumbnail.jpg?v=2`,
-    projectZipUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/new-zealand-trip.s360.zip?v=2`,
+    thumbnailUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/thumbnail-v3.jpg`,
+    projectZipUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/new-zealand-trip.s360.zip`,
     waypointCount: 23,
     segmentCount: 23,
-    zipSizeBytes: 69_567_890,
+    zipSizeBytes: 69_856_863,
     featured: true
   }
   // Add more demo projects using: local-scripts/demo-uploader/upload-demo.js
