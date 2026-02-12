@@ -18,6 +18,7 @@ import { playVideoCompleteIfEnabled } from '../utils/sonicLogos';
 import { downloadSingleImage, downloadImagesAsZip, type ImageDownloadItem } from '../utils/bulkDownload';
 import { toKebabSlug } from '../utils/projectExport';
 import EnhancePromptPopup from './shared/EnhancePromptPopup';
+import TestPatternPlaceholder from './shared/TestPatternPlaceholder';
 import AddAnglePopup from './AddAnglePopup';
 import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
 import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
@@ -1051,11 +1052,22 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               >
                 {waypoint.imageUrl ? (
                   <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} />
+                ) : waypoint.status === 'generating' ? (
+                  <img
+                    src={getReferenceImageUrl(waypoint.id) || currentProject?.sourceImageUrl}
+                    alt={`Step ${index + 1}`}
+                    className="dimmed"
+                  />
+                ) : currentProject?.sourceImageDimensions ? (
+                  <TestPatternPlaceholder
+                    width={currentProject.sourceImageDimensions.width}
+                    height={currentProject.sourceImageDimensions.height}
+                  />
                 ) : (
                   <img
                     src={getReferenceImageUrl(waypoint.id) || currentProject?.sourceImageUrl}
                     alt={`Step ${index + 1}`}
-                    className={waypoint.status === 'generating' ? 'dimmed' : 'pending-preview'}
+                    className="pending-preview"
                   />
                 )}
 
