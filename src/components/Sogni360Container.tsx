@@ -67,7 +67,6 @@ const Sogni360Container: React.FC = () => {
 
   // Wallet state for balance display and payment method
   const { balances, tokenType, switchPaymentMethod } = useWallet();
-  const currentBalance = balances?.[tokenType]?.net ? parseFloat(balances[tokenType].net) : undefined;
 
   // Get alternative currency info for switch prompt
   const alternativeCurrency = (tokenType === 'spark' ? 'sogni' : 'spark') as 'spark' | 'sogni';
@@ -1107,7 +1106,6 @@ const Sogni360Container: React.FC = () => {
         <ApiProvider value={sogniClient}>
           <StripePurchase
             onClose={() => setShowPurchaseModal(false)}
-            currentBalance={currentBalance}
           />
         </ApiProvider>
       )}
