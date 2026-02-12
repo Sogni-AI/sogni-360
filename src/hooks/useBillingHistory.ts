@@ -18,22 +18,36 @@ interface UseBillingHistoryResult {
   lineItems: BillingLineItem[];
   summary: BillingSummary;
   loading: boolean;
+  allProjectNames: string[];
   clearHistory: () => Promise<void>;
   refresh: () => void;
 }
 
 const emptySummary: BillingSummary = { totalSpark: 0, totalSogni: 0, totalUSD: 0, recordCount: 0 };
 
-export function useBillingHistory(): UseBillingHistoryResult {
+export function useBillingHistory(filterProjectName?: string): UseBillingHistoryResult {
   const [lineItems, setLineItems] = useState<BillingLineItem[]>([]);
   const [summary, setSummary] = useState<BillingSummary>(emptySummary);
+  const [allProjectNames, setAllProjectNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
-      const records = await getAllBillingRecords();
+      const allRecords = await getAllBillingRecords();
 
-      // Compute summary
+      // Extract unique project names from ALL records (unfiltered)
+      const nameSet = new Set<string>();
+      for (const r of allRecords) {
+        if (r.projectName) nameSet.add(r.projectName);
+      }
+      setAllProjectNames([...nameSet].sort((a, b) => a.localeCompare(b)));
+
+      // Apply project filter if set
+      const records = filterProjectName
+        ? allRecords.filter(r => r.projectName === filterProjectName)
+        : allRecords;
+
+      // Compute summary from filtered records
       let totalSpark = 0;
       let totalSogni = 0;
       let totalUSD = 0;
@@ -44,16 +58,16 @@ export function useBillingHistory(): UseBillingHistoryResult {
       }
       setSummary({ totalSpark, totalSogni, totalUSD, recordCount: records.length });
 
-      // Aggregate for display
+      // Aggregate filtered records for display
       setLineItems(aggregateRecords(records));
     } catch (err) {
       console.error('[useBillingHistory] Failed to load:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filterProjectName]);
 
-  // Load on mount
+  // Load on mount and when filter changes
   useEffect(() => {
     void loadData();
   }, [loadData]);
@@ -69,12 +83,14 @@ export function useBillingHistory(): UseBillingHistoryResult {
     await clearBillingHistory();
     setLineItems([]);
     setSummary(emptySummary);
+    setAllProjectNames([]);
   }, []);
 
   return {
     lineItems,
     summary,
     loading,
+    allProjectNames,
     clearHistory: handleClear,
     refresh: loadData
   };

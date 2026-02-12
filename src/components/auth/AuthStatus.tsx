@@ -28,6 +28,7 @@ interface AuthStatusProps {
   onPurchaseClick?: () => void;
   onSignupComplete?: () => void;
   textColor?: string;
+  currentProjectName?: string;
 }
 
 export interface AuthStatusRef {
@@ -37,7 +38,8 @@ export interface AuthStatusRef {
 export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   onPurchaseClick,
   onSignupComplete,
-  textColor = '#ffffff'
+  textColor = '#ffffff',
+  currentProjectName
 }, ref) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -555,6 +557,7 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
       <BillingHistoryModal
         isOpen={showBillingHistory}
         onClose={() => setShowBillingHistory(false)}
+        initialProjectFilter={currentProjectName}
       />
     </>
   );

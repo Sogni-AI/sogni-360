@@ -14,6 +14,7 @@ import '../styles/components/BillingHistory.css';
 interface BillingHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialProjectFilter?: string;
 }
 
 /** Format a timestamp into a readable date/time string */
@@ -101,9 +102,15 @@ function LineIcon({ type }: { type: 'angle' | 'video' | 'enhance' }) {
   }
 }
 
-const BillingHistoryModal: React.FC<BillingHistoryModalProps> = ({ isOpen, onClose }) => {
-  const { lineItems, summary, loading, clearHistory } = useBillingHistory();
+const BillingHistoryModal: React.FC<BillingHistoryModalProps> = ({ isOpen, onClose, initialProjectFilter }) => {
+  const [filterProject, setFilterProject] = useState<string | undefined>(initialProjectFilter);
+  const { lineItems, summary, loading, clearHistory, allProjectNames } = useBillingHistory(filterProject);
   const [confirmClear, setConfirmClear] = useState(false);
+
+  // Sync filter when initialProjectFilter changes (e.g. switching projects)
+  React.useEffect(() => {
+    setFilterProject(initialProjectFilter);
+  }, [initialProjectFilter]);
 
   const handleClear = useCallback(async () => {
     await clearHistory();
@@ -119,6 +126,18 @@ const BillingHistoryModal: React.FC<BillingHistoryModalProps> = ({ isOpen, onClo
           {/* Header */}
           <div className="billing-history-header">
             <h2>Billing History</h2>
+            {allProjectNames.length > 0 && (
+              <select
+                className="billing-filter-select"
+                value={filterProject ?? ''}
+                onChange={(e) => setFilterProject(e.target.value || undefined)}
+              >
+                <option value="">All Projects</option>
+                {allProjectNames.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            )}
             <button className="billing-history-close" onClick={onClose}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

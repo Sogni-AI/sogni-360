@@ -848,6 +848,7 @@ const Sogni360Container: React.FC = () => {
             ref={authStatusRef}
             onPurchaseClick={() => setShowPurchaseModal(true)}
             textColor="#ffffff"
+            currentProjectName={currentProject?.name}
           />
           {!showWaypointEditor && !showAngleReview && !showTransitionConfig && !showTransitionReview && !showFinalVideoPreview && (
             <div className="project-action-buttons">
