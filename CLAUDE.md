@@ -1,1027 +1,240 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Hard Rules
+
+- **NEVER run `npm run deploy:production`** or any production deployment commands. Prepare builds only; user deploys.
+- **No code file may exceed 300 lines.** Extract sub-components, hooks, utilities, and constants into separate files.
+- **Run `npm run validate:useeffect`** before committing any useEffect changes.
+- **Run `npm run build`** before presenting work — must pass with zero errors.
+
+Current 300-line violations: `CameraAngle3DControl.tsx` (922), `frontendSogniAdapter.ts` (811), `OrbitalChoreographer.tsx` (775), `MultiAngleGenerator.ts` (510), `AppContext.tsx` (492), `Sogni360Container.tsx` (476).
 
 ---
 
-## 🚨 NEVER RUN PRODUCTION DEPLOYMENTS
+## Frontend SDK vs Backend Proxy Architecture
 
-**Claude must NEVER run `npm run deploy:production` or any production deployment commands.** Always let the user run deployments themselves. You may prepare the build and verify it passes, but the actual deployment command must be executed by the user.
+This app has TWO modes for Sogni communication. **Always check `isFrontendMode()` before generation calls.**
 
----
+| Mode | When | How | Who pays |
+|------|------|-----|----------|
+| **Frontend SDK** | User logged in (`authMode === 'frontend'`) | `getSogniClient().projects.create()` directly | User's wallet |
+| **Backend Proxy** | Demo / not logged in | `api.*` methods → Express `/api/sogni/*` | Backend's account |
 
-## 🚨 CRITICAL: Frontend SDK vs Backend Proxy Architecture
+**NEVER proxy through backend when user is logged in** — wastes backend credits, adds latency, wrong wallet for errors.
 
-**UNDERSTAND THIS BEFORE WRITING ANY GENERATION CODE.**
+Services that MUST support both modes: `CameraAngleGenerator.ts`, `TransitionGenerator.ts`, `ImageEnhancer.ts`. Cost estimation can always use backend (read-only).
 
-This app has TWO modes for communicating with Sogni:
-
-### 1. Frontend SDK Mode (Direct Connection)
-When user is logged in via the frontend Sogni SDK (`authMode === 'frontend'`):
-- User has a direct WebSocket connection to Sogni
-- Jobs should use `getSogniClient().projects.create()` directly
-- Charges go to the **user's wallet**
-- Faster (no proxy latency)
-- Check with `isFrontendMode()` from `src/services/frontend/index.ts`
-
-### 2. Backend Proxy Mode (Demo Mode)
-When user is NOT logged in or in demo mode:
-- Jobs go through the Express backend at `/api/sogni/*`
-- Backend has its own Sogni credentials in `server/.env`
-- Charges go to the **backend's account** (app owner pays)
-- SSE progress events come from backend
-
-### ⚠️ CRITICAL MISTAKES TO AVOID
-
-1. **NEVER proxy through backend when user is logged in via frontend SDK**
-   - This wastes the backend's credits, not the user's
-   - Adds unnecessary latency
-   - Makes "insufficient funds" errors confusing (wrong wallet)
-
-2. **ALWAYS check `isFrontendMode()` before making generation calls**
-   - If true: use SDK directly via `getSogniClient()`
-   - If false: use `api.*` methods that go through backend
-
-3. **Generation services that MUST support both modes:**
-   - `CameraAngleGenerator.ts` - image generation ✅
-   - `TransitionGenerator.ts` - video generation ✅
-   - `ImageEnhancer.ts` - image enhancement (needs update)
-
-4. **Cost estimation:** Can use backend since it's read-only and doesn't charge
-
-### Code Pattern
 ```typescript
 import { isFrontendMode, getSogniClient } from './frontend';
 
-export async function generateSomething(options) {
-  const useFrontendSDK = isFrontendMode();
-
-  if (useFrontendSDK) {
-    const client = getSogniClient();
-    const project = await client.projects.create(projectOptions);
-    // Handle project events directly
-  } else {
-    const { projectId } = await api.generateSomething(options);
-    // Subscribe to SSE events via api.subscribeToProgress()
-  }
+if (isFrontendMode()) {
+  const project = await getSogniClient().projects.create(opts);
+} else {
+  const { projectId } = await api.generateSomething(opts);
 }
 ```
 
 ---
 
-## 🚨 CRITICAL: S3 Image URLs and CORS with Concurrent Requests
+## S3 CORS with Concurrent Requests
 
-**AWS S3 signed URLs have a CORS issue when multiple requests are made simultaneously.**
-
-### The Problem
-
-- S3 image URLs (e.g., `complete-images-production.s3-accelerate.amazonaws.com`) work **100% of the time when requests are spaced apart**
-- When multiple S3 URLs are fetched **concurrently** (e.g., `Promise.all([fetch(url1), fetch(url2), ...])`), **some requests randomly fail with CORS errors**
-- The browser reports: `No 'Access-Control-Allow-Origin' header is present on the requested resource`
-- This is NOT a problem with the URLs themselves - they are valid and work individually
-
-### The Cause
-
-This appears to be an S3/CloudFront behavior where concurrent requests from the same origin sometimes receive inconsistent CORS headers. The exact cause is AWS infrastructure-related, not something we can fix on our end.
-
-### The Solution: Retry with Jitter, then Proxy Fallback
-
-**Use `src/utils/s3FetchWithFallback.ts`** - a shared utility that:
-
-1. **Tries direct fetch first** (faster, no backend load)
-2. **On CORS failure, retries with 1-3 second random jitter** (breaks lockstep retries)
-3. **After 2 direct failures, falls back to backend proxy** (100% reliable)
+Concurrent S3 fetches randomly fail with CORS errors (AWS infrastructure issue). **Always use `src/utils/s3FetchWithFallback.ts`:**
 
 ```typescript
 import { fetchS3AsBlob, fetchS3WithFallback } from '../utils/s3FetchWithFallback';
-
-// For images - returns Blob
 const blob = await fetchS3AsBlob(s3Url);
-
-// For general fetch - returns Response
-const response = await fetchS3WithFallback(s3Url);
 ```
 
-The utility handles:
-- Detecting S3 URLs automatically
-- Random jitter (1-3 seconds) between retries to prevent thundering herd
-- Automatic fallback to `/api/sogni/proxy-image` after CORS failures
-- Works for both images AND videos
-
-### Important Notes
-
-1. **`<img>` tags are NOT affected** - browsers handle CORS differently for image elements vs fetch()
-2. **Single requests usually work fine** - the issue mainly manifests with concurrent requests
-3. **Jitter helps break up lockstep retries** - concurrent failures won't all retry at the same moment
-4. **Proxy is the final fallback** - only used after direct attempts fail, minimizing backend load
-
-### Files That Use This Utility
-
-Any service that fetches S3 images/videos to convert to blobs for SDK submission:
-- `TransitionGenerator.ts` - fetches waypoint images for video generation
-- `CameraAngleGenerator.ts` - may fetch source images
-- `ImageEnhancer.ts` - fetches images for enhancement
-
-### Copying to Other Projects
-
-This solution can be copied to other projects (e.g., Photobooth):
-1. Copy `src/utils/s3FetchWithFallback.ts`
-2. Ensure backend has `/api/sogni/proxy-image` endpoint (see `server/routes/sogni.js`)
-3. Import and use `fetchS3AsBlob` or `fetchS3WithFallback` in place of direct `fetch()`
+The utility: tries direct fetch → retries with 1-3s random jitter → falls back to `/api/sogni/proxy-image`. `<img>` tags are unaffected. Used by `TransitionGenerator.ts`, `CameraAngleGenerator.ts`, `ImageEnhancer.ts`.
 
 ---
 
-## 🚨 CRITICAL: Video Model Architecture
+## Video Model Architecture
 
-**⚠️ DO NOT CHANGE THIS LOGIC - IT HAS BEEN VERIFIED CORRECT ⚠️**
+**DO NOT CHANGE THIS LOGIC — VERIFIED CORRECT.**
 
-The SDK supports two families of video models with **fundamentally different FPS and frame count behavior**. This app currently uses WAN 2.2 but may add LTX-2 support in the future.
+### WAN 2.2 (Current)
 
----
+Model IDs: `wan_v2.2-*`. **Always generates at 16fps internally.** The `fps` param (16 or 32) controls post-render interpolation only (+10% cost for 32).
 
-### WAN 2.2 Models (Current - Legacy Behavior)
-
-**Model IDs:** `wan_v2.2-*`
-
-WAN 2.2 is the outlier with legacy behavior:
-- **Always generates at 16fps internally**, regardless of the user's fps setting
-- The `fps` parameter (16 or 32) controls **post-render frame interpolation only**
-- `fps=16`: No interpolation, output matches generation (16fps)
-- `fps=32`: Frames are doubled via interpolation after generation (+10% cost)
-
-**Frame Calculation for WAN 2.2:**
 ```typescript
-// ✅ CORRECT - Always use 16fps for frame calculation with WAN 2.2
-const BASE_FPS = 16; // Generation ALWAYS happens at 16fps
-const frames = Math.round(BASE_FPS * duration) + 1;
-// For 1.5 seconds: 16 * 1.5 + 1 = 25 frames generated
-// If fps=32: interpolated to ~50 output frames
+// CORRECT — always 16fps base for frame calculation
+const frames = Math.round(16 * duration) + 1; // 1.5s → 25 frames
+// fps=32 doubles output frames via interpolation
 ```
 
-**⚠️ NEVER DO THIS for WAN 2.2:**
-```typescript
-// ❌ WRONG - Do NOT calculate frames based on output fps!
-const frames = Math.round(duration * outputFps) + 1;
-```
+See `src/constants/videoSettings.ts`: `calculateVideoFrames(duration)`, `DEFAULT_VIDEO_SETTINGS.fps = 32`, `DEFAULT_VIDEO_SETTINGS.frames = 25`.
 
-**Code Reference (WAN 2.2):**
+### LTX-2 (Future)
 
-See `src/constants/videoSettings.ts`:
-- `calculateVideoFrames(duration)` - Always uses BASE_FPS=16
-- `DEFAULT_VIDEO_SETTINGS.fps = 32` - Output fps (post-processing interpolation)
-- `DEFAULT_VIDEO_SETTINGS.frames = 25` - For 1.5s at 16fps base
-
-**We offer two fps options for WAN 2.2: 16 and 32. Default is 32.**
+Model IDs: `ltx2-*`. Generates at actual specified FPS (1-60). Frames = `duration * fps + 1`, must snap to `1 + n*8`. When adding: detect model prefix, update `calculateVideoFrames()`, add frame snapping, reference `sogni-client` utils.
 
 ---
 
-### LTX-2 Models (Future - Standard Behavior)
+## useEffect Rules
 
-**Model IDs:** `ltx2-*`
+**Golden Rule**: Each effect has ONE responsibility. Run `npm run validate:useeffect` before committing.
 
-LTX-2 represents the **standard behavior going forward**:
-- **Generates at the actual specified FPS** (1-60 fps range)
-- No post-render interpolation - fps directly affects generation
-- More flexibility but different frame calculation
+**NEVER put in dependency arrays:** functions, context functions, hook-returned functions, whole objects, anything unstable. **ONLY** use primitives that should trigger the effect.
 
-**Frame Calculation for LTX-2:**
 ```typescript
-// ✅ CORRECT for LTX-2 - Use actual fps in calculation
-const frames = Math.round(duration * fps) + 1;
-// For 5 seconds at 24fps: 5 * 24 + 1 = 121 frames
+// CORRECT — one concern, primitive deps
+useEffect(() => {
+  if (authState.isAuthenticated) initializeSogni();
+}, [authState.isAuthenticated]);
+
+// WRONG — function in deps causes infinite loop
+}, [getSogniClient]);
+// FIX — import singleton directly, use primitive trigger
+import { sogniAuth } from '../services/sogniAuth';
+useEffect(() => { sogniAuth.getSogniClient(); }, [isAuthenticated]);
+
+// WRONG — mixed concerns
+}, [isAuthenticated, settings.watermark]);
+// FIX — split into separate effects
 ```
 
-**Frame Step Constraint for LTX-2:**
-- Frame count MUST follow pattern: `1 + n*8` (i.e., 1, 9, 17, 25, 33, 41, 49, ...)
-- If calculated frames don't match, snap to nearest valid value
-- Example: 5s at 24fps = 121 frames (valid: 1 + 15*8 = 121 ✓)
-
-**Key Differences Summary:**
-
-| Aspect | WAN 2.2 (Current) | LTX-2 (Future) |
-|--------|-------------------|----------------|
-| Internal generation FPS | Always 16fps | Actual specified fps |
-| FPS parameter meaning | Post-processing interpolation | Direct generation fps |
-| FPS range | 16 or 32 only | 1-60 fps |
-| Frame calculation | `duration * 16 + 1` | `duration * fps + 1` |
-| Frame constraint | None | Must be `1 + n*8` |
+Checklist: ONE purpose per effect, ≤3 deps, ZERO functions/objects in deps.
 
 ---
 
-### Passing Parameters to the SDK
+## Quality Standards
 
-For WAN 2.2 (current):
-```typescript
-const projectOptions = {
-  // ... other options ...
-  frames: 25,  // Calculated at 16fps base rate
-  fps: 32,     // Output fps (post-processing interpolation)
-};
-```
+This is a **SuperApp demo** — UX must be exceptional. Every detail matters.
 
-For LTX-2 (future):
-```typescript
-const projectOptions = {
-  // ... other options ...
-  frames: 121, // Calculated at actual fps, snapped to 1 + n*8
-  fps: 24,     // Actual generation fps
-};
-```
+### Absolute Requirements
 
----
+- **Aspect ratio is sacred.** NEVER use `aspect-ratio: 1` or `object-fit: cover` on user content. Always `object-fit: contain` or calculate from `sourceImageDimensions`. Multi-image layouts: portrait → side-by-side (`flex-direction: row`), landscape → stacked (`flex-direction: column`). Always compute `isPortrait = height > width`.
+- **No abbreviations.** Full words only: "Close-up" not "C", "Medium" not "M". If text doesn't fit, make the container larger.
+- **Minimum sizing:** 12px body text, 14px buttons, 44px touch targets, 44px button height.
+- **Responsive:** Test mobile (375px) AND desktop (1440px). Design mobile-first. Use responsive units (rem, %, vw/vh).
+- **No TODO comments** for essential functionality. No placeholder implementations.
 
-### Implementation Notes for Adding LTX-2
+### Pre-Commit Visual Audit (Required for UI changes)
 
-When adding LTX-2 support to this repo:
-1. Add model detection: check if model ID starts with `ltx2-` vs `wan_v2.2-`
-2. Update `calculateVideoFrames()` to accept model type and use correct formula
-3. Add frame snapping logic for LTX-2 (round to nearest `1 + n*8`)
-4. Update UI to allow fps selection beyond 16/32 for LTX-2
-5. Reference `sogni-client` utils: `isWanModel()`, `isLtx2Model()`, `calculateVideoFrames()`
-
----
-
-## 🚨 FILE SIZE LIMIT: 300 LINES MAX
-
-**No code file should exceed 300 lines.** Break large files into smaller, focused modules.
-
-Components over 300 lines MUST be split:
-- Extract sub-components into separate files
-- Extract hooks into `/hooks/` directory
-- Extract utilities into `/utils/` directory
-- Extract constants into `/constants/` directory
-
-Current violations to fix:
-- `CameraAngle3DControl.tsx` (922 lines) → Split into Card/Full/Compact modes
-- `frontendSogniAdapter.ts` (811 lines) → Split by feature domain
-- `OrbitalChoreographer.tsx` (775 lines) → Extract hooks and sub-components
-- `MultiAngleGenerator.ts` (510 lines) → Split generator logic
-- `AppContext.tsx` (492 lines) → Extract reducers and hooks
-- `Sogni360Container.tsx` (476 lines) → Extract modal components
-
-## 🚨 SCREENSHOT VERIFICATION (USE BEFORE PRESENTING WORK)
-
-Run the screenshot script to verify visual output before presenting work:
-
+Use screenshot script then READ the files to verify:
 ```bash
-# Desktop (1440x900)
 node scripts/screenshot.mjs https://360-local.sogni.ai /tmp/check-desktop.png
-
-# Mobile (375x812)
 node scripts/screenshot.mjs https://360-local.sogni.ai /tmp/check-mobile.png /Users/markledford/Pictures/1.jpg 375 812
 ```
 
-Then READ the screenshot files to visually verify:
-- No duplicate headers/titles
-- No duplicate close buttons
-- Aspect ratios preserved
-- No horizontal scrollbars
-- Layout looks intentional, not broken
+Verify: no duplicate headers/buttons, aspect ratios preserved, no scrollbars, no overflow, text readable, touch targets adequate. Test happy path + one error case. Fix all issues before presenting work.
 
-## 🚨 MANDATORY PRE-COMMIT AUDIT PROCESS
-
-**BEFORE presenting ANY work to the user for review, Claude MUST complete this audit process. The user's time is extremely valuable - do not waste it with incomplete or sloppy work.**
-
-### Audit Execution Steps
-
-After completing implementation but BEFORE asking for user review:
-
-#### Step 1: Build Verification
-```bash
-npm run build
+**Audit report format when presenting work:**
 ```
-- Must complete with zero errors
-- Warnings should be reviewed and addressed if relevant
-
-#### Step 2: Visual Audit (REQUIRED for any UI changes)
-
-Open the app and manually verify each of these. Do not skip any.
-
-**Aspect Ratio Check:**
-- [ ] Upload a portrait image (taller than wide)
-- [ ] Upload a landscape image (wider than tall)
-- [ ] Verify ALL thumbnails/previews display at correct aspect ratio
-- [ ] If any image appears distorted or forced square → FIX BEFORE PROCEEDING
-
-**Readability Check:**
-- [ ] Can all text be read without effort?
-- [ ] Is any text abbreviated when it shouldn't be?
-- [ ] Is any text smaller than 12px?
-- [ ] If any issues → FIX BEFORE PROCEEDING
-
-**Usability Check:**
-- [ ] Test on mobile viewport (375px width in dev tools)
-- [ ] Test on desktop viewport (1440px width)
-- [ ] Can all buttons/controls be easily tapped/clicked?
-- [ ] Are touch targets at least 44px?
-- [ ] If any issues → FIX BEFORE PROCEEDING
-
-**Layout Check:**
-- [ ] Is content properly spaced and aligned?
-- [ ] Does anything overflow or get cut off?
-- [ ] Is the visual hierarchy clear?
-- [ ] If any issues → FIX BEFORE PROCEEDING
-
-#### Step 3: Functional Audit
-
-- [ ] Does the feature work as intended?
-- [ ] Test the happy path completely
-- [ ] Test at least one error case
-- [ ] Test empty state if applicable
-
-#### Step 4: Self-Critique
-
-Look at your implementation and ask:
-- "Would I be embarrassed if this was shown to stakeholders?"
-- "Is this the quality of a polished product demo?"
-- "Did I cut any corners that will be obvious to the user?"
-
-If ANY answer suggests the work is subpar → FIX BEFORE PROCEEDING
-
-### Audit Report Format
-
-When presenting work, Claude MUST include this audit summary:
-
-```
-## Pre-Commit Audit Completed ✓
-
-**Build:** ✓ Passes with no errors
-**Aspect Ratios:** ✓ Tested portrait and landscape - displays correctly
-**Readability:** ✓ All text 12px+, no abbreviations
-**Mobile (375px):** ✓ Tested - [specific observations]
-**Desktop (1440px):** ✓ Tested - [specific observations]
-**Touch Targets:** ✓ All interactive elements 44px+
-**Functionality:** ✓ Tested happy path and [specific test cases]
-
-**Screenshots/Evidence:** [If applicable, describe what was visually verified]
-
-Ready for review.
-```
-
-### If Audit Fails
-
-Do NOT present work to user. Instead:
-1. Fix all failing items
-2. Re-run the audit
-3. Only proceed when ALL checks pass
-
-### Exceptions
-
-The only exception to this audit is pure documentation changes or non-UI backend changes. Even then, build verification is required.
-
----
-
-## ⚠️ MANDATORY QUALITY STANDARDS - READ BEFORE ANY IMPLEMENTATION
-
-**STOP. Before writing ANY code, read and internalize these principles. Sloppy, rushed work is unacceptable. Take the time to do it right.**
-
-### Core Philosophy
-
-This app is a **"SuperApp" demo** showcasing Sogni's capabilities. The user experience must be **EXCEPTIONAL** - polished, thoughtful, and delightful. Every detail matters. Mediocre is not acceptable.
-
-### 🔴 CRITICAL: Aspect Ratio Preservation - ABSOLUTE REQUIREMENT
-
-**ASPECT RATIO MUST BE PRESERVED AT ALL COSTS. NO EXCEPTIONS.**
-
-The source image's aspect ratio is SACRED. This is non-negotiable:
-
-- **ALL images** must display at their original aspect ratio - thumbnails, previews, cards, comparisons, EVERYTHING
-- **NEVER** use `aspect-ratio: 1` or `object-fit: cover` on user-uploaded content
-- **ALWAYS** use `object-fit: contain` or calculate dimensions from `sourceImageDimensions`
-- **ADAPTIVE LAYOUTS ARE REQUIRED**: When displaying multiple images together:
-  - Portrait images (height > width): Display SIDE BY SIDE horizontally
-  - Landscape images (width > height): Display STACKED VERTICALLY (top to bottom)
-  - This ensures both images fit naturally without distortion
-- **CHECK `isPortrait`**: Always compute `const isPortrait = height > width` and use it to conditionally apply layout classes
-- If you find yourself squishing, stretching, or cropping user images - **STOP AND FIX IT**
-
-```typescript
-// ALWAYS do this check when displaying user images
-const isPortrait = sourceImageDimensions.height > sourceImageDimensions.width;
-// Then apply: className={isPortrait ? 'layout-horizontal' : 'layout-vertical'}
-```
-
-### 🔴 CRITICAL: No Abbreviated UI
-
-**Abbreviations destroy usability. Write full, clear labels.**
-
-- ❌ WRONG: "C", "M", "W", "⬆", "↑", "•", "↓"
-- ✅ RIGHT: "Close-up", "Medium", "Wide", "High", "Up", "Eye", "Low"
-- ❌ WRONG: Cramped 9px text, buttons users can't tap
-- ✅ RIGHT: 12px+ text, 44px+ touch targets, readable at a glance
-
-If text doesn't fit, **make the container larger**, don't shrink the text.
-
-### 🔴 CRITICAL: Holistic Design Thinking
-
-Before implementing any feature, ask:
-
-1. **What does the user expect?** - Design for their mental model, not yours
-2. **How does this feel on mobile?** - Touch targets, scrolling, thumb zones
-3. **How does this feel on desktop?** - Hover states, keyboard navigation, larger displays
-4. **Is this visually balanced?** - Proper spacing, hierarchy, alignment
-5. **Would I be proud to show this?** - If no, don't ship it
-
-### 🔴 CRITICAL: Implementation Quality
-
-- **Take 20 minutes over 1 minute** if it results in 2x better UX
-- **Test on both mobile and desktop** before considering work complete
-- **Audit your own work** - look at it critically, find the flaws, fix them
-- **No TODO comments** for essential functionality - finish the job
-- **No placeholder implementations** - if it's worth building, build it right
-
-### Anti-Patterns to AVOID
-
-1. **Quick hacks** - They compound into unmaintainable code
-2. **"It works"** - Working is the minimum bar, not the goal
-3. **Fixed pixel sizes** - Use responsive units (rem, %, vw/vh)
-4. **Ignoring edge cases** - Empty states, loading, errors all need design
-5. **Copy-paste without understanding** - Know why code works before using it
-6. **Incrementally patching** - Sometimes delete and redesign from scratch
-
-### Quality Checklist (MANDATORY before completing any UI task)
-
-```
-[ ] Aspect ratios preserved for all user content
-[ ] Text is readable (12px+ body, 14px+ buttons)
-[ ] Touch targets are 44px+ minimum
-[ ] Works on mobile viewport (375px width)
-[ ] Works on desktop viewport (1440px+ width)
-[ ] No abbreviations - full words used
-[ ] Loading states designed
-[ ] Error states designed
-[ ] Empty states designed
-[ ] Hover/active states for interactive elements
-[ ] Keyboard accessible where applicable
-[ ] Visual hierarchy is clear
-[ ] Spacing is consistent and intentional
-[ ] Would I be proud to demo this? YES
+## Pre-Commit Audit Completed
+Build: Passes | Aspect Ratios: OK | Mobile (375px): OK | Desktop (1440px): OK
+Touch Targets: 44px+ | Functionality: Tested [specific cases]
 ```
 
 ---
 
-## Design System Standards
+## Design System: "Liquid Glass"
 
-### 🎨 Visual Design Language: "Liquid Glass"
+Premium visual style inspired by DJI, GoPro, Apple Liquid Glass.
 
-**This app follows a premium visual style inspired by DJI.com, GoPro, and Apple's Liquid Glass aesthetic.**
+**Principles:** Frosted glass (`backdrop-filter: blur(16-24px)`), subtle transparency (bg 0.85-0.95, borders 0.1-0.2), soft gradients, 16-24px corners for modals, depth through layering, clean minimalism.
 
-Key principles:
-- **Frosted glass effects** - Use `backdrop-filter: blur(16-24px)` with semi-transparent backgrounds
-- **Subtle transparency** - Backgrounds at 0.85-0.95 opacity, borders at 0.1-0.2 opacity
-- **Soft gradients** - Subtle color transitions, never harsh or flat
-- **Generous rounded corners** - 16-24px for modals/cards, 8-12px for buttons/inputs
-- **Depth through layering** - Multiple translucent layers create visual hierarchy
-- **Clean minimalism** - Ample whitespace, clear typography, no visual clutter
-- **Premium feel** - Every element should feel intentional and polished
+**Colors:** Primary gradient `linear-gradient(135deg, #667eea, #764ba2)`. Dark bg `rgba(20-30, 20-30, 30-40, 0.95-0.98)`. Glass surfaces `rgba(255,255,255, 0.03-0.08)` with blur. Text: white 1.0 headings, 0.7-0.85 body, 0.5-0.6 muted.
 
-**Color Palette:**
-- Primary gradient: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)` (indigo to purple)
-- Dark backgrounds: `rgba(20-30, 20-30, 30-40, 0.95-0.98)`
-- Glass surfaces: `rgba(255, 255, 255, 0.03-0.08)` with blur
-- Borders: `rgba(255, 255, 255, 0.08-0.15)`
-- Text: White at 1.0 for headings, 0.7-0.85 for body, 0.5-0.6 for muted
+**Spacing:** Base 4px, min padding 8px, card padding 12-16px, gaps 8-16px. Breakpoints: mobile <768px, tablet 768-1024px, desktop >1024px.
 
-**Modal/Card Pattern:**
-```css
-.glass-card {
-  background: linear-gradient(135deg, rgba(30, 30, 40, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-```
+### Liquid Glass Library (`liquid-glass-react`)
 
-**Button Pattern:**
-```css
-.primary-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-.secondary-button {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-```
+Toggle: settings > Liquid Glass Effects. State: `liquidGlassEnabled` in AppContext. Key component: `src/components/shared/LiquidGlassPanel.tsx`.
 
-### 🔮 Liquid Glass Library (liquid-glass-react)
+**Architecture:** Library renders 5 Fragment siblings with stale sizing. We provide our own frosted glass via `.liquid-glass-wrap::before` (backdrop-filter), specular border via `::after`, and only use the library's SVG displacement (`.glass__warp`).
 
-This app uses the `liquid-glass-react` library for premium Apple-style frosted glass effects with dynamic refraction. **Toggle via settings > Liquid Glass Effects.**
+**CSS classes:** `.liquid-glass-wrap` (main), `.liquid-glass-subtle` (small elements), `.glass-fallback` (disabled state), `.glass-inner` (sub-panels), `.glass-button`, `.glass-indicator-pill`, `.no-liquid-glass` (body class when disabled).
 
-**Key Component:** `src/components/shared/LiquidGlassPanel.tsx`
+**Critical rules:**
+1. Children keep original CSS — library overlays glass on top
+2. Override ALL `.glass` library chrome (padding, gap, bg, border, shadow) with `!important`
+3. `overflow: hidden` on wrapper (prevents SVG bleed)
+4. Move margins to `<LiquidGlassPanel style>`, not child
+5. Never `display: contents` (breaks sizing)
+6. All three layers (wrap, `.glass`, content) must have identical dimensions
+7. Never add manual glass CSS (no `backdrop-filter`/`box-shadow` on children)
+8. Stale size fix: `LiquidGlassPanel.tsx` dispatches synthetic `window.resize` via rAF after mount
 
-#### Architecture (From sogni-globe lessons learned)
-
-The library's `LiquidGlass` component renders 5 Fragment siblings. Only the GlassContainer (class `relative`) sizes correctly; the others use a stale `glassSize` from mount. We hide them with CSS and provide our own effects:
-
-| Layer | Element | Purpose |
-|-------|---------|---------|
-| Frosted glass | `.liquid-glass-wrap::before` | `backdrop-filter: blur + saturate + brightness` — always 100% coverage |
-| SVG refraction | `.glass__warp` (library) | SVG displacement filter + chromatic aberration — partial coverage OK |
-| Content | `.glass > div` | Children rendered at z-index 1 |
-| Specular border | `.liquid-glass-wrap::after` | Top-lit gradient highlight via mask-composite trick |
-
-#### CSS Classes
-
-- `.liquid-glass-wrap` — Main glass panel (auto via `LiquidGlassPanel`)
-- `.liquid-glass-subtle` — Invisible wrapper for small elements (buttons, badges)
-- `.glass-fallback` — Non-glass fallback when disabled
-- `.glass-inner` — Sub-panels (tab bars, filters)
-- `.glass-button` — Buttons with specular edge `::after`
-- `.glass-indicator-pill` — Small indicator dots with glass styling
-- `.no-liquid-glass` — Body class that tones down effects when disabled
-
-#### Critical Gotchas
-
-1. **Child elements keep ORIGINAL production CSS** — background, border, padding, sizing all unchanged. The library overlays its glass effect on top via `.glass__warp`.
-
-2. **Strip ALL library chrome from `.glass`** — The library sets `padding: 24px 32px`, `gap: 24px`, `background`, `border`, `box-shadow` on `.glass`. ALL must be overridden to `0`/`transparent`/`none` with `!important`. Missing even one (like padding) causes size mismatch.
-
-3. **`overflow: hidden` on wrapper** — The library's SVG displacement filter pushes pixels outside element bounds. Without `overflow: hidden`, refraction bleeds visibly beyond the element.
-
-4. **Move margins to wrapper, not child** — Grid includes child margins in cell sizing, making `.glass__warp` cover the margin area. Move `margin-top` etc. to `<LiquidGlassPanel style={{ marginTop: '...' }}>` and set `margin: 0 !important` on child inside wrapper.
-
-5. **Do NOT use `display: contents`** — Causes `.relative` to expand to viewport size (1440x900). Keep the default `display: grid` which auto-sizes to content.
-
-6. **Always verify sizes match** — After changes, measure `wrap`, `.glass`, and content element. ALL THREE must have identical width×height. If not, something is leaking size.
-
-7. **Do NOT add manual glass CSS** — No manual `backdrop-filter`, `box-shadow` insets, or `::before`/`::after` pseudo-elements to simulate glass. The library handles all glass visuals via `.glass__warp`.
-
-8. **Stale size cache on narrow viewports** — The library measures `getBoundingClientRect()` at mount (useEffect with `[]` deps) and stores the result in React state (`glassSize`). It ONLY re-measures on `window.resize` events. If layout hasn't fully settled when it measures (flex reflow, async content loading, CSS transitions), the cached dimensions are wrong — causing content to clip on narrow viewports like iPhone SE. **Fix:** `LiquidGlassPanel.tsx` dispatches a synthetic `window.resize` event via `requestAnimationFrame` after mount, forcing the library to re-measure once the browser has painted the final layout. If you still see clipping after this, add a second delayed dispatch (e.g., `setTimeout(() => window.dispatchEvent(new Event('resize')), 150)`) to catch async content that loads after initial render.
-
-#### Usage Patterns
-
-**Wrapping any element:**
 ```tsx
-// Margin goes on wrapper, not child
 <LiquidGlassPanel cornerRadius={16} subtle style={{ marginTop: '1rem' }}>
-  <div className="my-panel">  {/* keeps original CSS, margin: 0 */}
-    {children}
-  </div>
+  <div className="my-panel">{children}</div>
 </LiquidGlassPanel>
 ```
-
-**Settings toggle location:** `src/components/shared/AdvancedSettingsPopup.tsx`
-
-**State:** `liquidGlassEnabled` in AppContext, persisted to localStorage
-
-### Typography
-- **Minimum body text**: 12px (0.75rem)
-- **Button/label text**: 14px (0.875rem) minimum
-- **Headings**: 16px+ with clear hierarchy
-- **Line height**: 1.4-1.6 for readability
-- **Font weight**: Use 400 for body, 500-600 for emphasis
-
-### Spacing
-- **Base unit**: 4px (0.25rem)
-- **Minimum padding**: 8px (0.5rem)
-- **Card padding**: 12-16px (0.75-1rem)
-- **Gap between elements**: 8-16px
-- **Touch target padding**: Ensure 44px minimum clickable area
-
-### Interactive Elements
-- **Button minimum height**: 44px (touch-friendly)
-- **Button padding**: 12px 24px minimum
-- **Hover states**: Always provide visual feedback
-- **Active/pressed states**: Visible state change
-- **Focus states**: Visible for keyboard navigation
-
-### Cards & Containers
-- **Border radius**: 8-16px for cards, 4-8px for small elements
-- **Background opacity**: 0.05-0.1 for subtle surfaces
-- **Border opacity**: 0.1-0.2 for subtle borders
-- **Shadow**: Use sparingly, prefer borders
-
-### Images & Media
-- **ALWAYS preserve aspect ratio** of user content
-- Use `object-fit: cover` for fixed containers WITH proper aspect ratio
-- Use `object-fit: contain` when space is flexible
-- Thumbnails should match source aspect ratio, not be forced square
-
-### Responsive Breakpoints
-- **Mobile**: < 768px (primary design target)
-- **Tablet**: 768px - 1024px
-- **Desktop**: > 1024px
-- Design mobile-first, enhance for larger screens
 
 ---
 
 ## Project Overview
 
-Sogni 360 is a "SuperApp" demo application for sogni.ai that creates stunning 360° orbital videos. It leverages cutting-edge AI models—**Qwen Image Edit 2511** and the **Multiple Angles LoRA**—via the Sogni Supernet dePIN creative AI inference network to generate perspective changes and smooth video transitions from any image: action sports, vehicles, portraits, landscapes, interiors, and more.
+Sogni 360 creates 360° orbital videos using **Qwen Image Edit 2511** and **Multiple Angles LoRA** via Sogni's dePIN AI network. Users upload any image, select camera angles (96 orientations: 8 azimuths × 4 elevations × 3 distances), batch render, then generate video transitions between waypoints for seamless loops.
 
-**Popular Use Cases:**
-- Action sports (BMX, skateboarding, surfing) - freeze-frame moments from every angle
-- Vehicles (cars, motorcycles, bikes) - cinematic camera sweeps
-- Portraits & characters - classic 360° turnarounds
-- Architecture & interiors - room tours, real estate visualization
-- Product photography - e-commerce spins
-- Storytelling - scene exploration with perspective shifts
+**Vision:** Full-screen immersive experience, feels like rotating a 3D subject. First-time users see a pre-rendered demo.
 
-**Product Vision:**
-- Full-screen, no-scrollbar immersive experience on desktop and mobile
-- Users upload any image, select camera angles (from 96 possible orientations), batch render all angles
-- Video transitions are generated between adjacent waypoints, creating seamless loops
-- The experience should feel like rotating a 3D subject with smooth video transitions on each click/swipe
-- First-time users see a pre-rendered demo experience showing how the app works
-
-**Camera Angle System:**
-- 8 Azimuths × 4 Elevations × 3 Distances = 96 total orientations
-- Default preset: eye-level + close-up + front/left/back/right (4 angles + original)
-- Waypoints can be marked as "original" to use the source image directly (no generation cost)
-
-## Development Commands
+## Development
 
 ```bash
-# Install all dependencies (includes server via prepare script)
-npm install
-
-# Configure backend
-cp server/.env.example server/.env  # Add SOGNI_USERNAME, SOGNI_PASSWORD, SOGNI_ENV
-
-# Run development servers (requires both)
-cd server && npm run dev    # Terminal 1: Backend API (port 3002)
-npm run dev                 # Terminal 2: Frontend (port 5180)
-
-# Build
-npm run build               # Production build (tsc + vite)
-npm run build:staging       # Staging build
-
-# Testing & Linting
-npm test                    # Jest unit tests
-npm run test:watch          # Jest watch mode
-npm run lint                # ESLint (must pass with 0 warnings)
-npm run validate:useeffect  # CRITICAL: Validate useEffect patterns before committing
+npm install                          # All deps (server included via prepare)
+cp server/.env.example server/.env   # SOGNI_USERNAME, SOGNI_PASSWORD, SOGNI_ENV
+cd server && npm run dev             # Terminal 1: Backend (port 3002)
+npm run dev                          # Terminal 2: Frontend (port 5180)
+npm run build                        # Production build
+npm test && npm run lint             # Tests + linting (0 warnings)
 ```
 
-## 🚨 useEffect Rules (MANDATORY)
-
-Every useEffect must pass `npm run validate:useeffect` before committing.
-
-**Golden Rule**: Each effect has ONE responsibility.
-
-### 🚫 NEVER Add to Dependency Arrays
-
-These cause infinite re-render loops or unnecessary re-runs:
-
-1. **Functions** - `initializeSogni`, `handleClick`, `fetchData`, `updateSetting`
-2. **Context functions** - `dispatch`, `showToast`, `clearCache`
-3. **Hook-returned functions** - `getSogniClient`, `ensureClient`, `logout`
-4. **Whole objects** - `settings`, `authState`, `config`, `project`
-5. **Anything unstable** - Functions created with `.bind()`, inline callbacks
-
-### ✅ ONLY Add Primitives That Should Trigger the Effect
-
-```typescript
-// CORRECT - separate effects for separate concerns
-useEffect(() => {
-  if (authState.isAuthenticated) initializeSogni();
-}, [authState.isAuthenticated]);
-
-useEffect(() => {
-  if (settings.watermark) updateWatermark();
-}, [settings.watermark]);
-```
-
-### 🔧 How to Fix Common Violations
-
-**Problem:** Need to call a function from a hook inside useEffect
-```typescript
-// ❌ WRONG - getSogniClient creates new reference each render
-const { getSogniClient } = useSogniAuth();
-useEffect(() => {
-  const client = getSogniClient();
-  // ...
-}, [getSogniClient]); // INFINITE LOOP!
-
-// ✅ RIGHT - Access singleton directly
-import { sogniAuth } from '../services/sogniAuth';
-useEffect(() => {
-  const client = sogniAuth.getSogniClient();
-  // ...
-}, [isAuthenticated]); // Only primitive trigger
-```
-
-**Problem:** ESLint wants me to add a function to dependencies
-```typescript
-// ❌ WRONG - Adding function causes re-runs
-}, [fetchData, isAuthenticated]);
-
-// ✅ RIGHT - Ignore ESLint, call function directly
-}, [isAuthenticated]); // fetchData is stable, doesn't need to be a dependency
-```
-
-**Problem:** Effect needs to respond to multiple unrelated changes
-```typescript
-// ❌ WRONG - Mixed concerns
-useEffect(() => {
-  if (isAuthenticated) initClient();
-  if (settings.watermark) updateWatermark();
-}, [isAuthenticated, settings.watermark]); // TOO MANY CONCERNS!
-
-// ✅ RIGHT - Split into separate effects
-useEffect(() => {
-  if (isAuthenticated) initClient();
-}, [isAuthenticated]);
-
-useEffect(() => {
-  if (settings.watermark) updateWatermark();
-}, [settings.watermark]);
-```
-
-### 📊 Enforcement Checklist
-
-Before committing any useEffect changes:
-- [ ] Effect has ONE clear purpose (can be stated in one sentence)
-- [ ] Dependency array has ≤ 3 items (if more, split into multiple effects)
-- [ ] ZERO functions in dependency array
-- [ ] ZERO objects in dependency array (extract primitives instead)
-- [ ] Run `npm run validate:useeffect` - must pass with 0 errors
-
-## Local Development URLs
-
-Use nginx-proxied subdomains for proper CORS/cookie handling:
-- Frontend: `https://360-local.sogni.ai` (proxies to port 5180)
-- Backend API: `https://360-api-local.sogni.ai` (proxies to port 3002)
-
-Direct localhost access (`http://localhost:5180`) works but may have auth limitations.
+**Local URLs:** `https://360-local.sogni.ai` (frontend, nginx proxy to 5180), `https://360-api-local.sogni.ai` (backend, proxy to 3002). Direct localhost works but has auth limitations.
 
 ## Architecture
 
-### System Flow
 ```
 React Frontend → Express Backend API → Sogni Client SDK → Sogni Socket Service
      ↓                   ↓
-  AppContext        SSE Progress Events
+  AppContext        SSE Progress Events (globalSogniClient)
 ```
 
-The backend maintains a **single global Sogni client** (`globalSogniClient`) for all requests. The frontend subscribes to Server-Sent Events (SSE) for real-time generation progress.
+**Frontend (`src/`):** `components/Sogni360Container.tsx` (orchestrator), `WaypointEditor.tsx` (angle editor), `Sogni360Viewer.tsx` (viewer), `shared/CameraAngle3DControl.tsx` (orbital selector), `context/AppContext.tsx` (useReducer state), `services/api.ts` (SSE client), `services/CameraAngleGenerator.ts`, `services/sogniAuth.ts`, `constants/cameraAngleSettings.ts`.
 
-### Key Directories
+**Backend (`server/`):** `index.js` (Express + CORS), `routes/sogni.js` (endpoints + SSE), `services/sogni.js` (SDK wrapper).
 
-**Frontend (`src/`)**
-- `components/` - React components
-  - `Sogni360Container.tsx` - Main orchestrator, handles auth/state/modals
-  - `WaypointEditor.tsx` - Camera angle editor with presets and 3D control
-  - `Sogni360Viewer.tsx` - Image viewer with auto-play and navigation
-  - `shared/CameraAngle3DControl.tsx` - Interactive orbital camera selector
-- `context/AppContext.tsx` - Global state management (useReducer pattern)
-- `services/` - API clients and generation logic
-  - `api.ts` - Backend API client with SSE subscription
-  - `CameraAngleGenerator.ts` - Orchestrates multi-angle generation
-  - `sogniAuth.ts` - Frontend SDK auth (for direct mode)
-- `types/` - TypeScript interfaces
-- `constants/cameraAngleSettings.ts` - Camera angles, presets, LoRA config
+**Core types:** `Waypoint` (id, azimuth, elevation, distance, status, imageUrl, isOriginal), `Sogni360Project` (sourceImageUrl, waypoints, segments, status).
 
-**Backend (`server/`)**
-- `index.js` - Express server setup with CORS
-- `routes/sogni.js` - API endpoints for generation, progress SSE
-- `services/sogni.js` - Sogni SDK wrapper, global client management
+**Generation flow:** Select preset → `generateMultipleAngles()` → SDK project with LoRA per waypoint → SSE progress (`connected` → `queued` → `started` → `progress` → `completed`) → result in `completed.imageUrls[]` array. Original waypoints skip generation.
 
-### Core Data Types
+**User flow:** Demo on first load → upload image → select angles → generate → review/regenerate → generate transitions → review → play/export.
 
-```typescript
-// Waypoint - a camera angle position
-interface Waypoint {
-  id: string;
-  azimuth: 'front' | 'front-right' | 'right' | ... // 8 options
-  elevation: 'low-angle' | 'eye-level' | 'elevated' | 'high-angle';
-  distance: 'close-up' | 'medium' | 'wide';
-  status: 'pending' | 'generating' | 'ready' | 'failed';
-  imageUrl?: string;
-  isOriginal?: boolean;  // Uses source image directly (no generation)
-}
+## Related Repos
 
-// Project - contains waypoints and segments
-interface Sogni360Project {
-  sourceImageUrl: string;
-  waypoints: Waypoint[];
-  segments: Segment[];  // Video transitions between waypoints
-  status: 'draft' | 'generating-angles' | 'generating-transitions' | 'complete';
-}
-```
+`../sogni-photobooth` (mature reference for camera angle UI, video gen, cost estimation, IndexedDB projects), `../sogni-client` (SDK source), `../sogni-socket` (WebSocket server).
 
-### Generation Flow
-
-1. User selects preset or configures waypoints manually
-2. `WaypointEditor.handleGenerateAngles()` calls `generateMultipleAngles()`
-3. For each non-original waypoint:
-   - Backend creates Sogni SDK project with Multiple Angles LoRA
-   - Frontend subscribes to SSE at `/sogni/progress/:projectId`
-   - Progress events: `connected` → `queued` → `started` → `progress` → `completed`
-   - Result URL comes in `completed` event's `imageUrls` array
-4. Original waypoints (`isOriginal: true`) skip generation, use source image directly
-
-### SSE Event Handling
-
-The backend sends progress via SSE. Key events:
-- `progress` - Contains `progress` (0-1 float)
-- `completed` - Contains `imageUrls: string[]` (result images)
-
-Important: The `completed` event sends `imageUrls` array, NOT `resultUrl`.
-
-## Intended User Flow
-
-1. **First Load**: Show pre-rendered demo experience (user can interact immediately)
-2. **Upload Image**: User uploads portrait, transitions to editor
-3. **Select Angles**: Choose preset or customize waypoints (2-5 angles)
-4. **Generate Angles**: Batch render all non-original waypoints
-5. **Review & Regenerate**: User can redo any angles they don't like
-6. **Generate Transitions**: Create video transitions between adjacent waypoints
-7. **Review Transitions**: User can regenerate any transitions
-8. **Play & Export**: Interact with seamless 360° experience, export final video
-
-## Photobooth Reference Patterns
-
-This app borrows heavily from `../sogni-photobooth`. Key patterns to reference:
-- `CameraAngle3DControl.tsx` - Interactive orbital camera UI
-- `CameraAnglePopup.tsx` - Full angle selection workflow
-- `AngleSlotCard.tsx` - Individual angle cards with thumbnails
-- Video transition generation via `VideoGenerator.ts`
-- Cost estimation and pricing display
-- Project history with IndexedDB storage
-- Free demo access via backend proxy fallback
-
-## Related Sogni Repositories
-
-Reference these sibling repos for debugging:
-- `../sogni-photobooth` - Similar app with more mature features (camera angle UI patterns)
-- `../sogni-client` - Sogni Client SDK source
-- `../sogni-socket` - WebSocket server for job routing
-
-## Environment Configuration
-
-| File | Purpose |
-|------|---------|
-| `server/.env` | Backend: `SOGNI_USERNAME`, `SOGNI_PASSWORD`, `SOGNI_ENV` |
-| `.env.local` | Frontend dev: `VITE_*` vars |
-| `.env.production` | Frontend prod config |
+**Env files:** `server/.env` (backend creds), `.env.local` (frontend dev), `.env.production` (frontend prod).
 
 ---
 
 ## Adding Demo Projects
 
-Demo projects are pre-built showcases that appear in the "My Projects" list. They are hosted on Cloudflare R2 and lazy-loaded when the user opens them.
+Demos are hosted on Cloudflare R2, lazy-loaded when opened.
 
-### Quick Steps
-
-1. **Export** the project from the app as a `.s360.zip` file
-2. **Rename** the zip to remove spaces/parentheses (e.g. `my-project.s360.zip`)
-3. **Run the uploader script:**
+1. Export `.s360.zip` from app, rename to remove spaces
+2. Run `node local-scripts/demo-uploader/upload-demo.js <path.s360.zip>` (interactive: prompts for ID, description, featured)
+3. Verify `src/constants/demo-projects.ts` has clean URL, then verify CDN serves correct files:
    ```bash
-   node local-scripts/demo-uploader/upload-demo.js <path-to-project.s360.zip>
+   curl -s "https://cdn.sogni.ai/sogni-360-demos/<id>/<thumb>" -o /tmp/check.jpg
+   ls -la /tmp/check.jpg  # Must match uploaded size
    ```
-   The script is interactive - it prompts for demo ID, description, and featured flag. It uploads the zip + thumbnail to R2 and updates `src/constants/demo-projects.ts` automatically.
+4. Build to confirm, then deploy
 
-4. **Verify** the manifest entry in `src/constants/demo-projects.ts` has a clean `projectZipUrl` (no spaces or special characters in the filename)
-5. **Verify** CDN serves correct files (download and check size, don't just check headers):
-   ```bash
-   curl -s "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/<thumbnail-filename>" -o /tmp/check-thumb.jpg
-   ls -la /tmp/check-thumb.jpg  # Must match uploaded file size
-   curl -sI "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/<filename>.s360.zip" | grep content-length
-   ```
-6. **Build** to confirm no errors: `npm run build`
-7. **Deploy** to make the new demo available to users
+**CDN cache busting:** `cdn.sogni.ai` ignores query params. Change the **actual filename** (e.g., `thumbnail-v3.jpg`) to bust cache.
 
-### 🚨 CDN Cache: Query Params Do NOT Bust Cache
+**Thumbnail selection:** Must match `localProjectsDB.ts saveProject()` logic: first ready waypoint image → `project.sourceImageUrl`.
 
-`cdn.sogni.ai` (Cloudflare) **ignores query string parameters** for caching. Adding `?v=2` or `?v=timestamp` to a URL does nothing — the CDN serves the old cached file.
-
-**To force a cache update, you MUST change the actual filename:**
-```
-❌ thumbnail.jpg?v=2  → CDN ignores ?v=2, serves stale cache
-✅ thumbnail-v3.jpg   → New filename, fresh CDN entry
-```
-
-When replacing a demo asset:
-1. Upload with a **new filename** (e.g., `thumbnail-v3.jpg`, `thumbnail-v4.jpg`)
-2. Update `demo-projects.ts` to reference the new filename
-3. Verify the CDN serves the correct content-length:
-   ```bash
-   curl -s "https://cdn.sogni.ai/sogni-360-demos/<demo-id>/thumbnail-v3.jpg" -o /tmp/check.jpg
-   ls -la /tmp/check.jpg  # Verify file size matches what you uploaded
-   ```
-4. Do NOT rely on `curl -sI` (HEAD) headers alone — they can be misleading. Always download the file and verify its actual size/hash.
-
-### Demo Thumbnail Selection Logic
-
-The upload script (`extractThumbnailImage`) MUST use the **exact same fallback chain** as `localProjectsDB.ts saveProject()`:
-
-1. First ready waypoint image (in array order, including originals)
-2. `project.sourceImageUrl`
-
-This ensures demo project card thumbnails match regular project card thumbnails for the same project. Most projects store their source image at a waypoint path (e.g., `assets/waypoints/wp-xxx.png`), NOT at `assets/source.*`.
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `src/constants/demo-projects.ts` | Demo project manifest (metadata, CDN URLs) |
-| `src/utils/demo-project-loader.ts` | Downloads, extracts, and imports demo ZIPs |
-| `src/components/demo-project-card.tsx` | UI card shown in project list |
-| `local-scripts/demo-uploader/upload-demo.js` | Upload script (requires `rclone` with `sogni-r2` remote) |
-
-### Prerequisites
-
-- `rclone` configured with `sogni-r2` remote pointing to Cloudflare R2
-- `imagemagick` (optional, for thumbnail optimization): `brew install imagemagick`
+**Key files:** `src/constants/demo-projects.ts` (manifest), `src/utils/demo-project-loader.ts` (loader), `src/components/demo-project-card.tsx` (UI), `local-scripts/demo-uploader/upload-demo.js` (uploader, requires `rclone` with `sogni-r2` remote).
 
 ---
 
-## Common Mistakes to Avoid (Lessons Learned)
+## Common Mistakes
 
-### Image Display
-```css
-/* ❌ WRONG - Forces square on variable content */
-.thumbnail { aspect-ratio: 1; }
+**State management:** Use single atomic dispatches (`SET_WAYPOINTS`), not per-item loops that cause race conditions.
 
-/* ✅ RIGHT - Calculate from source dimensions */
-.thumbnail {
-  aspect-ratio: var(--source-aspect-ratio);
-  /* Or calculate in JS from sourceImageDimensions */
-}
-```
+**Schema versioning:** Increment `APP_SCHEMA_VERSION` in `src/utils/localProjectsDB.ts` for breaking changes to saved state (auto-clears stale data).
 
-### Multi-Image Layouts (Side-by-Side Comparisons)
-```tsx
-/* ❌ WRONG - Always horizontal, squishes landscape images */
-<div className="comparison">
-  <img src={image1} />
-  <img src={image2} />
-</div>
-
-/* ✅ RIGHT - Adaptive layout based on aspect ratio */
-const isPortrait = height > width;
-<div className={`comparison ${isPortrait ? 'horizontal' : 'vertical'}`}>
-  <img src={image1} />
-  <img src={image2} />
-</div>
-
-/* CSS */
-.comparison.horizontal { flex-direction: row; }    /* Portrait: side by side */
-.comparison.vertical { flex-direction: column; }   /* Landscape: stacked */
-```
-
-### Interactive Controls
-```jsx
-/* ❌ WRONG - Abbreviated, cramped, unusable */
-<button style={{fontSize: '9px', padding: '4px'}}>C</button>
-
-/* ✅ RIGHT - Full text, proper sizing */
-<button style={{fontSize: '14px', padding: '12px 16px', minHeight: '44px'}}>
-  Close-up
-</button>
-```
-
-### Card Layouts
-```css
-/* ❌ WRONG - Fixed narrow width forces cramping */
-.card { width: 160px; max-width: 180px; }
-
-/* ✅ RIGHT - Flexible sizing that accommodates content */
-.card {
-  width: 100%;
-  max-width: 320px;
-  min-width: 280px;
-}
-```
-
-### Component Sizing
-```jsx
-/* ❌ WRONG - Arbitrary small sizes */
-const orbitalSize = 100; // Too small to be usable
-
-/* ✅ RIGHT - Size for usability first */
-const orbitalSize = 200; // Minimum for proper interaction
-```
-
-### State Management
-```jsx
-/* ❌ WRONG - Multiple dispatches causing race conditions */
-waypoints.forEach(wp => dispatch({ type: 'REMOVE_WAYPOINT', payload: wp.id }));
-
-/* ✅ RIGHT - Single atomic operation */
-dispatch({ type: 'SET_WAYPOINTS', payload: newWaypoints });
-```
-
-### Schema Versioning
-When making breaking changes to saved state:
-1. Increment `APP_SCHEMA_VERSION` in `src/utils/localProjectsDB.ts`
-2. This automatically clears stale data on next load
-
----
-
-## Before Submitting Any UI Change
-
-Ask yourself these questions:
-
-1. Did I test on a 375px mobile viewport?
-2. Did I test on a 1440px desktop viewport?
-3. Are all images displaying at their correct aspect ratio?
-4. Can I read all text without squinting?
-5. Can I tap all buttons easily with my thumb?
-6. Would I show this to a client and feel proud?
-
-**If any answer is NO, go back and fix it before proceeding.**
+**Sizing:** Use flexible widths (`width: 100%; max-width: 320px`), not fixed narrow values. Orbital controls minimum 200px.
