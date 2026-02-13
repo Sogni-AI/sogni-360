@@ -380,7 +380,6 @@ const AudioTrimmer: React.FC<AudioTrimmerProps> = ({
           Video duration: {formatAudioTime(videoDuration)}
           {selectedDuration < videoDuration && (
             <span style={{ color: '#fbbf24' }}>
-              {' '}(audio will loop)
             </span>
           )}
         </p>

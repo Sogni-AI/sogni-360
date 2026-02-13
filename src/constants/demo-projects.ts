@@ -48,10 +48,10 @@ export const DEMO_PROJECTS: DemoProjectManifest[] = [{
     name: 'Mid-West Van Travel Video',
     description: 'Demo Travel Edit For IG Reels /  TikTok',
     thumbnailUrl: `${DEMO_BASE_URL}/demo-mid-west-van-travel/thumbnail.jpg`,
-    projectZipUrl: `${DEMO_BASE_URL}/demo-mid-west-van-travel/mid-west-van-travel-demo.s360.zip`,
+    projectZipUrl: `${DEMO_BASE_URL}/demo-mid-west-van-travel/mid-west-van-travel-v2.s360.zip`,
     waypointCount: 27,
     segmentCount: 27,
-    zipSizeBytes: 75_032_486,
+    zipSizeBytes: 73_657_102,
     featured: true
   },
   {
@@ -70,10 +70,10 @@ export const DEMO_PROJECTS: DemoProjectManifest[] = [{
     name: 'New Zealand Trip',
     description: 'Demo New Zealand Travel Reel',
     thumbnailUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/thumbnail-v3.jpg`,
-    projectZipUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/new-zealand-trip.s360.zip`,
+    projectZipUrl: `${DEMO_BASE_URL}/demo-new-zealand-trip/new-zealand-trip-v2.s360.zip`,
     waypointCount: 23,
     segmentCount: 23,
-    zipSizeBytes: 69_856_863,
+    zipSizeBytes: 65_778_437,
     featured: true
   },
   {
