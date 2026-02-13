@@ -19,6 +19,86 @@ export interface MusicTrack {
 // Sound-to-Video sample tracks (from Photobooth S2V workflow)
 const S2V_TRACKS: MusicTrack[] = [
   {
+    id: 'grandpa-on-retro',
+    title: 'Grandpa on Retro',
+    emoji: '🎸',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/grandpa-on-retro.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'hank-hill-hotdog',
+    title: 'Hank Hill Hotdog',
+    emoji: '🌭',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/hank-hill-hotdog.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'ylvis-the-fox',
+    title: 'Ylvis The Fox',
+    emoji: '🦊',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/ylvis-the-fox.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'look-at-that-cat',
+    title: 'Look at That Cat',
+    emoji: '🐱',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/look-at-that-cat.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'im-a-snake',
+    title: "I'm a Snake",
+    emoji: '🐍',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/im-a-snake.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'mii-theme-trap-remix',
+    title: 'Mii Theme Trap Remix',
+    emoji: '🎮',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/mii-theme-trap-remix.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'have-you-ever-had-a-dream',
+    title: 'Have You Ever Had a Dream',
+    emoji: '💭',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/have-you-ever-had-a-dream.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'louis-theroux-jiggle-giggle',
+    title: 'Louis Theroux Jiggle Giggle',
+    emoji: '🕺',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/louis-theroux-jiggle-giggle.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'jet-2-holiday-jingle',
+    title: 'Jet 2 Holiday Jingle',
+    emoji: '✈️',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/jet-2-holiday-jingle.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
+    id: 'beez-in-the-trap',
+    title: 'Beez in the Trap',
+    emoji: '🐝',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/beez-in-the-trap.m4a`,
+    duration: '0:15',
+    category: 's2v'
+  },
+  {
     id: '6-feet',
     title: '6 Feet',
     emoji: '🎵',
