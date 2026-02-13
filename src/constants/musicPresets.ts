@@ -99,6 +99,174 @@ const S2V_TRACKS: MusicTrack[] = [
     category: 's2v'
   },
   {
+    id: 'about-you',
+    title: 'About You',
+    emoji: '💕',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/about-you.m4a`,
+    duration: '1:17',
+    category: 's2v'
+  },
+  {
+    id: 'all-eyes-on-me',
+    title: 'All Eyes on Me',
+    emoji: '👀',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/all-eyes-on-me.m4a`,
+    duration: '0:32',
+    category: 's2v'
+  },
+  {
+    id: 'eclipse-philosophy',
+    title: 'Eclipse Philosophy',
+    emoji: '🌑',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/eclipse-philosophy.m4a`,
+    duration: '0:45',
+    category: 's2v'
+  },
+  {
+    id: 'big-bad-john',
+    title: 'Big Bad John',
+    emoji: '💪',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/big-bad-john.m4a`,
+    duration: '0:58',
+    category: 's2v'
+  },
+  {
+    id: 'brutus',
+    title: 'Brutus',
+    emoji: '🗡️',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/brutus.m4a`,
+    duration: '1:07',
+    category: 's2v'
+  },
+  {
+    id: 'mic-check',
+    title: 'Mic Check',
+    emoji: '🎤',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/mic-check.m4a`,
+    duration: '1:01',
+    category: 's2v'
+  },
+  {
+    id: 'down-with-the-sickness',
+    title: 'Down with the Sickness',
+    emoji: '🤘',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/down-with-the-sickness.m4a`,
+    duration: '0:59',
+    category: 's2v'
+  },
+  {
+    id: 'dtmf',
+    title: 'DTMF',
+    emoji: '📞',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/dtmf.m4a`,
+    duration: '0:33',
+    category: 's2v'
+  },
+  {
+    id: 'good-places',
+    title: 'Good Places',
+    emoji: '🌴',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/good-places.m4a`,
+    duration: '0:59',
+    category: 's2v'
+  },
+  {
+    id: 'hitchhiker-11',
+    title: 'Hitchhiker 11',
+    emoji: '👽',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/hitchhiker-11.m4a`,
+    duration: '1:02',
+    category: 's2v'
+  },
+  {
+    id: 'kill-jill',
+    title: 'Kill Jill',
+    emoji: '🔥',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/kill-jill.m4a`,
+    duration: '0:28',
+    category: 's2v'
+  },
+  {
+    id: 'once-in-a-lifetime',
+    title: 'Once in a Lifetime',
+    emoji: '🌊',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/once-in-a-lifetime.m4a`,
+    duration: '0:41',
+    category: 's2v'
+  },
+  {
+    id: 'panda',
+    title: 'Panda',
+    emoji: '🐼',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/panda.m4a`,
+    duration: '0:44',
+    category: 's2v'
+  },
+  {
+    id: 'peter-pan',
+    title: 'Peter Pan',
+    emoji: '🧚',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/peter-pan.m4a`,
+    duration: '0:51',
+    category: 's2v'
+  },
+  {
+    id: 'suff-gucci',
+    title: 'Suff Gucci',
+    emoji: '💰',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/suff-gucci.m4a`,
+    duration: '0:23',
+    category: 's2v'
+  },
+  {
+    id: 'terrorize-my-heart',
+    title: 'Terrorize My Heart',
+    emoji: '💔',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/terrorize-my-heart.m4a`,
+    duration: '1:06',
+    category: 's2v'
+  },
+  {
+    id: 'thats-all-right',
+    title: "That's All Right",
+    emoji: '👍',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/thats-all-right.m4a`,
+    duration: '0:48',
+    category: 's2v'
+  },
+  {
+    id: 'trouble',
+    title: 'Trouble',
+    emoji: '😈',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/trouble.m4a`,
+    duration: '0:45',
+    category: 's2v'
+  },
+  {
+    id: 'turn-it-down-for-what',
+    title: 'Turn It Down for What',
+    emoji: '🔊',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/turn-it-down-for-what.m4a`,
+    duration: '0:39',
+    category: 's2v'
+  },
+  {
+    id: 'welcome-to-derry',
+    title: 'Welcome to Derry',
+    emoji: '🎈',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/welcome-to-derry.m4a`,
+    duration: '1:05',
+    category: 's2v'
+  },
+  {
+    id: 'who-put-the-bomb',
+    title: 'Who Put the Bomb',
+    emoji: '💣',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/who-put-the-bomb.m4a`,
+    duration: '0:48',
+    category: 's2v'
+  },
+  {
     id: '6-feet',
     title: '6 Feet',
     emoji: '🎵',
