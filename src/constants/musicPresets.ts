@@ -23,7 +23,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Grandpa on Retro',
     emoji: '🎸',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/grandpa-on-retro.m4a`,
-    duration: '0:15',
+    duration: '0:35',
     category: 's2v'
   },
   {
@@ -31,7 +31,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Hank Hill Hotdog',
     emoji: '🌭',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/hank-hill-hotdog.m4a`,
-    duration: '0:15',
+    duration: '0:42',
     category: 's2v'
   },
   {
@@ -39,7 +39,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Ylvis The Fox',
     emoji: '🦊',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/ylvis-the-fox.m4a`,
-    duration: '0:15',
+    duration: '0:32',
     category: 's2v'
   },
   {
@@ -47,7 +47,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Look at That Cat',
     emoji: '🐱',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/look-at-that-cat.m4a`,
-    duration: '0:15',
+    duration: '0:45',
     category: 's2v'
   },
   {
@@ -55,7 +55,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: "I'm a Snake",
     emoji: '🐍',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/im-a-snake.m4a`,
-    duration: '0:15',
+    duration: '1:03',
     category: 's2v'
   },
   {
@@ -63,7 +63,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Mii Theme Trap Remix',
     emoji: '🎮',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/mii-theme-trap-remix.m4a`,
-    duration: '0:15',
+    duration: '0:31',
     category: 's2v'
   },
   {
@@ -71,7 +71,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Have You Ever Had a Dream',
     emoji: '💭',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/have-you-ever-had-a-dream.m4a`,
-    duration: '0:15',
+    duration: '0:19',
     category: 's2v'
   },
   {
@@ -79,7 +79,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Louis Theroux Jiggle Giggle',
     emoji: '🕺',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/louis-theroux-jiggle-giggle.m4a`,
-    duration: '0:15',
+    duration: '0:22',
     category: 's2v'
   },
   {
@@ -87,7 +87,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Jet 2 Holiday Jingle',
     emoji: '✈️',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/jet-2-holiday-jingle.m4a`,
-    duration: '0:15',
+    duration: '0:13',
     category: 's2v'
   },
   {
@@ -95,7 +95,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Beez in the Trap',
     emoji: '🐝',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/beez-in-the-trap.m4a`,
-    duration: '0:15',
+    duration: '0:22',
     category: 's2v'
   },
   {
@@ -103,7 +103,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: '6 Feet',
     emoji: '🎵',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/6-feet.m4a`,
-    duration: '0:15',
+    duration: '0:28',
     category: 's2v'
   },
   {
@@ -111,7 +111,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: '8 Ball',
     emoji: '🎱',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/8-ball.m4a`,
-    duration: '0:15',
+    duration: '0:21',
     category: 's2v'
   },
   {
@@ -119,7 +119,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Fast as F',
     emoji: '⚡',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/fast-as-f.m4a`,
-    duration: '0:15',
+    duration: '0:16',
     category: 's2v'
   },
   {
@@ -127,7 +127,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Hoist the Colors',
     emoji: '🏴‍☠️',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/hoist-the-colors.m4a`,
-    duration: '0:15',
+    duration: '0:29',
     category: 's2v'
   },
   {
@@ -135,7 +135,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Hurricane Katrina',
     emoji: '🌀',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/hurrican-katrina.m4a`,
-    duration: '0:15',
+    duration: '0:24',
     category: 's2v'
   },
   {
@@ -143,7 +143,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Kitty Bed',
     emoji: '🐱',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/kitty-bed.m4a`,
-    duration: '0:15',
+    duration: '0:18',
     category: 's2v'
   },
   {
@@ -151,7 +151,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Listen to Me Now',
     emoji: '👂',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/listen-to-me-now.m4a`,
-    duration: '0:15',
+    duration: '0:10',
     category: 's2v'
   },
   {
@@ -159,7 +159,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'N-95',
     emoji: '😷',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/n-95.m4a`,
-    duration: '0:15',
+    duration: '0:17',
     category: 's2v'
   },
   {
@@ -167,7 +167,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'No One is Going to Know',
     emoji: '🤫',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/noone-is-going-to-know.m4a`,
-    duration: '0:15',
+    duration: '0:24',
     category: 's2v'
   },
   {
@@ -175,7 +175,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'O Fortuna',
     emoji: '🎭',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/o-fortuna.m4a`,
-    duration: '0:15',
+    duration: '0:31',
     category: 's2v'
   },
   {
@@ -183,7 +183,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Peter Axel F',
     emoji: '🎹',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/peter-axel-f.m4a`,
-    duration: '0:15',
+    duration: '0:09',
     category: 's2v'
   },
   {
@@ -191,7 +191,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Priceless',
     emoji: '💎',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/priceless.m4a`,
-    duration: '0:15',
+    duration: '0:14',
     category: 's2v'
   },
   {
@@ -199,7 +199,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Runnin Through the 6',
     emoji: '🏃',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/runnin-through-the-6.m4a`,
-    duration: '0:15',
+    duration: '0:16',
     category: 's2v'
   },
   {
@@ -207,7 +207,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Runnin Up That Hill',
     emoji: '⛰️',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/runnin-up-that-hill.m4a`,
-    duration: '0:15',
+    duration: '1:10',
     category: 's2v'
   },
   {
@@ -215,7 +215,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Spider-Man 2099',
     emoji: '🕷️',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/spider-man-2099.m4a`,
-    duration: '0:15',
+    duration: '0:29',
     category: 's2v'
   },
   {
@@ -223,7 +223,7 @@ const S2V_TRACKS: MusicTrack[] = [
     title: 'Surround Sound',
     emoji: '🔊',
     url: `${S2V_ASSET_BASE_URL}/audio-samples/surrond-sound.m4a`,
-    duration: '0:15',
+    duration: '0:24',
     category: 's2v'
   }
 ];
