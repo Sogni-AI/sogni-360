@@ -1,5 +1,5 @@
 import React from 'react';
-import { MUSIC_PRESETS, S2V_TRACKS, WINTER_TRACKS, HALLOWEEN_TRACKS, type MusicTrack } from '../../../constants/musicPresets';
+import { MUSIC_PRESETS, S2V_TRACKS, type MusicTrack } from '../../../constants/musicPresets';
 
 interface PresetMusicListProps {
   selectedPresetId: string | null;
@@ -55,32 +55,11 @@ const PresetMusicList: React.FC<PresetMusicListProps> = ({
           Select a track...
         </option>
 
-        {/* S2V Samples - grouped */}
-        <optgroup label="🎤 Sound Clips" style={{ color: '#000' }}>
-          {S2V_TRACKS.map(track => (
-            <option key={track.id} value={track.id} style={{ color: '#000' }}>
-              {formatTrackLabel(track)}
-            </option>
-          ))}
-        </optgroup>
-
-        {/* Winter Tracks */}
-        <optgroup label="❄️ Winter" style={{ color: '#000' }}>
-          {WINTER_TRACKS.map(track => (
-            <option key={track.id} value={track.id} style={{ color: '#000' }}>
-              {formatTrackLabel(track)}
-            </option>
-          ))}
-        </optgroup>
-
-        {/* Halloween Tracks */}
-        <optgroup label="🎃 Halloween" style={{ color: '#000' }}>
-          {HALLOWEEN_TRACKS.map(track => (
-            <option key={track.id} value={track.id} style={{ color: '#000' }}>
-              {formatTrackLabel(track)}
-            </option>
-          ))}
-        </optgroup>
+        {S2V_TRACKS.map(track => (
+          <option key={track.id} value={track.id} style={{ color: '#000' }}>
+            {formatTrackLabel(track)}
+          </option>
+        ))}
       </select>
 
       {isLoading && (
