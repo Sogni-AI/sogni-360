@@ -267,6 +267,14 @@ const S2V_TRACKS: MusicTrack[] = [
     category: 's2v'
   },
   {
+    id: 'tokyo-drift',
+    title: 'Tokyo Drift',
+    emoji: '🏎️',
+    url: `${S2V_ASSET_BASE_URL}/audio-samples/tokyo-drift.m4a`,
+    duration: '0:42',
+    category: 's2v'
+  },
+  {
     id: '6-feet',
     title: '6 Feet',
     emoji: '🎵',
