@@ -64,6 +64,7 @@ export interface GenerateAngleOptions {
   tokenType?: 'spark' | 'sogni';
   loraStrength?: number;
   onProgress?: (progress: number, workerName?: string) => void;
+  onPreview?: (previewUrl: string) => void;
   onComplete?: (result: GenerateAngleResult) => void;
   onError?: (error: Error) => void;
 }
@@ -119,6 +120,7 @@ async function generateWithFrontendSDK(
     tokenType = 'spark',
     loraStrength = CAMERA_ANGLE_LORA.defaultStrength,
     onProgress,
+    onPreview,
     onComplete,
     onError
   } = options;
@@ -197,6 +199,13 @@ async function generateWithFrontendSDK(
           if (event.step && event.stepCount) {
             const progress = (event.step / event.stepCount) * 100;
             onProgress?.(progress, cachedWorkerName);
+          }
+          break;
+
+        case 'preview':
+          if (event.url) {
+            console.log(`[Generator-SDK] Preview for waypoint ${waypoint.id}:`, event.url);
+            onPreview?.(event.url);
           }
           break;
 
@@ -281,6 +290,7 @@ async function generateWithBackendAPI(
     tokenType = 'spark',
     loraStrength = CAMERA_ANGLE_LORA.defaultStrength,
     onProgress,
+    onPreview,
     onComplete,
     onError
   } = options;
@@ -332,6 +342,14 @@ async function generateWithBackendAPI(
               if (event.workerName) cachedWorkerName = event.workerName;
               const progressPct = event.progress * 100;
               onProgress?.(progressPct, cachedWorkerName);
+            }
+            break;
+
+          case 'preview':
+            if (event.previewUrl || event.resultUrl) {
+              const previewUrl = event.previewUrl || event.resultUrl!;
+              console.log(`[Generator-API] Preview for waypoint ${waypoint.id}:`, previewUrl);
+              onPreview?.(previewUrl);
             }
             break;
 
@@ -426,6 +444,7 @@ export async function generateMultipleAngles(
     loraStrength?: number;
     onWaypointStart?: (waypointId: string) => void;
     onWaypointProgress?: (waypointId: string, progress: number, workerName?: string) => void;
+    onWaypointPreview?: (waypointId: string, previewUrl: string) => void;
     onWaypointComplete?: (waypointId: string, result: GenerateAngleResult) => void;
     onWaypointError?: (waypointId: string, error: Error) => void;
     onOutOfCredits?: () => void;
@@ -437,6 +456,7 @@ export async function generateMultipleAngles(
     loraStrength,
     onWaypointStart,
     onWaypointProgress,
+    onWaypointPreview,
     onWaypointComplete,
     onWaypointError,
     onOutOfCredits,
@@ -488,6 +508,9 @@ export async function generateMultipleAngles(
           loraStrength,
           onProgress: (progress, workerName) => {
             onWaypointProgress?.(waypoint.id, progress, workerName);
+          },
+          onPreview: (previewUrl) => {
+            onWaypointPreview?.(waypoint.id, previewUrl);
           },
           onComplete: (r) => {
             onWaypointComplete?.(waypoint.id, r);

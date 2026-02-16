@@ -31,7 +31,7 @@ const getProjectForSaveComparison = (project: Sogni360Project): Sogni360Project 
     // Strip ephemeral fields from waypoints
     waypoints: project.waypoints.map(wp => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { progress, workerName, enhancing, enhancementProgress, ...persistentFields } = wp;
+      const { progress, previewUrl, workerName, enhancing, enhancementProgress, ...persistentFields } = wp;
       return persistentFields;
     }),
     // Strip ephemeral fields from segments

@@ -19,6 +19,7 @@ export interface Waypoint {
   imageUrl?: string;
   status: 'pending' | 'generating' | 'ready' | 'failed';
   progress?: number;
+  previewUrl?: string; // Intermediate preview thumbnail during generation
   workerName?: string; // Worker name for display during generation
   error?: string;
   projectId?: string; // SDK project ID for tracking

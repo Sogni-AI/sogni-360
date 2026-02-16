@@ -403,6 +403,9 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
           onWaypointProgress: (waypointId, progress, workerName) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { progress, workerName } } });
           },
+          onWaypointPreview: (waypointId, previewUrl) => {
+            dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { previewUrl } } });
+          },
           onWaypointComplete: (waypointId, result) => {
             dispatch({ type: 'UPDATE_WAYPOINT', payload: {
               id: waypointId,
@@ -411,6 +414,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
                 imageUrl: result.imageUrl,
                 progress: 100,
                 error: undefined,
+                previewUrl: undefined,
                 sdkProjectId: result.sdkProjectId,
                 sdkJobId: result.sdkJobId
               }
@@ -420,7 +424,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
             if (cid) void recordCompletion(cid);
           },
           onWaypointError: (waypointId, error) => {
-            dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined } } });
+            dispatch({ type: 'UPDATE_WAYPOINT', payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined, previewUrl: undefined } } });
             // Discard billing for failed job
             const cid = billingCorrelations.get(waypointId);
             if (cid) discardPending(cid);

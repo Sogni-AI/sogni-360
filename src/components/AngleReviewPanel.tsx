@@ -298,6 +298,12 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               payload: { id: waypointId, updates: { progress, workerName } }
             });
           },
+          onWaypointPreview: (waypointId, previewUrl) => {
+            dispatch({
+              type: 'UPDATE_WAYPOINT',
+              payload: { id: waypointId, updates: { previewUrl } }
+            });
+          },
           onWaypointComplete: (waypointId, result) => {
             dispatch({
               type: 'ADD_WAYPOINT_VERSION',
@@ -311,6 +317,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
                   status: 'ready',
                   progress: 100,
                   error: undefined,
+                  previewUrl: undefined,
                   sdkProjectId: result.sdkProjectId,
                   sdkJobId: result.sdkJobId,
                   // Reset enhancement state on regenerate
@@ -332,7 +339,7 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
           onWaypointError: (waypointId, error) => {
             dispatch({
               type: 'UPDATE_WAYPOINT',
-              payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined } }
+              payload: { id: waypointId, updates: { status: 'failed', error: error.message, progress: 0, imageUrl: undefined, previewUrl: undefined } }
             });
             if (redoCid) discardPending(redoCid);
             showToast({ message: 'Regeneration failed', type: 'error' });
@@ -1052,6 +1059,12 @@ const AngleReviewPanel: React.FC<AngleReviewPanelProps> = ({
               >
                 {waypoint.imageUrl ? (
                   <img src={waypoint.imageUrl} alt={`Step ${index + 1}`} />
+                ) : waypoint.status === 'generating' && waypoint.previewUrl ? (
+                  <img
+                    src={waypoint.previewUrl}
+                    alt={`Step ${index + 1} preview`}
+                    className="preview-blur"
+                  />
                 ) : waypoint.status === 'generating' ? (
                   <img
                     src={getReferenceImageUrl(waypoint.id) || currentProject?.sourceImageUrl}

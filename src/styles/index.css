@@ -4720,6 +4720,12 @@ html, body {
   filter: grayscale(30%);
 }
 
+.review-card-img img.preview-blur {
+  filter: blur(4px);
+  opacity: 0.85;
+  transition: filter 0.4s ease, opacity 0.4s ease;
+}
+
 /* Overlays */
 .review-card-overlay {
   position: absolute;
