@@ -106,6 +106,14 @@ const S2V_TRACKS: MusicTrack[] = [
     category: 's2v'
   },
   {
+    id: 'dreams',
+    title: 'Dreams',
+    emoji: '🎵',
+    url: `${ASSET_BASE_URL}/audio-samples/dreams.m4a`,
+    duration: '1:12',
+    category: 's2v'
+  },
+  {
     id: 'dtmf',
     title: 'DTMF',
     emoji: '📞',
@@ -359,6 +367,14 @@ const S2V_TRACKS: MusicTrack[] = [
     emoji: '🕷️',
     url: `${ASSET_BASE_URL}/audio-samples/spider-man-2099.m4a`,
     duration: '0:29',
+    category: 's2v'
+  },
+  {
+    id: 'such-small-hands',
+    title: 'Such Small Hands',
+    emoji: '🎵',
+    url: `${ASSET_BASE_URL}/audio-samples/such-small-hands.m4a`,
+    duration: '1:26',
     category: 's2v'
   },
   {
