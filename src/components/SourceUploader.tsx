@@ -3,11 +3,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { getProjectCount } from '../utils/localProjectsDB';
-import { resizeImageIfNeeded, normalizeImageToTargetDimensions } from '../utils/imageUtils';
+import { resizeImageIfNeeded, normalizeImageToTargetDimensions, getImageDimensions, readFileAsDataUrl } from '../utils/imageUtils';
 import { AZIMUTHS } from '../constants/cameraAngleSettings';
 import type { Waypoint, AzimuthKey } from '../types';
 import DemoVideoBackground from './DemoVideoBackground';
 import LiquidGlassPanel from './shared/LiquidGlassPanel';
+import SourceImageAdjuster from './SourceImageAdjuster';
 
 /** Distribute N azimuths evenly around the 8 available positions. */
 function distributeAzimuths(count: number): AzimuthKey[] {
@@ -20,24 +21,36 @@ function distributeAzimuths(count: number): AzimuthKey[] {
   });
 }
 
-/** Read a File as a data URL. */
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/** Get the natural dimensions of an image from its data URL. */
-function getImageDims(dataUrl: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
+/** Process additional uploaded files into waypoints, normalizing to target dimensions. */
+async function buildWaypointsFromFiles(
+  firstImageUrl: string,
+  additionalFiles: File[],
+  dimensions: { width: number; height: number }
+): Promise<Waypoint[]> {
+  const azimuths = distributeAzimuths(additionalFiles.length + 1);
+  const waypoints: Waypoint[] = [{
+    id: uuidv4(), azimuth: azimuths[0], elevation: 'eye-level',
+    distance: 'close-up', status: 'ready', imageUrl: firstImageUrl, isOriginal: true,
+  }];
+  for (let i = 0; i < additionalFiles.length; i++) {
+    try {
+      const dataUrl = await readFileAsDataUrl(additionalFiles[i]);
+      const dims = await getImageDimensions(dataUrl);
+      const { dataUrl: resizedUrl } = await resizeImageIfNeeded(dataUrl, dims);
+      let finalUrl = resizedUrl;
+      const resizedDims = await getImageDimensions(resizedUrl);
+      if (resizedDims.width !== dimensions.width || resizedDims.height !== dimensions.height) {
+        finalUrl = await normalizeImageToTargetDimensions(resizedUrl, dimensions);
+      }
+      waypoints.push({
+        id: uuidv4(), azimuth: azimuths[i + 1], elevation: 'eye-level',
+        distance: 'close-up', status: 'ready', imageUrl: finalUrl, isOriginal: true,
+      });
+    } catch (err) {
+      console.error(`Failed to process image ${i + 2}:`, err);
+    }
+  }
+  return waypoints;
 }
 
 const SourceUploader: React.FC = () => {
@@ -48,14 +61,19 @@ const SourceUploader: React.FC = () => {
   const [projectCount, setProjectCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Pending image state — holds the uploaded image before aspect ratio adjustment
+  const [pendingImage, setPendingImage] = useState<{
+    url: string;
+    dimensions: { width: number; height: number };
+  } | null>(null);
+  const [pendingAdditionalFiles, setPendingAdditionalFiles] = useState<File[]>([]);
+
   // Check for existing projects
   useEffect(() => {
     getProjectCount().then(setProjectCount).catch(() => setProjectCount(0));
   }, []);
 
   const processImages = useCallback(async (files: File[]) => {
-    // Validate all files upfront
-    // Filter for image files — check MIME type first, fall back to extension
     const imageFiles = files.filter(f =>
       f.type.startsWith('image/') ||
       /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|avif|tiff?)$/i.test(f.name)
@@ -73,69 +91,43 @@ const SourceUploader: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Process first image — becomes the source image
+      // Process first image — store as pending for aspect ratio adjustment
       const firstDataUrl = await readFileAsDataUrl(imageFiles[0]);
-      const firstDims = await getImageDims(firstDataUrl);
+      const firstDims = await getImageDimensions(firstDataUrl);
       const { dataUrl: sourceDataUrl, dimensions: sourceDims } = await resizeImageIfNeeded(firstDataUrl, firstDims);
 
-      setSourceImage(sourceDataUrl, sourceDims);
-
-      // Single image: existing flow — no waypoints, preset auto-loads in WaypointEditor
-      if (imageFiles.length === 1) return;
-
-      // Multiple images: create waypoints for all files
-      const azimuths = distributeAzimuths(imageFiles.length);
-      const waypoints: Waypoint[] = [];
-
-      // First image becomes the first waypoint (already processed)
-      waypoints.push({
-        id: uuidv4(),
-        azimuth: azimuths[0],
-        elevation: 'eye-level',
-        distance: 'close-up',
-        status: 'ready',
-        imageUrl: sourceDataUrl,
-        isOriginal: true,
-      });
-
-      // Process remaining images — normalize to match source dimensions
-      for (let i = 1; i < imageFiles.length; i++) {
-        try {
-          const dataUrl = await readFileAsDataUrl(imageFiles[i]);
-          const dims = await getImageDims(dataUrl);
-          const { dataUrl: resizedUrl } = await resizeImageIfNeeded(dataUrl, dims);
-
-          // Normalize to source dimensions if different
-          let finalUrl = resizedUrl;
-          const resizedDims = await getImageDims(resizedUrl);
-          if (resizedDims.width !== sourceDims.width || resizedDims.height !== sourceDims.height) {
-            finalUrl = await normalizeImageToTargetDimensions(resizedUrl, sourceDims);
-          }
-
-          waypoints.push({
-            id: uuidv4(),
-            azimuth: azimuths[i],
-            elevation: 'eye-level',
-            distance: 'close-up',
-            status: 'ready',
-            imageUrl: finalUrl,
-            isOriginal: true,
-          });
-        } catch (err) {
-          console.error(`Failed to process image ${i + 1}:`, err);
-        }
-      }
-
-      if (waypoints.length > 1) {
-        dispatch({ type: 'SET_WAYPOINTS', payload: waypoints });
-      }
+      setPendingImage({ url: sourceDataUrl, dimensions: sourceDims });
+      setPendingAdditionalFiles(imageFiles.length > 1 ? imageFiles.slice(1) : []);
     } catch (error) {
       console.error('Error processing images:', error);
       showToast({ message: 'Failed to process images', type: 'error' });
     } finally {
       setIsLoading(false);
     }
-  }, [setSourceImage, showToast, dispatch]);
+  }, [showToast]);
+
+  /** Called when the user confirms the aspect ratio adjuster. */
+  const handleAdjusterConfirm = useCallback(async (
+    blobUrl: string,
+    dimensions: { width: number; height: number }
+  ) => {
+    setSourceImage(blobUrl, dimensions);
+
+    if (pendingAdditionalFiles.length > 0) {
+      const waypoints = await buildWaypointsFromFiles(blobUrl, pendingAdditionalFiles, dimensions);
+      if (waypoints.length > 1) {
+        dispatch({ type: 'SET_WAYPOINTS', payload: waypoints });
+      }
+    }
+
+    setPendingImage(null);
+    setPendingAdditionalFiles([]);
+  }, [setSourceImage, dispatch, pendingAdditionalFiles]);
+
+  const handleAdjusterCancel = useCallback(() => {
+    setPendingImage(null);
+    setPendingAdditionalFiles([]);
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -289,6 +281,16 @@ const SourceUploader: React.FC = () => {
           </a>
         </div>
       </div>
+
+      {/* Aspect ratio adjuster modal — shown after image upload */}
+      {pendingImage && (
+        <SourceImageAdjuster
+          imageUrl={pendingImage.url}
+          originalDimensions={pendingImage.dimensions}
+          onConfirm={handleAdjusterConfirm}
+          onCancel={handleAdjusterCancel}
+        />
+      )}
     </div>
   );
 };

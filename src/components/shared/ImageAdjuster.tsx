@@ -14,6 +14,12 @@ interface ImageAdjusterProps {
   onCancel: () => void;
   /** Optional callback that also returns adjustment params for applying to other images */
   onConfirmWithParams?: (blob: Blob, params: AdjustmentParams) => void;
+  /** Override header title (default: "Adjust Image") */
+  title?: string;
+  /** Extra controls rendered between hint text and image frame */
+  extraControls?: React.ReactNode;
+  /** Override confirm button text (default: "Use This Image") */
+  confirmLabel?: string;
 }
 
 /**
@@ -108,7 +114,10 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
   targetDimensions,
   onConfirm,
   onCancel,
-  onConfirmWithParams
+  onConfirmWithParams,
+  title = 'Adjust Image',
+  extraControls,
+  confirmLabel = 'Use This Image'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -384,20 +393,21 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
     }
   };
 
-  // Use CSS aspect-ratio property to properly maintain proportions within constraints
-  // This ensures landscape images get a wide frame (not square) even when constrained by modal width
+  // Landscape: width-constrained (full width, height from aspect ratio)
+  // Portrait: height-constrained (50vh height, width from aspect ratio)
+  const isLandscape = targetDimensions.width >= targetDimensions.height;
   const frameStyle: React.CSSProperties = {
     aspectRatio: `${targetDimensions.width} / ${targetDimensions.height}`,
     maxHeight: '50vh',
     maxWidth: '100%',
-    width: '100%', // Fill available width, let aspect-ratio and maxHeight control height
+    ...(isLandscape ? { width: '100%' } : { height: '50vh' }),
   };
 
   return (
     <div className="image-adjuster-overlay" onClick={onCancel}>
       <div className="image-adjuster-modal" onClick={(e) => e.stopPropagation()}>
         <div className="image-adjuster-header">
-          <h3>Adjust Image</h3>
+          <h3>{title}</h3>
           <button className="image-adjuster-close" onClick={onCancel}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -409,6 +419,8 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
           <p className="image-adjuster-hint">
             {isTouchDevice ? 'Drag to position • Pinch to zoom' : 'Drag to position • Use slider to resize'}
           </p>
+
+          {extraControls}
 
           <div
             className="image-adjuster-frame"
@@ -465,7 +477,7 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({
             onClick={handleConfirm}
             disabled={isProcessing || !imageLoaded}
           >
-            {isProcessing ? 'Processing...' : 'Use This Image'}
+            {isProcessing ? 'Processing...' : confirmLabel}
           </button>
         </div>
       </div>

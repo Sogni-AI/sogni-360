@@ -157,6 +157,18 @@ export function getImageDimensions(dataUrl: string): Promise<{ width: number; he
 }
 
 /**
+ * Read a File as a data URL.
+ */
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Converts a blob URL to a base64 data URL.
  * If the URL is already a data URL or a regular HTTP(S) URL, returns it unchanged.
  */
