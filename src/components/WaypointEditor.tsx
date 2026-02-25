@@ -776,7 +776,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
           </button>
           <button
             className={`config-btn primary ${!canProceed ? 'disabled' : ''}`}
-            onClick={allReady ? handleReviewApply : handleGenerateAngles}
+            onClick={allReady ? () => dispatch({ type: 'SET_SHOW_ANGLE_REVIEW', payload: true }) : handleGenerateAngles}
             disabled={!canProceed}
           >
             {isGenerating ? 'Generating...' : allReady ? 'Continue' : `Generate ${anglesToGenerate} Angle${anglesToGenerate !== 1 ? 's' : ''}`}
