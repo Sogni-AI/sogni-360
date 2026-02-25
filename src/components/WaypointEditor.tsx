@@ -506,8 +506,8 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
   }, [dispatch]);
 
-  const canProceed = waypoints.length >= MIN_WAYPOINTS && !isGenerating;
   const allReady = anglesToGenerate === 0 && waypoints.every(wp => wp.imageUrl);
+  const canProceed = (allReady || waypoints.length >= MIN_WAYPOINTS) && !isGenerating;
 
   if (showAngleReview) {
     return (

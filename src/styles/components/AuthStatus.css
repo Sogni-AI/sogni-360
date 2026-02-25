@@ -291,6 +291,27 @@
   justify-content: flex-end;
 }
 
+.auth-help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.auth-help-icon:hover {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
 /* Wallet Container - Apple Liquid Glass */
 .auth-wallet-container {
   position: relative;

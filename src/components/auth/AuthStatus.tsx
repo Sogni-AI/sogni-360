@@ -258,6 +258,16 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
                 <span className="auth-separator" style={{ color: textColor, opacity: 0.7 }}>|</span>
                 <span className="auth-balance" style={{ color: textColor, display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {formatTokenAmount(currentBalance)} {tokenLabel}
+                  <a
+                    href="https://www.sogni.ai/assets"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="auth-help-icon"
+                    title="Learn about Sogni tokens &amp; Spark"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    ?
+                  </a>
                 </span>
               </>
             )}
