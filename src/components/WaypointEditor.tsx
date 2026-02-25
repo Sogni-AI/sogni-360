@@ -506,7 +506,8 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
     dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
   }, [dispatch]);
 
-  const canGenerate = waypoints.length >= MIN_WAYPOINTS && !isGenerating;
+  const canProceed = waypoints.length >= MIN_WAYPOINTS && !isGenerating;
+  const allReady = anglesToGenerate === 0 && waypoints.every(wp => wp.imageUrl);
 
   if (showAngleReview) {
     return (
@@ -774,11 +775,11 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
             Cancel
           </button>
           <button
-            className={`config-btn primary ${!canGenerate ? 'disabled' : ''}`}
-            onClick={handleGenerateAngles}
-            disabled={!canGenerate}
+            className={`config-btn primary ${!canProceed ? 'disabled' : ''}`}
+            onClick={allReady ? handleReviewApply : handleGenerateAngles}
+            disabled={!canProceed}
           >
-            {isGenerating ? 'Generating...' : `Generate ${anglesToGenerate} Angle${anglesToGenerate !== 1 ? 's' : ''}`}
+            {isGenerating ? 'Generating...' : allReady ? 'Continue' : `Generate ${anglesToGenerate} Angle${anglesToGenerate !== 1 ? 's' : ''}`}
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
