@@ -256,18 +256,8 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
             {authMode !== 'demo' && balances && (
               <>
                 <span className="auth-separator" style={{ color: textColor, opacity: 0.7 }}>|</span>
-                <span className="auth-balance" style={{ color: textColor, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="auth-balance" style={{ color: textColor }}>
                   {formatTokenAmount(currentBalance)} {tokenLabel}
-                  <a
-                    href="https://www.sogni.ai/assets"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="auth-help-icon"
-                    title="Learn about Sogni tokens &amp; Spark"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    ?
-                  </a>
                 </span>
               </>
             )}
@@ -289,8 +279,18 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
                 {/* Payment Method Toggle */}
                 {authMode !== 'demo' && balances && (
                   <>
-                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', textTransform: 'lowercase' }}>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', textTransform: 'lowercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       paying with
+                      <a
+                        href="https://www.sogni.ai/assets"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="auth-help-icon"
+                        title="Learn about Sogni tokens &amp; Spark"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        ?
+                      </a>
                     </div>
                     <div className="auth-token-toggle">
                       <button
