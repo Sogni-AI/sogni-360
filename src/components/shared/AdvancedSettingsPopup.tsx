@@ -156,9 +156,6 @@ export default function AdvancedSettingsPopup({
           {/* Visual Effects Section */}
           <div className="settings-section">
             <label className="settings-label">Visual Effects</label>
-            <p className="settings-description">
-              Enable or disable premium visual effects
-            </p>
             <label className="settings-toggle-row">
               <span className="settings-toggle-label">Liquid Glass Effects</span>
               <button
@@ -171,11 +168,6 @@ export default function AdvancedSettingsPopup({
                 <span className="settings-toggle-knob" />
               </button>
             </label>
-            <p className="settings-toggle-hint">
-              {state.liquidGlassEnabled
-                ? 'Dynamic glass refraction effects enabled'
-                : 'Using static frosted glass (better performance)'}
-            </p>
           </div>
 
           {/* Advanced Toggle */}
