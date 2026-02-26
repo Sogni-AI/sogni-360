@@ -168,18 +168,6 @@ html, body {
   z-index: 1;
 }
 
-/* Fallback panel when liquid glass is disabled */
-.glass-fallback {
-  position: relative;
-  background: rgba(20, 20, 30, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-top-color: rgba(255, 255, 255, 0.3);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-  backdrop-filter: blur(16px) saturate(120%);
-}
-
-/* --- No Liquid Glass overrides (body.no-liquid-glass) --- */
-
 /* Glass indicator pill (segment/waypoint dots) */
 .glass-indicator-pill {
   background: rgba(0, 0, 0, 0.4);
@@ -3379,10 +3367,6 @@ html, body {
 
 .config-card-main img.dimmed {
   opacity: 0.45;
-}
-
-.no-liquid-glass .config-card-main img.dimmed {
-  opacity: 0.15;
 }
 
 .config-card-placeholder {

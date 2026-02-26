@@ -1,13 +1,11 @@
 /**
  * LiquidGlassPanel - Wrapper component for liquid glass effects
  *
- * Uses liquid-glass-react library when enabled, falls back to
- * static frosted glass styling when disabled.
+ * Uses liquid-glass-react library for SVG displacement glass effects.
  */
 
 import React, { useEffect } from 'react';
 import LiquidGlass from 'liquid-glass-react';
-import { useApp } from '../../context/AppContext';
 
 interface LiquidGlassPanelProperties {
   children: React.ReactNode;
@@ -37,9 +35,6 @@ export function LiquidGlassPanel({
   saturation: saturationOverride,
   aberrationIntensity: aberrationOverride,
 }: LiquidGlassPanelProperties) {
-  const { state } = useApp();
-  const liquidGlassEnabled = state.liquidGlassEnabled;
-
   // Extract padding to handle separately (library needs it as string)
   const { padding, ...wrapStyle } = style || {};
   const paddingStr = typeof padding === 'number'
@@ -48,9 +43,9 @@ export function LiquidGlassPanel({
 
   // Build wrapper class names
   const wrapperClasses = [
-    liquidGlassEnabled ? 'liquid-glass-wrap' : 'glass-fallback',
-    modalTint && liquidGlassEnabled ? 'glass-modal-tint' : '',
-    subtle && liquidGlassEnabled ? 'liquid-glass-subtle' : '',
+    'liquid-glass-wrap',
+    modalTint ? 'glass-modal-tint' : '',
+    subtle ? 'liquid-glass-subtle' : '',
     className,
   ].filter(Boolean).join(' ');
 
@@ -60,23 +55,11 @@ export function LiquidGlassPanel({
   // the cached size is stale — causing content clipping on narrow viewports.
   // Dispatch a synthetic resize after the next paint to force re-measurement.
   useEffect(() => {
-    if (!liquidGlassEnabled) return;
     const frame = requestAnimationFrame(() => {
       window.dispatchEvent(new Event('resize'));
     });
     return () => cancelAnimationFrame(frame);
-  }, [liquidGlassEnabled]);
-
-  if (!liquidGlassEnabled) {
-    return (
-      <div
-        className={wrapperClasses}
-        style={{ borderRadius: `${cornerRadius}px`, ...wrapStyle, padding: paddingStr }}
-      >
-        {children}
-      </div>
-    );
-  }
+  }, []);
 
   return (
     <div
