@@ -306,7 +306,8 @@ const Sogni360Container: React.FC = () => {
               videoUrl: result.videoUrl,
               progress: 100,
               sdkProjectId: result.sdkProjectId,
-              sdkJobId: result.sdkJobId
+              sdkJobId: result.sdkJobId,
+              generatedDuration: duration
             });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
             // Record billing
@@ -419,7 +420,8 @@ const Sogni360Container: React.FC = () => {
               videoUrl: result.videoUrl,
               progress: 100,
               sdkProjectId: result.sdkProjectId,
-              sdkJobId: result.sdkJobId
+              sdkJobId: result.sdkJobId,
+              generatedDuration: redoDuration
             });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId: segId, version } });
             // Record billing

@@ -20,6 +20,7 @@ interface TransitionVideoCardProps {
   onDownload: () => void;
   onDelete: () => void;
   isDownloading: boolean;
+  durationMismatch?: boolean; // True if segment was generated with a different clip length
 }
 
 /**
@@ -40,7 +41,8 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   onRegenerate,
   onDownload,
   onDelete,
-  isDownloading
+  isDownloading,
+  durationMismatch
 }) => {
   const canDelete = totalSegments > 1;
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -161,6 +163,14 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
       <div className="transition-card-header">
         <span className="transition-card-title">Transition {index + 1}</span>
         <div className="transition-header-right">
+          {durationMismatch && segment.status === 'ready' && (
+            <span className="transition-status-pill mismatch" title="Generated with a different clip length — regenerate to match current settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Length Mismatch
+            </span>
+          )}
           {segment.status === 'ready' && (
             <span className="transition-status-pill ready">Ready</span>
           )}

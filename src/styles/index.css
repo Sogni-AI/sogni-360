@@ -4933,6 +4933,14 @@ html, body {
   color: #9ca3af;
 }
 
+.transition-status-pill.mismatch {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .transition-card-preview {
   flex: 1 1 0; /* Grow to fill space, shrink if needed, base size 0 */
   min-height: 0; /* Critical: allow shrinking below content size */
@@ -6017,6 +6025,11 @@ html, body {
 .status-tag.pending {
   background: rgba(156, 163, 175, 0.15);
   color: #9ca3af;
+}
+
+.status-tag.mismatch {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
 }
 
 .review-actions-bar {

@@ -139,8 +139,8 @@ export function useFinalVideoActions({
 
       // Metadata mismatch — videos can't be stitched, download as zip instead
       if (error instanceof Error && error.message === 'METADATA_MISMATCH') {
-        showToast({ message: 'There was a problem stitching your video, the clips will be downloaded separately', type: 'warning' });
-        setStitchError('Clips could not be combined — downloaded as separate files');
+        showToast({ message: 'Clips have different lengths and cannot be stitched. Go back and regenerate the mismatched transitions.', type: 'warning' });
+        setStitchError('Clips have different lengths — go back to the transition review and regenerate the ones marked with "Length Mismatch"');
         const clipSlug = toKebabSlug(projectName);
         const items = videoUrls.map((url, i) => ({ url, filename: `clip-${i + 1}.mp4` }));
         downloadVideosAsZip(items, `sogni-360-clips-${clipSlug}.zip`).catch(e =>

@@ -192,6 +192,20 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
 
   const totalSegments = segments.length;
 
+  // Detect segments with mismatched clip length (generated with a different duration than current settings)
+  const currentDuration = currentProject?.settings.transitionDuration || DEFAULT_VIDEO_SETTINGS.duration;
+  const mismatchedSegmentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const seg of segments) {
+      if (seg.status === 'ready' && seg.generatedDuration != null && seg.generatedDuration !== currentDuration) {
+        ids.add(seg.id);
+      }
+    }
+    return ids;
+  }, [segments, currentDuration]);
+  const mismatchCount = mismatchedSegmentIds.size;
+  const [showMismatchModal, setShowMismatchModal] = useState(false);
+
   // Workflow step - compute from actual project state
   const { currentStep: computedStep, completedSteps } = computeWorkflowStep(currentProject);
 
@@ -353,14 +367,18 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   const canStitch = readyCount >= 1 && !isGenerating;
   const allReady = readyCount === totalSegments && totalSegments > 0;
 
-  // Handle stitch button click - show confirmation if not all videos are ready
+  // Handle stitch button click - block if mismatched, confirm if partial, otherwise stitch
   const handleStitchClick = useCallback(() => {
+    if (mismatchCount > 0) {
+      setShowMismatchModal(true);
+      return;
+    }
     if (!allReady) {
       setShowPartialStitchConfirm(true);
     } else {
       onStitch();
     }
-  }, [allReady, onStitch]);
+  }, [allReady, onStitch, mismatchCount]);
 
   const handleConfirmPartialStitch = useCallback(() => {
     setShowPartialStitchConfirm(false);
@@ -435,6 +453,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               onDownload={() => handleDownloadSingle(segment, index)}
               onDelete={() => handleDeleteSegment(segment.id)}
               isDownloading={downloadingId === segment.id}
+              durationMismatch={mismatchedSegmentIds.has(segment.id)}
             />
           );
         })}
@@ -462,6 +481,14 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
           {pendingCount > 0 && (
             <span className="status-tag pending">
               {pendingCount} pending
+            </span>
+          )}
+          {mismatchCount > 0 && (
+            <span className="status-tag mismatch">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              {mismatchCount} wrong length
             </span>
           )}
           {failedCount > 0 && (
@@ -570,6 +597,66 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium transition-all min-h-[44px] shadow-lg shadow-purple-500/25"
               >
                 Continue
+              </button>
+            </div>
+            </div>
+          </LiquidGlassPanel>
+        </div>
+      )}
+
+      {/* Clip Length Mismatch Modal */}
+      {showMismatchModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/15 p-5">
+          <LiquidGlassPanel
+            cornerRadius={24}
+            className="max-w-md w-full mx-4 glass-modal"
+            displacementScale={60}
+            saturation={160}
+            aberrationIntensity={4}
+          >
+            <div
+              className="p-7"
+              onClick={(e) => e.stopPropagation()}
+            >
+            <div className="flex items-center gap-3 mb-3">
+              <svg className="w-6 h-6 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h2 className="text-xl font-semibold text-white">Clip Length Mismatch</h2>
+            </div>
+            <p className="text-gray-300 mb-3">
+              <span className="text-amber-400 font-medium">{mismatchCount}</span> transition{mismatchCount > 1 ? 's were' : ' was'} generated with a different clip length than the current setting ({currentDuration}s).
+            </p>
+            <div className="mb-4 max-h-[160px] overflow-y-auto">
+              {segments.filter(s => mismatchedSegmentIds.has(s.id)).map((seg) => {
+                const segIndex = segments.indexOf(seg);
+                return (
+                  <div key={seg.id} className="flex items-center gap-2 py-1.5 text-sm">
+                    <span className="text-amber-400">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01" />
+                      </svg>
+                    </span>
+                    <span className="text-white/80">
+                      Transition {segIndex + 1}: {getAngleLabel(seg.fromWaypointId)} → {getAngleLabel(seg.toWaypointId)}
+                    </span>
+                    <span className="text-white/40 text-xs ml-auto">
+                      {seg.generatedDuration}s
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-gray-400 text-sm mb-6">
+              All clips must have the same length to be stitched together. Regenerate the marked transitions to continue.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowMismatchModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium transition-all min-h-[44px] border border-white/10"
+              >
+                Close
               </button>
             </div>
             </div>
