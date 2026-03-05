@@ -113,7 +113,10 @@ export const VIDEO_CONFIG = {
   minFrames: 17,
   maxFrames: 129,
   // Dimension must be divisible by this value
-  dimensionDivisor: 16
+  dimensionDivisor: 16,
+  // API dimension limits
+  minDimension: 480,
+  maxDimension: 1536
 };
 
 /**
@@ -130,16 +133,29 @@ export function calculateVideoDimensions(
 
   const roundedTarget = Math.round(targetShortSide / divisor) * divisor;
   const isWidthShorter = imageWidth <= imageHeight;
+  const maxDim = VIDEO_CONFIG.maxDimension;
+
+  let width: number;
+  let height: number;
 
   if (isWidthShorter) {
-    const width = roundedTarget;
-    const height = Math.round((imageHeight * roundedTarget / imageWidth) / divisor) * divisor;
-    return { width, height };
+    width = roundedTarget;
+    height = Math.round((imageHeight * roundedTarget / imageWidth) / divisor) * divisor;
   } else {
-    const height = roundedTarget;
-    const width = Math.round((imageWidth * roundedTarget / imageHeight) / divisor) * divisor;
-    return { width, height };
+    height = roundedTarget;
+    width = Math.round((imageWidth * roundedTarget / imageHeight) / divisor) * divisor;
   }
+
+  // Clamp if either dimension exceeds API max (1536), scaling the other proportionally
+  if (width > maxDim) {
+    height = Math.round((height * maxDim / width) / divisor) * divisor;
+    width = maxDim;
+  } else if (height > maxDim) {
+    width = Math.round((width * maxDim / height) / divisor) * divisor;
+    height = maxDim;
+  }
+
+  return { width, height };
 }
 
 /**
