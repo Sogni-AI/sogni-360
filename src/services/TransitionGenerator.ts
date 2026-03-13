@@ -13,12 +13,13 @@ import { api } from './api';
 import { isFrontendMode, getSogniClient } from './frontend';
 import type { Segment, GenerationProgressEvent, TransitionVersion } from '../types';
 import {
-  VIDEO_QUALITY_PRESETS,
+  getVideoQualityConfig,
+  getVideoModelConfig,
   calculateVideoFrames,
   calculateVideoDimensions,
   DEFAULT_VIDEO_SETTINGS,
-  VideoQualityPreset,
-  VideoResolution
+  type VideoQualityPreset,
+  type VideoResolution
 } from '../constants/videoSettings';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchS3AsBlob } from '../utils/s3FetchWithFallback';
@@ -145,17 +146,17 @@ async function generateWithFrontendSDK(
     throw new Error('Frontend SDK client not available');
   }
 
-  // Get quality config
-  const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
+  // Get model-family-aware config
+  const modelFamily = advancedSettings.videoModel;
+  const qualityConfig = getVideoQualityConfig(quality, modelFamily);
+  const modelConfig = getVideoModelConfig(modelFamily);
 
-  // Calculate video dimensions preserving aspect ratio
-  const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
+  // Calculate video dimensions and frames for this model family
+  const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution, modelFamily);
+  const frames = calculateVideoFrames(duration, modelFamily);
 
-  // Calculate frames at 16fps base rate (fps controls post-processing interpolation)
-  const frames = calculateVideoFrames(duration);
-
-  console.log(`[TransitionGenerator-SDK] Video: ${videoDimensions.width}x${videoDimensions.height}`);
-  console.log(`[TransitionGenerator-SDK] Frames: ${frames} (16fps base), Output: ${DEFAULT_VIDEO_SETTINGS.fps}fps`);
+  console.log(`[TransitionGenerator-SDK] Model: ${modelFamily}, Video: ${videoDimensions.width}x${videoDimensions.height}`);
+  console.log(`[TransitionGenerator-SDK] Frames: ${frames}, FPS: ${modelConfig.fps}`);
 
   // Convert images to blobs
   const [fromBlob, toBlob] = await Promise.all([
@@ -163,8 +164,7 @@ async function generateWithFrontendSDK(
     imageUrlToBlob(toImageUrl)
   ]);
 
-  // Create project options matching backend implementation
-  // Use shift and guidance values from quality config (model-specific optimal values)
+  // Create project options with model-family-specific parameters
   const projectOptions: Record<string, any> = {
     type: 'video' as const,
     modelId: qualityConfig.model,
@@ -178,11 +178,11 @@ async function generateWithFrontendSDK(
     shift: qualityConfig.shift,
     guidance: qualityConfig.guidance,
     frames: frames,
-    fps: DEFAULT_VIDEO_SETTINGS.fps, // Output video FPS (32fps for smooth playback)
+    fps: modelConfig.fps,
     numberOfMedia: 1,
     numberOfPreviews: 3,
-    sampler: 'euler' as const,
-    scheduler: 'simple' as const,
+    sampler: qualityConfig.sampler,
+    scheduler: qualityConfig.scheduler,
     disableNSFWFilter: true,
     outputFormat: 'mp4' as const,
     tokenType: tokenType,
@@ -328,20 +328,19 @@ async function generateWithBackendAPI(
     onError
   } = options;
 
-  // Get quality config
-  const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
+  // Get model-family-aware config
+  const modelFamily = advancedSettings.videoModel;
+  const qualityConfig = getVideoQualityConfig(quality, modelFamily);
+  const modelConfig = getVideoModelConfig(modelFamily);
 
-  // Calculate video dimensions preserving aspect ratio
-  const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution);
+  // Calculate video dimensions and frames for this model family
+  const videoDimensions = calculateVideoDimensions(sourceWidth, sourceHeight, resolution, modelFamily);
+  const frames = calculateVideoFrames(duration, modelFamily);
 
-  // Calculate frames at 16fps base rate (fps controls post-processing interpolation)
-  const frames = calculateVideoFrames(duration);
+  console.log(`[TransitionGenerator-API] Model: ${modelFamily}, Video: ${videoDimensions.width}x${videoDimensions.height}`);
+  console.log(`[TransitionGenerator-API] Frames: ${frames}, FPS: ${modelConfig.fps}`);
 
-  console.log(`[TransitionGenerator-API] Video: ${videoDimensions.width}x${videoDimensions.height}`);
-  console.log(`[TransitionGenerator-API] Frames: ${frames} (16fps base), Output: ${DEFAULT_VIDEO_SETTINGS.fps}fps`);
-
-  // Start generation via API
-  // Pass shift and guidance from quality config (model-specific optimal values)
+  // Start generation via API with model-family-specific parameters
   const { projectId } = await api.generateTransition({
     referenceImage: fromImageUrl,
     referenceImageEnd: toImageUrl,
@@ -350,11 +349,13 @@ async function generateWithBackendAPI(
     width: videoDimensions.width,
     height: videoDimensions.height,
     frames,
-    fps: DEFAULT_VIDEO_SETTINGS.fps, // Output video FPS (32fps for smooth playback)
+    fps: modelConfig.fps,
     steps: qualityConfig.steps,
     shift: qualityConfig.shift,
     guidance: qualityConfig.guidance,
     model: qualityConfig.model,
+    sampler: qualityConfig.sampler,
+    scheduler: qualityConfig.scheduler,
     tokenType,
     trimEndFrame
   });

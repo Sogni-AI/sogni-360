@@ -6,12 +6,14 @@ import {
 } from '../constants/transitionPromptPresets';
 import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
 import {
-  VIDEO_QUALITY_PRESETS,
   VIDEO_CONFIG,
   DEFAULT_VIDEO_SETTINGS,
+  getVideoQualityConfig,
+  getVideoModelConfig,
   calculateVideoDimensions,
 } from '../constants/videoSettings';
 import type { VideoQualityPreset, VideoResolution } from '../constants/videoSettings';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 interface TransitionRegenerateModalProps {
   fromLabel: string;
@@ -55,14 +57,16 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
   const effectiveResolution = resolution || DEFAULT_VIDEO_SETTINGS.resolution;
   const effectiveQuality = quality || DEFAULT_VIDEO_SETTINGS.quality;
   const effectiveDuration = duration || VIDEO_CONFIG.defaultDuration;
-  const effectiveFps = DEFAULT_VIDEO_SETTINGS.fps;
-  const qualityConfig = VIDEO_QUALITY_PRESETS[effectiveQuality];
+  const modelFamily = getAdvancedSettings().videoModel;
+  const modelConfig = getVideoModelConfig(modelFamily);
+  const effectiveFps = modelConfig.fps;
+  const qualityConfig = getVideoQualityConfig(effectiveQuality, modelFamily);
 
   // Compute actual video dimensions for display
   const videoDimensions = useMemo(() => {
     if (!imageWidth || !imageHeight) return null;
-    return calculateVideoDimensions(imageWidth, imageHeight, effectiveResolution);
-  }, [imageWidth, imageHeight, effectiveResolution]);
+    return calculateVideoDimensions(imageWidth, imageHeight, effectiveResolution, modelFamily);
+  }, [imageWidth, imageHeight, effectiveResolution, modelFamily]);
 
   // Cost estimation for a single transition regeneration
   const { loading: costLoading, formattedCost, formattedUSD } = useVideoCostEstimation({

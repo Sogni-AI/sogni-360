@@ -65,6 +65,7 @@ export interface Segment {
   workerName?: string; // Worker name for display during generation
   prompt?: string; // The prompt used to generate this segment (for regenerate modal recall)
   generatedDuration?: number; // Clip duration (seconds) this segment was generated with
+  videoModel?: string; // Video model family used to generate this segment (e.g. 'wan2.2', 'ltx2.3')
   versions?: TransitionVersion[]; // History of all generated versions
   currentVersionIndex?: number; // Index of currently selected version
   // SDK IDs for URL refresh (needed when presigned URLs expire)

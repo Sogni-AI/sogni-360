@@ -149,6 +149,8 @@ class ApiClient {
     shift?: number;  // Motion intensity (model-specific: lightx2v 5.0, full 8.0)
     guidance?: number;  // Guidance scale (model-specific: lightx2v 1.0, full 4.0)
     model?: string;
+    sampler?: string;   // Sampling method (euler for WAN, euler_ancestral for LTX-2.3)
+    scheduler?: string; // Noise scheduler
     tokenType?: 'spark' | 'sogni';
     trimEndFrame?: boolean; // Trim last frame from video (removes duplicate end frame for seamless stitching)
   }): Promise<{ projectId: string; clientAppId: string }> {
@@ -186,6 +188,8 @@ class ApiClient {
         shift: params.shift,  // Model-specific motion intensity
         guidance: params.guidance,  // Model-specific guidance scale
         model: params.model || 'wan_v2.2-14b-fp8_i2v_lightx2v',
+        sampler: params.sampler || 'euler',
+        scheduler: params.scheduler || 'simple',
         tokenType: params.tokenType || 'spark',
         trimEndFrame: params.trimEndFrame || false,
         clientAppId: this.clientAppId,

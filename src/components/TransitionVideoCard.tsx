@@ -21,6 +21,7 @@ interface TransitionVideoCardProps {
   onDelete: () => void;
   isDownloading: boolean;
   durationMismatch?: boolean; // True if segment was generated with a different clip length
+  videoModelMismatch?: boolean; // True if current video model differs from what generated this segment
 }
 
 /**
@@ -42,9 +43,12 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   onDownload,
   onDelete,
   isDownloading,
-  durationMismatch
+  durationMismatch,
+  videoModelMismatch
 }) => {
   const canDelete = totalSegments > 1;
+  // Override display status: treat ready segments as pending when video model changed
+  const displayStatus = (videoModelMismatch && segment.status === 'ready') ? 'pending' : segment.status;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [userPaused, setUserPaused] = useState(false); // Track if user manually paused
@@ -163,7 +167,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
       <div className="transition-card-header">
         <span className="transition-card-title">Transition {index + 1}</span>
         <div className="transition-header-right">
-          {durationMismatch && segment.status === 'ready' && (
+          {durationMismatch && displayStatus === 'ready' && (
             <span className="transition-status-pill mismatch" title="Generated with a different clip length — regenerate to match current settings">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -171,18 +175,18 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
               Length Mismatch
             </span>
           )}
-          {segment.status === 'ready' && (
+          {displayStatus === 'ready' && (
             <span className="transition-status-pill ready">Ready</span>
           )}
-          {segment.status === 'generating' && (
+          {displayStatus === 'generating' && (
             <span className="transition-status-pill generating">
               {Math.round(segment.progress || 0)}%
             </span>
           )}
-          {segment.status === 'failed' && (
+          {displayStatus === 'failed' && (
             <span className="transition-status-pill failed">Failed</span>
           )}
-          {segment.status === 'pending' && (
+          {displayStatus === 'pending' && (
             <span className="transition-status-pill pending">Pending</span>
           )}
           {/* Delete button */}
@@ -201,7 +205,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
 
       {/* Preview Area - fills available space in card */}
       <div className="transition-card-preview">
-        {segment.status === 'ready' && segment.videoUrl ? (
+        {displayStatus === 'ready' && segment.videoUrl ? (
           /* Ready - show video with autoplay, tap to open fullscreen */
           <div
             className={`transition-video-wrap ${!videoLoaded ? 'loading' : ''}`}
@@ -264,7 +268,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 <span className="thumb-label">To</span>
 
                 {/* Progress overlay on To image */}
-                {segment.status === 'generating' && (
+                {displayStatus === 'generating' && (
                   <div className="review-card-overlay">
                     <div className="review-progress-ring">
                       <svg viewBox="0 0 100 100">
@@ -288,7 +292,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
             </div>
 
             {/* Status rows for non-generating states */}
-            {segment.status === 'failed' && (
+            {displayStatus === 'failed' && (
               <div className="transition-status-row failed">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -296,7 +300,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 <span>Generation failed</span>
               </div>
             )}
-            {segment.status === 'pending' && (
+            {displayStatus === 'pending' && (
               <div className="transition-status-row pending">
                 <span>Waiting to generate...</span>
               </div>
@@ -344,9 +348,9 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
         <div className="transition-card-actions">
           {/* Download Button - Only when ready with video */}
           <button
-            className={`transition-action-btn download ${segment.status !== 'ready' || !segment.videoUrl ? 'invisible' : ''}`}
+            className={`transition-action-btn download ${displayStatus !== 'ready' || !segment.videoUrl ? 'invisible' : ''}`}
             onClick={onDownload}
-            disabled={segment.status !== 'ready' || !segment.videoUrl || isDownloading}
+            disabled={displayStatus !== 'ready' || !segment.videoUrl || isDownloading}
           >
             {isDownloading ? (
               <svg className="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -368,7 +372,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            {segment.status === 'generating' ? 'Restart' : 'Regenerate'}
+            {displayStatus === 'generating' ? 'Restart' : 'Regenerate'}
           </button>
         </div>
       </div>

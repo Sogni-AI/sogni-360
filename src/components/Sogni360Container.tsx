@@ -31,7 +31,8 @@ import { generateMultipleTransitions } from '../services/TransitionGenerator';
 import { registerPendingCost, recordCompletion, discardPending } from '../services/billingHistoryService';
 import { duplicateProject, getProjectCount } from '../utils/localProjectsDB';
 import { playVideoCompleteIfEnabled, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
-import { DEFAULT_VIDEO_SETTINGS, VIDEO_QUALITY_PRESETS, calculateVideoDimensions, calculateVideoFrames } from '../constants/videoSettings';
+import { DEFAULT_VIDEO_SETTINGS, getVideoQualityConfig, getVideoModelConfig, calculateVideoDimensions, calculateVideoFrames } from '../constants/videoSettings';
+import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 import { getAzimuthConfig, getElevationConfig, getDistanceConfig } from '../constants/cameraAngleSettings';
 import { isDemoProject, hasDemoCoachmarkBeenShown } from '../constants/demo-projects';
 import { getOriginalLabel } from '../utils/waypointLabels';
@@ -248,15 +249,17 @@ const Sogni360Container: React.FC = () => {
 
     // Register pending billing costs for each segment
     const billingCorrelations = new Map<string, string>();
-    const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
-    const fps = DEFAULT_VIDEO_SETTINGS.fps;
+    const videoModelFamily = getAdvancedSettings().videoModel;
+    const qualityConfig = getVideoQualityConfig(quality, videoModelFamily);
+    const videoModelConfig = getVideoModelConfig(videoModelFamily);
+    const fps = videoModelConfig.fps;
 
     // Fetch per-segment video cost estimate (non-blocking, fallback to 0)
     let perSegCostToken = 0;
     let perSegCostUSD = 0;
     try {
-      const dims = calculateVideoDimensions(sourceWidth || 1024, sourceHeight || 1024, resolution);
-      const frames = calculateVideoFrames(duration);
+      const dims = calculateVideoDimensions(sourceWidth || 1024, sourceHeight || 1024, resolution, videoModelFamily);
+      const frames = calculateVideoFrames(duration, videoModelFamily);
       const estUrl = `https://socket.sogni.ai/api/v1/job-video/estimate/${tokenType}/${encodeURIComponent(qualityConfig.model)}/${dims.width}/${dims.height}/${frames}/${fps}/${qualityConfig.steps}/1`;
       const estResp = await fetch(estUrl);
       if (estResp.ok) {
@@ -307,7 +310,8 @@ const Sogni360Container: React.FC = () => {
               progress: 100,
               sdkProjectId: result.sdkProjectId,
               sdkJobId: result.sdkJobId,
-              generatedDuration: duration
+              generatedDuration: duration,
+              videoModel: videoModelFamily
             });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId, version } });
             // Record billing
@@ -364,7 +368,9 @@ const Sogni360Container: React.FC = () => {
     const redoResolution = currentProject.settings.videoResolution || DEFAULT_VIDEO_SETTINGS.resolution;
     const redoQuality = (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'balanced';
     const redoDuration = currentProject.settings.transitionDuration || 1.5;
-    const redoFps = DEFAULT_VIDEO_SETTINGS.fps;
+    const redoModelFamily = getAdvancedSettings().videoModel;
+    const redoModelConfig = getVideoModelConfig(redoModelFamily);
+    const redoFps = redoModelConfig.fps;
 
     console.log('[Sogni360Container] Redo transition config:', {
       resolution: redoResolution,
@@ -376,9 +382,9 @@ const Sogni360Container: React.FC = () => {
     // Register pending billing cost for redo segment
     let redoCid: string | undefined;
     try {
-      const redoQualityConfig = VIDEO_QUALITY_PRESETS[redoQuality];
-      const redoDims = calculateVideoDimensions(redoSourceWidth || 1024, redoSourceHeight || 1024, redoResolution);
-      const redoFrames = calculateVideoFrames(redoDuration);
+      const redoQualityConfig = getVideoQualityConfig(redoQuality, redoModelFamily);
+      const redoDims = calculateVideoDimensions(redoSourceWidth || 1024, redoSourceHeight || 1024, redoResolution, redoModelFamily);
+      const redoFrames = calculateVideoFrames(redoDuration, redoModelFamily);
       const estUrl = `https://socket.sogni.ai/api/v1/job-video/estimate/${tokenType}/${encodeURIComponent(redoQualityConfig.model)}/${redoDims.width}/${redoDims.height}/${redoFrames}/${redoFps}/${redoQualityConfig.steps}/1`;
       const estResp = await fetch(estUrl);
       if (estResp.ok) {
@@ -421,7 +427,8 @@ const Sogni360Container: React.FC = () => {
               progress: 100,
               sdkProjectId: result.sdkProjectId,
               sdkJobId: result.sdkJobId,
-              generatedDuration: redoDuration
+              generatedDuration: redoDuration,
+              videoModel: redoModelFamily
             });
             dispatch({ type: 'ADD_SEGMENT_VERSION', payload: { segmentId: segId, version } });
             // Record billing

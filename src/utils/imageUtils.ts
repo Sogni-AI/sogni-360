@@ -1,13 +1,15 @@
 /**
- * Maximum dimension (width or height) for uploaded images.
- * Images larger than this will be scaled down while maintaining aspect ratio.
- * Set to 1280px since video export is currently capped at 720p.
+ * Maximum dimension for the shortest side of uploaded images.
+ * Images whose shortest side exceeds this will be scaled down while
+ * maintaining aspect ratio. Set to 1080px for quality/performance balance.
  */
-const MAX_IMAGE_DIMENSION = 1280;
+const MAX_SHORT_SIDE = 1080;
+/** Hard ceiling — SDK rejects dimensions above 2048 */
+const MAX_LONG_SIDE = 2048;
 
 /**
- * Resizes an image if its longest dimension exceeds the maximum allowed size.
- * Maintains aspect ratio and quality during resize.
+ * Resizes an image if its shortest side exceeds MAX_SHORT_SIDE or its
+ * longest side exceeds MAX_LONG_SIDE. Maintains aspect ratio and quality.
  *
  * @param dataUrl - The image as a data URL
  * @param dimensions - The original image dimensions
@@ -18,15 +20,18 @@ export async function resizeImageIfNeeded(
   dimensions: { width: number; height: number }
 ): Promise<{ dataUrl: string; dimensions: { width: number; height: number } }> {
   const { width, height } = dimensions;
+  const shortestSide = Math.min(width, height);
   const longestSide = Math.max(width, height);
 
-  // No resize needed if within limits
-  if (longestSide <= MAX_IMAGE_DIMENSION) {
+  // No resize needed if within both limits
+  if (shortestSide <= MAX_SHORT_SIDE && longestSide <= MAX_LONG_SIDE) {
     return { dataUrl, dimensions };
   }
 
-  // Calculate new dimensions maintaining aspect ratio
-  const scale = MAX_IMAGE_DIMENSION / longestSide;
+  // Pick the tighter constraint
+  const scaleShort = shortestSide > MAX_SHORT_SIDE ? MAX_SHORT_SIDE / shortestSide : 1;
+  const scaleLong = longestSide > MAX_LONG_SIDE ? MAX_LONG_SIDE / longestSide : 1;
+  const scale = Math.min(scaleShort, scaleLong);
   const newWidth = Math.round(width * scale);
   const newHeight = Math.round(height * scale);
 

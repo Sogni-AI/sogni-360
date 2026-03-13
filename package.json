@@ -19,7 +19,7 @@
     "prepare": "npm run server:install"
   },
   "dependencies": {
-    "@sogni-ai/sogni-client": "4.0.0-alpha.61",
+    "@sogni-ai/sogni-client": "4.1.0-alpha.4",
     "framer-motion": "^12.9.2",
     "jszip": "^3.10.1",
     "liquid-glass-react": "^1.1.1",

@@ -7,33 +7,26 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  VIDEO_QUALITY_PRESETS,
-  VIDEO_CONFIG,
   DEFAULT_VIDEO_SETTINGS,
+  getVideoQualityConfig,
+  getVideoModelConfig,
   calculateVideoDimensions,
   calculateVideoFrames,
-  VideoQualityPreset,
-  VideoResolution
+  type VideoQualityPreset,
+  type VideoResolution,
+  type VideoModelFamily
 } from '../constants/videoSettings';
+import { getAdvancedSettings } from './useAdvancedSettings';
 
 interface VideoCostEstimationParams {
-  /** Width of the source image */
   imageWidth?: number;
-  /** Height of the source image */
   imageHeight?: number;
-  /** Video resolution preset */
   resolution?: VideoResolution;
-  /** Video quality preset */
   quality?: VideoQualityPreset;
-  /** Video duration in seconds */
   duration?: number;
-  /** Frames per second for output video (default: 32 for smooth playback) */
   fps?: number;
-  /** Whether estimation is enabled */
   enabled?: boolean;
-  /** Number of jobs to request (for batch estimation) */
   jobCount?: number;
-  /** Token type for pricing */
   tokenType?: 'spark' | 'sogni';
 }
 
@@ -57,34 +50,6 @@ interface VideoEstimateResponse {
   };
 }
 
-/**
- * Get video job cost estimate from the Sogni API
- */
-async function fetchVideoCostEstimate(
-  tokenType: string,
-  modelId: string,
-  width: number,
-  height: number,
-  frames: number,
-  fps: number,
-  steps: number,
-  jobCount: number = 1
-): Promise<VideoEstimateResponse> {
-  const url = `https://socket.sogni.ai/api/v1/job-video/estimate/${tokenType}/${encodeURIComponent(modelId)}/${width}/${height}/${frames}/${fps}/${steps}/${jobCount}`;
-
-  console.log(`[VideoCostEstimation] Fetching estimate with fps=${fps}, frames=${frames}`);
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to get video cost estimate: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<VideoEstimateResponse>;
-}
-
-/**
- * Hook to estimate video generation cost before submitting
- */
 export function useVideoCostEstimation(params: VideoCostEstimationParams): VideoCostEstimationResult {
   const [loading, setLoading] = useState(false);
   const [cost, setCost] = useState<number | null>(null);
@@ -92,21 +57,25 @@ export function useVideoCostEstimation(params: VideoCostEstimationParams): Video
   const [error, setError] = useState<Error | null>(null);
 
   const lastParamsRef = useRef<string>('');
+  const fetchIdRef = useRef(0); // Guard against stale fetch responses
 
   const {
     imageWidth,
     imageHeight,
     resolution = '720p',
     quality = DEFAULT_VIDEO_SETTINGS.quality,
-    duration = VIDEO_CONFIG.defaultDuration,
-    fps = VIDEO_CONFIG.defaultFps,
+    duration = DEFAULT_VIDEO_SETTINGS.duration,
+    fps: fpsProp,
     enabled = true,
     jobCount = 1,
     tokenType = 'spark'
   } = params;
 
-  // Calculate frames at 16fps base rate (fps controls post-processing interpolation)
-  const frames = calculateVideoFrames(duration);
+  // Model-family-aware calculation — all derived in the same render
+  const modelFamily: VideoModelFamily = getAdvancedSettings().videoModel;
+  const modelConfig = getVideoModelConfig(modelFamily);
+  const fps = fpsProp ?? modelConfig.fps;
+  const frames = calculateVideoFrames(duration, modelFamily);
 
   const fetchCost = useCallback(async () => {
     if (!enabled || !imageWidth || !imageHeight) {
@@ -118,88 +87,68 @@ export function useVideoCostEstimation(params: VideoCostEstimationParams): Video
       return;
     }
 
-    const qualityConfig = VIDEO_QUALITY_PRESETS[quality];
+    const qualityConfig = getVideoQualityConfig(quality, modelFamily);
     if (!qualityConfig) {
       setError(new Error(`Invalid quality preset: ${quality}`));
       setLoading(false);
       return;
     }
 
-    const dimensions = calculateVideoDimensions(imageWidth, imageHeight, resolution);
+    const dimensions = calculateVideoDimensions(imageWidth, imageHeight, resolution, modelFamily);
 
     const paramsHash = JSON.stringify({
-      tokenType,
+      tokenType, modelFamily,
       modelId: qualityConfig.model,
-      width: dimensions.width,
-      height: dimensions.height,
-      frames,
-      fps,
+      width: dimensions.width, height: dimensions.height,
+      frames, fps,
       steps: qualityConfig.steps,
-      jobCount,
-      enabled
+      jobCount, enabled
     });
 
-    if (paramsHash === lastParamsRef.current) {
-      return;
-    }
+    if (paramsHash === lastParamsRef.current) return;
     lastParamsRef.current = paramsHash;
+
+    // Increment fetch ID so stale responses are ignored
+    const currentFetchId = ++fetchIdRef.current;
 
     setLoading(true);
     setError(null);
 
+    const url = `https://socket.sogni.ai/api/v1/job-video/estimate/${tokenType}/${encodeURIComponent(qualityConfig.model)}/${dimensions.width}/${dimensions.height}/${frames}/${fps}/${qualityConfig.steps}/${jobCount}`;
+    console.log(`[VideoCostEstimation] ${modelFamily} → ${url}`);
+
     try {
-      const result = await fetchVideoCostEstimate(
-        tokenType,
-        qualityConfig.model,
-        dimensions.width,
-        dimensions.height,
-        frames,
-        fps,
-        qualityConfig.steps,
-        jobCount
-      );
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+      // Ignore result if a newer fetch has been started
+      if (currentFetchId !== fetchIdRef.current) return;
+
+      const result = (await response.json()) as VideoEstimateResponse;
 
       if (result?.quote?.project) {
         const project = result.quote.project;
-
-        const tokenCostRaw = tokenType === 'spark'
-          ? project.costInSpark
-          : project.costInSogni;
-
-        const tokenCost = typeof tokenCostRaw === 'string'
-          ? parseFloat(tokenCostRaw)
-          : tokenCostRaw;
-
-        if (tokenCost !== undefined && !isNaN(tokenCost)) {
-          setCost(tokenCost);
-        } else {
-          setCost(null);
-        }
+        const tokenCostRaw = tokenType === 'spark' ? project.costInSpark : project.costInSogni;
+        const tokenCost = typeof tokenCostRaw === 'string' ? parseFloat(tokenCostRaw) : tokenCostRaw;
+        setCost(tokenCost !== undefined && !isNaN(tokenCost) ? tokenCost : null);
 
         const usdCostRaw = project.costInUSD;
-        const usdCost = typeof usdCostRaw === 'string'
-          ? parseFloat(usdCostRaw)
-          : usdCostRaw;
-
-        if (usdCost !== undefined && !isNaN(usdCost)) {
-          setCostInUSD(usdCost);
-        } else {
-          setCostInUSD(null);
-        }
+        const usdCost = typeof usdCostRaw === 'string' ? parseFloat(usdCostRaw) : usdCostRaw;
+        setCostInUSD(usdCost !== undefined && !isNaN(usdCost) ? usdCost : null);
       } else {
         setCost(null);
         setCostInUSD(null);
       }
-
       setLoading(false);
     } catch (err) {
-      console.warn('[VideoCostEstimation] Cost estimation failed:', err);
+      if (currentFetchId !== fetchIdRef.current) return;
+      console.warn('[VideoCostEstimation] Failed:', err);
       setError(err as Error);
       setCost(null);
       setCostInUSD(null);
       setLoading(false);
     }
-  }, [enabled, imageWidth, imageHeight, resolution, quality, frames, fps, tokenType, jobCount]);
+  }, [enabled, imageWidth, imageHeight, resolution, quality, frames, fps, tokenType, jobCount, modelFamily]);
 
   useEffect(() => {
     void fetchCost();
@@ -213,15 +162,7 @@ export function useVideoCostEstimation(params: VideoCostEstimationParams): Video
     void fetchCost();
   };
 
-  return {
-    loading,
-    cost,
-    costInUSD,
-    error,
-    formattedCost,
-    formattedUSD,
-    refetch
-  };
+  return { loading, cost, costInUSD, error, formattedCost, formattedUSD, refetch };
 }
 
 export default useVideoCostEstimation;

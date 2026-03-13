@@ -14,7 +14,12 @@ import {
   getPhotoQualityTier,
   type PhotoQualityTier
 } from '../constants/cameraAngleSettings';
-import { DEFAULT_VIDEO_NEGATIVE_PROMPT } from '../constants/videoSettings';
+import {
+  DEFAULT_VIDEO_NEGATIVE_PROMPT,
+  getDefaultNegativePrompt,
+  DEFAULT_MODEL_FAMILY,
+  type VideoModelFamily
+} from '../constants/videoSettings';
 
 const STORAGE_KEY = 'sogni360_advanced_settings';
 
@@ -24,6 +29,7 @@ export interface AdvancedSettings {
   imageGuidance: number;
   photoQuality: PhotoQualityTier;
   videoQuality: VideoQualityPreset;
+  videoModel: VideoModelFamily;
   videoNegativePrompt: string;
   outputFormat: OutputFormat;
 }
@@ -37,6 +43,7 @@ const getDefaultSettings = (): AdvancedSettings => {
     imageGuidance: balancedPreset.guidance,
     photoQuality: 'balanced',
     videoQuality: 'balanced',
+    videoModel: DEFAULT_MODEL_FAMILY,
     videoNegativePrompt: DEFAULT_VIDEO_NEGATIVE_PROMPT,
     outputFormat: 'jpg' // Default to JPG (smaller files, web-compatible)
   };
@@ -77,6 +84,8 @@ const loadSettings = (): AdvancedSettings => {
         ? parsed.photoQuality
         : getPhotoQualityTier(modelId, steps) || defaults.photoQuality;
 
+      const videoModel: VideoModelFamily = parsed.videoModel === 'ltx2.3' ? 'ltx2.3' : DEFAULT_MODEL_FAMILY;
+
       const videoQuality = parsed.videoQuality && ['fast', 'balanced', 'quality', 'pro'].includes(parsed.videoQuality)
         ? parsed.videoQuality
         : defaults.videoQuality;
@@ -91,7 +100,7 @@ const loadSettings = (): AdvancedSettings => {
         ? parsed.outputFormat
         : defaults.outputFormat;
 
-      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance, photoQuality, videoQuality, videoNegativePrompt, outputFormat };
+      return { imageModel: modelId, imageSteps: steps, imageGuidance: guidance, photoQuality, videoQuality, videoModel, videoNegativePrompt, outputFormat };
     }
   } catch {
     // Ignore parse errors
@@ -178,6 +187,16 @@ export function useAdvancedSettings() {
     notifyListeners();
   }, []);
 
+  const setVideoModel = useCallback((model: VideoModelFamily) => {
+    globalSettings = {
+      ...globalSettings,
+      videoModel: model,
+      videoNegativePrompt: getDefaultNegativePrompt(model)
+    };
+    saveSettings(globalSettings);
+    notifyListeners();
+  }, []);
+
   const setVideoNegativePrompt = useCallback((prompt: string) => {
     globalSettings = {
       ...globalSettings,
@@ -241,13 +260,14 @@ export function useAdvancedSettings() {
     setGuidance,
     setPhotoQuality,
     setVideoQuality,
+    setVideoModel,
     setVideoNegativePrompt,
     setOutputFormat,
     resetToDefaults,
     getCurrentModelConfig,
     modelConfigs: IMAGE_MODELS,
     photoQualityPresets: PHOTO_QUALITY_PRESETS,
-    defaultVideoNegativePrompt: DEFAULT_VIDEO_NEGATIVE_PROMPT
+    defaultVideoNegativePrompt: getDefaultNegativePrompt(settings.videoModel)
   };
 }
 

@@ -3,18 +3,22 @@
  *
  * Allows users to configure:
  * - Photo quality tier (Fast, Balanced, High Quality, Pro)
+ * - Video model (WAN 2.2, LTX-2.3)
  * - Video quality tier (Fast, Balanced, High Quality, Pro)
- * - Advanced: Primary image model (Lightning vs Standard Qwen)
- * - Advanced: Inference steps (within model-specific ranges)
- * - Advanced: Guidance scale (within model-specific ranges)
+ * - Advanced fine-tune: image model, steps, guidance, output format, negative prompt
  */
 
 import React, { useCallback, useState } from 'react';
 import { useAdvancedSettings } from '../../hooks/useAdvancedSettings';
 import { LiquidGlassPanel } from './LiquidGlassPanel';
+import AdvancedSettingsFineTune from './AdvancedSettingsFineTune';
 import { PHOTO_QUALITY_PRESETS, type PhotoQualityTier } from '../../constants/cameraAngleSettings';
-import { VIDEO_QUALITY_PRESETS, type VideoQualityPreset } from '../../constants/videoSettings';
-import type { ImageModelId, OutputFormat } from '../../types';
+import {
+  VIDEO_MODEL_FAMILIES,
+  type VideoModelFamily,
+  type VideoQualityPreset,
+  getVideoQualityConfig
+} from '../../constants/videoSettings';
 import '../../styles/components/AdvancedSettingsPopup.css';
 
 interface AdvancedSettingsPopupProperties {
@@ -33,6 +37,7 @@ export default function AdvancedSettingsPopup({
     setGuidance,
     setPhotoQuality,
     setVideoQuality,
+    setVideoModel,
     setVideoNegativePrompt,
     setOutputFormat,
     resetToDefaults,
@@ -42,49 +47,9 @@ export default function AdvancedSettingsPopup({
   } = useAdvancedSettings();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const currentModelConfig = getCurrentModelConfig();
-
-  const handlePhotoQualityChange = useCallback((quality: PhotoQualityTier) => {
-    setPhotoQuality(quality);
-  }, [setPhotoQuality]);
-
-  const handleVideoQualityChange = useCallback((quality: VideoQualityPreset) => {
-    setVideoQuality(quality);
-  }, [setVideoQuality]);
-
-  const handleModelChange = useCallback((modelId: ImageModelId) => {
-    setModel(modelId);
-  }, [setModel]);
-
-  const handleStepsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setSteps(Number.parseInt(event.target.value, 10));
-  }, [setSteps]);
-
-  const handleGuidanceChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setGuidance(Number.parseFloat(event.target.value));
-  }, [setGuidance]);
-
-  const handleVideoNegativePromptChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setVideoNegativePrompt(event.target.value);
-  }, [setVideoNegativePrompt]);
-
-  const handleOutputFormatChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    setOutputFormat(event.target.value as OutputFormat);
-  }, [setOutputFormat]);
-
-  const handleResetVideoNegativePrompt = useCallback(() => {
-    setVideoNegativePrompt(defaultVideoNegativePrompt);
-  }, [setVideoNegativePrompt, defaultVideoNegativePrompt]);
-
   const handleOverlayClick = useCallback((event: React.MouseEvent) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
+    if (event.target === event.currentTarget) onClose();
   }, [onClose]);
-
-  const handleReset = useCallback(() => {
-    resetToDefaults();
-  }, [resetToDefaults]);
 
   if (!isOpen) return;
 
@@ -118,7 +83,7 @@ export default function AdvancedSettingsPopup({
                 <button
                   key={key}
                   className={`quality-tier-option ${settings.photoQuality === key ? 'active' : ''}`}
-                  onClick={() => handlePhotoQualityChange(key)}
+                  onClick={() => setPhotoQuality(key)}
                 >
                   <span className="quality-tier-label">{PHOTO_QUALITY_PRESETS[key].label}</span>
                 </button>
@@ -129,27 +94,54 @@ export default function AdvancedSettingsPopup({
             </p>
           </div>
 
-          {/* Video Quality Tier */}
+          {/* Video Model */}
+          <div className="settings-section">
+            <label className="settings-label">Video Model</label>
+            <p className="settings-description">
+              Generation model for transition videos
+            </p>
+            <div className="quality-tier-options">
+              {(Object.keys(VIDEO_MODEL_FAMILIES) as VideoModelFamily[]).map((key) => (
+                <button
+                  key={key}
+                  className={`quality-tier-option ${settings.videoModel === key ? 'active' : ''}`}
+                  onClick={() => setVideoModel(key)}
+                >
+                  <span className="quality-tier-label">{VIDEO_MODEL_FAMILIES[key].label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="quality-tier-description">
+              {VIDEO_MODEL_FAMILIES[settings.videoModel].description}
+            </p>
+          </div>
+
+          {/* Video Quality Tier — hidden for LTX-2.3 (single default quality) */}
+          {settings.videoModel !== 'ltx2.3' && (
           <div className="settings-section">
             <label className="settings-label">Video Quality</label>
             <p className="settings-description">
               Quality level for transition video generation
             </p>
             <div className="quality-tier-options">
-              {(Object.keys(VIDEO_QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => (
-                <button
-                  key={key}
-                  className={`quality-tier-option ${settings.videoQuality === key ? 'active' : ''}`}
-                  onClick={() => handleVideoQualityChange(key)}
-                >
-                  <span className="quality-tier-label">{VIDEO_QUALITY_PRESETS[key].label}</span>
-                </button>
-              ))}
+              {(['fast', 'balanced', 'quality', 'pro'] as VideoQualityPreset[]).map((key) => {
+                const config = getVideoQualityConfig(key, settings.videoModel);
+                return (
+                  <button
+                    key={key}
+                    className={`quality-tier-option ${settings.videoQuality === key ? 'active' : ''}`}
+                    onClick={() => setVideoQuality(key)}
+                  >
+                    <span className="quality-tier-label">{config.label}</span>
+                  </button>
+                );
+              })}
             </div>
             <p className="quality-tier-description">
-              {VIDEO_QUALITY_PRESETS[settings.videoQuality].description}
+              {getVideoQualityConfig(settings.videoQuality, settings.videoModel).description}
             </p>
           </div>
+          )}
 
           {/* Advanced Toggle */}
           <button
@@ -158,12 +150,8 @@ export default function AdvancedSettingsPopup({
           >
             <span>Fine-tune settings</span>
             <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+              width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2"
               style={{ transform: showAdvanced ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
             >
               <polyline points="6 9 12 15 18 9" />
@@ -171,131 +159,22 @@ export default function AdvancedSettingsPopup({
           </button>
 
           {showAdvanced && (
-            <>
-              {/* Model Selection */}
-              <div className="settings-section">
-                <label className="settings-label">Image Model</label>
-                <p className="settings-description">
-                  Choose between fast generation or higher quality output
-                </p>
-                <div className="model-options">
-                  {Object.values(modelConfigs).map((model) => (
-                    <button
-                      key={model.id}
-                      className={`model-option ${settings.imageModel === model.id ? 'active' : ''}`}
-                      onClick={() => handleModelChange(model.id)}
-                    >
-                      <div className="model-option-content">
-                        <span className="model-name">{model.label}</span>
-                        <span className="model-description">{model.description}</span>
-                      </div>
-                      {settings.imageModel === model.id && (
-                        <svg className="model-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Inference Steps */}
-              <div className="settings-section">
-                <label className="settings-label">
-                  Inference Steps
-                  <span className="settings-value">{settings.imageSteps}</span>
-                </label>
-                <p className="settings-description">
-                  More steps = higher quality but slower generation
-                  ({currentModelConfig.steps.min}-{currentModelConfig.steps.max} for this model)
-                </p>
-                <div className="slider-container">
-                  <input
-                    type="range"
-                    min={currentModelConfig.steps.min}
-                    max={currentModelConfig.steps.max}
-                    step={1}
-                    value={settings.imageSteps}
-                    onChange={handleStepsChange}
-                    className="settings-slider"
-                  />
-                  <div className="slider-labels">
-                    <span>{currentModelConfig.steps.min}</span>
-                    <span>{currentModelConfig.steps.max}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Guidance Scale */}
-              <div className="settings-section">
-                <label className="settings-label">
-                  Guidance Scale
-                  <span className="settings-value">{settings.imageGuidance.toFixed(1)}</span>
-                </label>
-                <p className="settings-description">
-                  How closely to follow the prompt (higher = more literal)
-                  ({currentModelConfig.guidance.min}-{currentModelConfig.guidance.max} for this model)
-                </p>
-                <div className="slider-container">
-                  <input
-                    type="range"
-                    min={currentModelConfig.guidance.min}
-                    max={currentModelConfig.guidance.max}
-                    step={0.1}
-                    value={settings.imageGuidance}
-                    onChange={handleGuidanceChange}
-                    className="settings-slider"
-                  />
-                  <div className="slider-labels">
-                    <span>{currentModelConfig.guidance.min}</span>
-                    <span>{currentModelConfig.guidance.max}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Output Format */}
-              <div className="settings-section">
-                <label className="settings-label">Output Format</label>
-                <p className="settings-description">
-                  PNG is lossless (larger files), JPG is compressed (smaller files).
-                  Auto-switches to PNG for High Quality and Pro tiers.
-                </p>
-                <select
-                  className="settings-select"
-                  value={settings.outputFormat}
-                  onChange={handleOutputFormatChange}
-                >
-                  <option value="jpg">JPG (Smaller files, web-optimized)</option>
-                  <option value="png">PNG (Lossless, larger files)</option>
-                </select>
-              </div>
-
-              {/* Video Negative Prompt */}
-              <div className="settings-section">
-                <div className="settings-label-row">
-                  <label className="settings-label">Video Negative Prompt</label>
-                  {settings.videoNegativePrompt !== defaultVideoNegativePrompt && (
-                    <button
-                      className="reset-field-button"
-                      onClick={handleResetVideoNegativePrompt}
-                      title="Reset to default"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-                <p className="settings-description">
-                  Things to avoid in video transitions. Default is in Chinese (recommended for WAN model).
-                </p>
-                <textarea
-                  className="settings-textarea"
-                  value={settings.videoNegativePrompt}
-                  onChange={handleVideoNegativePromptChange}
-                  rows={3}
-                  placeholder="Enter negative prompt for video generation..."
-                />
-              </div>
-            </>
+            <AdvancedSettingsFineTune
+              imageModel={settings.imageModel}
+              imageSteps={settings.imageSteps}
+              imageGuidance={settings.imageGuidance}
+              outputFormat={settings.outputFormat}
+              videoNegativePrompt={settings.videoNegativePrompt}
+              videoModel={settings.videoModel}
+              defaultVideoNegativePrompt={defaultVideoNegativePrompt}
+              currentModelConfig={getCurrentModelConfig()}
+              modelConfigs={modelConfigs}
+              onModelChange={setModel}
+              onStepsChange={setSteps}
+              onGuidanceChange={setGuidance}
+              onOutputFormatChange={setOutputFormat}
+              onVideoNegativePromptChange={setVideoNegativePrompt}
+            />
           )}
 
           {/* Info Box */}
@@ -311,7 +190,7 @@ export default function AdvancedSettingsPopup({
         </div>
 
         <div className="advanced-settings-footer">
-          <button className="reset-button" onClick={handleReset}>
+          <button className="reset-button" onClick={resetToDefaults}>
             Reset to Defaults
           </button>
           <button className="done-button" onClick={onClose}>

@@ -206,6 +206,19 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
   const mismatchCount = mismatchedSegmentIds.size;
   const [showMismatchModal, setShowMismatchModal] = useState(false);
 
+  // Detect segments generated with a different video model than currently selected.
+  // Segments without a stored videoModel are assumed to be WAN 2.2 (the original default).
+  const currentVideoModel = getAdvancedSettings().videoModel;
+  const videoModelMismatchIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const seg of segments) {
+      if (seg.status === 'ready' && (seg.videoModel || 'wan2.2') !== currentVideoModel) {
+        ids.add(seg.id);
+      }
+    }
+    return ids;
+  }, [segments, currentVideoModel]);
+
   // Workflow step - compute from actual project state
   const { currentStep: computedStep, completedSteps } = computeWorkflowStep(currentProject);
 
@@ -454,6 +467,7 @@ const TransitionReviewPanel: React.FC<TransitionReviewPanelProps> = ({
               onDelete={() => handleDeleteSegment(segment.id)}
               isDownloading={downloadingId === segment.id}
               durationMismatch={mismatchedSegmentIds.has(segment.id)}
+              videoModelMismatch={videoModelMismatchIds.has(segment.id)}
             />
           );
         })}
