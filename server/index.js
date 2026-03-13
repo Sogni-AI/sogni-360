@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import sogniRoutes from './routes/sogni.js';
 import audioRoutes from './routes/audio.js';
+import transcodeRoutes from './routes/transcode.js';
 import process from 'process';
 
 // Load environment variables
@@ -49,7 +50,7 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Client-App-ID', 'Accept'],
-  exposedHeaders: ['Set-Cookie']
+  exposedHeaders: ['Set-Cookie', 'X-Image-Width', 'X-Image-Height']
 }));
 
 // Cookie Parser
@@ -68,6 +69,7 @@ app.use((req, res, next) => {
 // API routes
 app.use('/sogni', sogniRoutes);
 app.use('/api/sogni', sogniRoutes);
+app.use('/api/sogni/transcode', transcodeRoutes);
 app.use('/api/audio', audioRoutes);
 
 // Health check endpoints

@@ -5,7 +5,7 @@ import ImageAdjuster, {
   AdjustmentParams,
   applyAdjustmentToImage
 } from '../shared/ImageAdjuster';
-import { normalizeImageToTargetDimensions } from '../../utils/imageUtils';
+import { normalizeImageToTargetDimensions, ensureWebSafeImage } from '../../utils/imageUtils';
 
 interface UploadAngleModeProps {
   insertAfterIndex: number;
@@ -18,24 +18,6 @@ interface PendingImage {
   file: File;
   url: string;
   dimensions: { width: number; height: number };
-}
-
-async function getImageDimensions(
-  file: File
-): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image'));
-    };
-    img.src = url;
-  });
 }
 
 const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
@@ -65,14 +47,14 @@ const UploadAngleMode: React.FC<UploadAngleModeProps> = ({
     }
 
     try {
-      // Get dimensions for all images
+      // Transcode non-web-safe formats (HEIC/HEIF/WebP/AVIF) and get dimensions
       const imagesWithDimensions: PendingImage[] = [];
 
       for (const file of imageFiles) {
-        const dimensions = await getImageDimensions(file);
+        const { dataUrl, dimensions } = await ensureWebSafeImage(file);
         imagesWithDimensions.push({
           file,
-          url: URL.createObjectURL(file),
+          url: dataUrl,
           dimensions
         });
       }

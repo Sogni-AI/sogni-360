@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import { getProjectCount } from '../utils/localProjectsDB';
-import { resizeImageIfNeeded, normalizeImageToTargetDimensions, getImageDimensions, readFileAsDataUrl } from '../utils/imageUtils';
+import { resizeImageIfNeeded, normalizeImageToTargetDimensions, getImageDimensions, ensureWebSafeImage } from '../utils/imageUtils';
 import { AZIMUTHS } from '../constants/cameraAngleSettings';
 import type { Waypoint, AzimuthKey } from '../types';
 import DemoVideoBackground from './DemoVideoBackground';
@@ -34,8 +34,7 @@ async function buildWaypointsFromFiles(
   }];
   for (let i = 0; i < additionalFiles.length; i++) {
     try {
-      const dataUrl = await readFileAsDataUrl(additionalFiles[i]);
-      const dims = await getImageDimensions(dataUrl);
+      const { dataUrl, dimensions: dims } = await ensureWebSafeImage(additionalFiles[i]);
       const { dataUrl: resizedUrl } = await resizeImageIfNeeded(dataUrl, dims);
       let finalUrl = resizedUrl;
       const resizedDims = await getImageDimensions(resizedUrl);
@@ -91,10 +90,9 @@ const SourceUploader: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Process first image — store as pending for aspect ratio adjustment
-      const firstDataUrl = await readFileAsDataUrl(imageFiles[0]);
-      const firstDims = await getImageDimensions(firstDataUrl);
-      const { dataUrl: sourceDataUrl, dimensions: sourceDims } = await resizeImageIfNeeded(firstDataUrl, firstDims);
+      // Process first image — transcode if needed, then resize for aspect ratio adjustment
+      const { dataUrl: rawDataUrl, dimensions: rawDims } = await ensureWebSafeImage(imageFiles[0]);
+      const { dataUrl: sourceDataUrl, dimensions: sourceDims } = await resizeImageIfNeeded(rawDataUrl, rawDims);
 
       setPendingImage({ url: sourceDataUrl, dimensions: sourceDims });
       setPendingAdditionalFiles(imageFiles.length > 1 ? imageFiles.slice(1) : []);

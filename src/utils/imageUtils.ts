@@ -1,3 +1,5 @@
+import { API_URL } from '../config/urls';
+
 /**
  * Maximum dimension for the shortest side of uploaded images.
  * Images whose shortest side exceeds this will be scaled down while
@@ -6,6 +8,68 @@
 const MAX_SHORT_SIDE = 1080;
 /** Hard ceiling — SDK rejects dimensions above 2048 */
 const MAX_LONG_SIDE = 2048;
+
+/**
+ * Image formats requiring server-side transcoding to JPEG.
+ * HEIC/HEIF: most non-Apple browsers cannot decode these at all.
+ * WebP/AVIF: browsers can display them, but the Sogni SDK requires JPEG/PNG input,
+ * and canvas conversion only works if the browser can decode the source format.
+ */
+const TRANSCODE_TYPES = new Set(['image/webp', 'image/heif', 'image/heic', 'image/avif']);
+const TRANSCODE_EXTENSIONS = new Set(['webp', 'heif', 'heic', 'avif']);
+
+export function needsTranscoding(file: File): boolean {
+  if (TRANSCODE_TYPES.has(file.type)) return true;
+  const ext = file.name?.toLowerCase().split('.').pop();
+  return TRANSCODE_EXTENSIONS.has(ext || '');
+}
+
+/**
+ * Ensure an image file is in a web-safe format (JPEG or PNG).
+ * HEIC/HEIF/WebP/AVIF files are transcoded to JPEG via the server.
+ * JPEG/PNG files are read directly in the browser.
+ * Returns a data URL and dimensions ready for canvas processing.
+ */
+export async function ensureWebSafeImage(
+  file: File
+): Promise<{ dataUrl: string; dimensions: { width: number; height: number } }> {
+  if (!needsTranscoding(file)) {
+    const dataUrl = await readFileAsDataUrl(file);
+    const dimensions = await getImageDimensions(dataUrl);
+    return { dataUrl, dimensions };
+  }
+
+  console.log('[Image] Transcoding', file.name, file.type, 'to JPEG via server');
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(`${API_URL}/api/sogni/transcode`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: 'Transcode failed' }));
+    throw new Error(err.error || `Failed to convert ${file.name}`);
+  }
+
+  const width = parseInt(response.headers.get('X-Image-Width') || '0', 10);
+  const height = parseInt(response.headers.get('X-Image-Height') || '0', 10);
+  if (!width || !height) throw new Error('Server returned invalid image dimensions');
+
+  const blob = await response.blob();
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  console.log('[Image] Transcoded:', `${width}x${height}`, `${(blob.size / 1024).toFixed(0)}KB`);
+  return { dataUrl, dimensions: { width, height } };
+}
 
 /**
  * Resizes an image if its shortest side exceeds MAX_SHORT_SIDE or its

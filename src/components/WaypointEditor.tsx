@@ -23,6 +23,7 @@ import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 import { trackAngleGeneration, trackPresetSelection } from '../utils/analytics';
 import ImageAdjuster from './shared/ImageAdjuster';
 import TestPatternPlaceholder from './shared/TestPatternPlaceholder';
+import { ensureWebSafeImage } from '../utils/imageUtils';
 import { getOriginalLabel } from '../utils/waypointLabels';
 import InlineEditableLabel from './shared/InlineEditableLabel';
 
@@ -284,7 +285,7 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
 
   // Handle file selection — uses ref to avoid stale closure when file picker
   // resolves before React re-renders with the updated value
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const waypointId = uploadingForWaypointIdRef.current;
     if (!file || !waypointId) {
@@ -302,19 +303,17 @@ const WaypointEditor: React.FC<WaypointEditorProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setPendingUploadImageUrl(dataUrl);
-    };
-    reader.onerror = () => {
-      showToast({ message: 'Failed to read image file', type: 'error' });
-      uploadingForWaypointIdRef.current = null;
-    };
-    reader.readAsDataURL(file);
-
     // Reset input so same file can be selected again
     e.target.value = '';
+
+    // Transcode HEIC/HEIF/WebP/AVIF to JPEG via server, then show adjuster
+    try {
+      const { dataUrl } = await ensureWebSafeImage(file);
+      setPendingUploadImageUrl(dataUrl);
+    } catch {
+      showToast({ message: 'Failed to process image file', type: 'error' });
+      uploadingForWaypointIdRef.current = null;
+    }
   }, [showToast]);
 
   // Handle image adjuster confirm
