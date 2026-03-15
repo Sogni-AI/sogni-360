@@ -89,11 +89,7 @@ export function useTransitionRegenerate(params: UseTransitionRegenerateParams) {
     setPrompt(defaultPrompt);
   }, [defaultPrompt]);
 
-  // Filter out the AI preset from the dropdown (it has its own button)
-  const visiblePresets = useMemo(() =>
-    TRANSITION_PROMPT_PRESETS.filter(p => p.id !== 'ai-scene-analysis'),
-    []
-  );
+  const visiblePresets = TRANSITION_PROMPT_PRESETS;
 
   const handleExpandWithAI = useCallback(async () => {
     if (!params.fromImageUrl || !params.toImageUrl) return;
@@ -108,6 +104,7 @@ export function useTransitionRegenerate(params: UseTransitionRegenerateParams) {
         fromLabel: params.fromLabel,
         toLabel: params.toLabel,
         currentPrompt: prompt,
+        videoModel: modelFamily,
         signal: controller.signal,
       });
       if (!controller.signal.aborted) {
@@ -118,11 +115,10 @@ export function useTransitionRegenerate(params: UseTransitionRegenerateParams) {
       const message = error instanceof Error ? error.message : 'Prompt expansion failed';
       showToast({ message: `AI expansion failed: ${message}`, type: 'error' });
     } finally {
-      if (!controller.signal.aborted) {
-        setIsAnalyzingAI(false);
-      }
+      // Always reset loading state — even on abort, so UI doesn't get stuck
+      setIsAnalyzingAI(false);
     }
-  }, [params.fromImageUrl, params.toImageUrl, params.fromLabel, params.toLabel, prompt, showToast]);
+  }, [params.fromImageUrl, params.toImageUrl, params.fromLabel, params.toLabel, prompt, modelFamily, showToast]);
 
   const showAIButton = isFrontendMode();
 

@@ -4,6 +4,7 @@ import { FormContent, FormFooter, FormPanel } from '../common';
 import useForm from '../../../../hooks/useForm';
 import { useSogniAuth } from '../../../../services/sogniAuth';
 import { trackSignUp } from '../../../../utils/analytics';
+import { clearReferralSource } from '../../../../utils/referralTracking';
 import Turnstile, { useTurnstile } from 'react-turnstile';
 import { getTurnstileKey } from '../../../../config/env';
 import '../styles.css';
@@ -63,6 +64,8 @@ function Step3({ step1, step2, onReturn, onContinue }: Props) {
     trackSignUp('email');
 
     turnstile.reset();
+
+    clearReferralSource();
 
     // Continue to welcome screen
     onContinue();

@@ -34,12 +34,6 @@ export const TRANSITION_PROMPT_PRESETS: TransitionPromptPreset[] = [
     description: 'Cinematic pull-back dolly-zoom with depth fade',
     prompt: `Cinematic parallax dolly-zoom fade transition between the first frame and the last frame. The shot begins close on the main subject, then the camera smoothly pulls backward with a gentle zoom, revealing strong depth layers: foreground elements drift noticeably, midground moves moderately, and the distant background remains steady, creating a vivid 3D parallax effect. Motion is slow, continuous, and stabilized with soft easing at the start and end. The subject stays visually anchored while the environment expands outward with consistent lighting, color harmony, and preserved fine detail. Natural cinematic lens perspective, immersive depth, smooth temporal coherence, high quality frame-to-frame continuity.`
   },
-  {
-    id: 'ai-scene-analysis',
-    label: 'AI Scene Analysis',
-    description: 'AI analyzes each image pair and writes a unique prompt per segment',
-    prompt: '' // Empty sentinel — prompts are generated dynamically per-segment by LLM
-  }
 ];
 
 export const DEFAULT_TRANSITION_PRESET_ID = 'camera-orbit';
@@ -53,6 +47,6 @@ export function findPresetByPrompt(prompt: string): TransitionPromptPreset | und
   // Normalize whitespace for comparison
   const normalizedPrompt = prompt.trim().replace(/\s+/g, ' ');
   return TRANSITION_PROMPT_PRESETS.find(p =>
-    p.id !== 'ai-scene-analysis' && p.prompt.trim().replace(/\s+/g, ' ') === normalizedPrompt
+    p.prompt.trim().replace(/\s+/g, ' ') === normalizedPrompt
   );
 }

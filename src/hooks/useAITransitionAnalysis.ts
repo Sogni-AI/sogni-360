@@ -30,6 +30,7 @@ export function useAITransitionAnalysis() {
     segments: Segment[],
     waypointImages: Map<string, string>,
     onSegmentPromptReady: (segmentId: string, prompt: string) => void,
+    videoModel?: string,
   ): Promise<boolean> => {
     // Build analysis requests from segments
     const requests = segments
@@ -41,6 +42,7 @@ export function useAITransitionAnalysis() {
           segmentId: seg.id,
           fromImageUrl,
           toImageUrl,
+          videoModel,
         };
       })
       .filter((r): r is NonNullable<typeof r> => r !== null);

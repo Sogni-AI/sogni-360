@@ -16,14 +16,10 @@ import {
   VideoResolution,
 } from '../constants/videoSettings';
 import { useAdvancedSettings } from './useAdvancedSettings';
-import {
-  TRANSITION_PROMPT_PRESETS,
-  getDefaultTransitionPrompt,
-  findPresetByPrompt,
-} from '../constants/transitionPromptPresets';
 import { warmUpAudio } from '../utils/sonicLogos';
 import { useVideoCostEstimation } from './useVideoCostEstimation';
 import { useWallet } from './useWallet';
+import { useTransitionPrompts } from './useTransitionPrompts';
 import type { WorkflowStep } from '../components/shared/WorkflowWizard';
 
 export interface TransitionGenerationSettings {
@@ -33,6 +29,7 @@ export interface TransitionGenerationSettings {
   transitionPrompt: string;
   musicSelection?: MusicSelection;
   usePerSegmentPrompts?: boolean;
+  perSegmentPrompts?: Record<string, string>;
 }
 
 interface UseTransitionConfigParams {
@@ -55,85 +52,18 @@ export function useTransitionConfig({
   const videoModel = advancedSettings.videoModel;
   const isLtx = videoModel === 'ltx2.3';
 
-  // ── Transition prompt ──────────────────────────────────────────────────
-  const defaultPrompt = getDefaultTransitionPrompt();
-  const [transitionPrompt, setTransitionPrompt] = useState(
-    currentProject?.settings.transitionPrompt || defaultPrompt
-  );
-  const [aiPresetSelected, setAiPresetSelected] = useState(false);
-  const selectedPresetId = useMemo(() => {
-    if (aiPresetSelected) return 'ai-scene-analysis';
-    const preset = findPresetByPrompt(transitionPrompt);
-    return preset?.id || 'custom';
-  }, [transitionPrompt, aiPresetSelected]);
-  const handlePresetChange = useCallback((presetId: string) => {
-    if (presetId === 'custom') return;
-    if (presetId === 'ai-scene-analysis') {
-      // Don't set empty prompt — AI generates per-segment prompts at generation time
-      setAiPresetSelected(true);
-      return;
-    }
-    setAiPresetSelected(false);
-    const preset = TRANSITION_PROMPT_PRESETS.find(p => p.id === presetId);
-    if (preset) setTransitionPrompt(preset.prompt);
-  }, []);
-
-  // ── Resolution ─────────────────────────────────────────────────────────
-  const validResolutions = useMemo(() => getValidResolutions(videoModel), [videoModel]);
-  const [resolution, setResolution] = useState<VideoResolution>(() => {
-    const saved = (currentProject?.settings.videoResolution as VideoResolution) || DEFAULT_VIDEO_SETTINGS.resolution;
-    return validResolutions.includes(saved) ? saved : validResolutions[validResolutions.length - 1];
-  });
-
-  // ── Duration ───────────────────────────────────────────────────────────
-  const [duration, setDuration] = useState(
-    currentProject?.settings.transitionDuration || 1.5
-  );
-  const durationOptions = useMemo(() => {
-    const modelConfig = getVideoModelConfig(videoModel);
-    const options = [];
-    for (let d = modelConfig.minDuration; d <= modelConfig.maxDuration; d += modelConfig.durationStep) {
-      options.push(d);
-    }
-    return options;
-  }, [videoModel]);
-
-  // ── Quality ────────────────────────────────────────────────────────────
-  const savedQuality: VideoQualityPreset = isLtx
-    ? 'balanced'
-    : ((currentProject?.settings.transitionQuality as VideoQualityPreset) || advancedSettings.videoQuality);
-  const [wanQuality, setWanQuality] = useState<VideoQualityPreset>(savedQuality);
-  const effectiveQuality = isLtx ? 'balanced' : wanQuality;
-
-  // ── Music ──────────────────────────────────────────────────────────────
-  const [showMusicSelector, setShowMusicSelector] = useState(false);
-  const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(
-    currentProject?.settings.musicSelection || null
-  );
-
-  // ── Settings popup ─────────────────────────────────────────────────────
-  const [showSettings, setShowSettings] = useState(false);
-
-  // ── Settings change detection ───────────────────────────────────────────
-  const segments = currentProject?.segments || [];
-  const hasGeneratedVideos = segments.some(s => s.status === 'ready' || s.status === 'generating');
-  const initialResolution = useRef(resolution);
-  const initialDuration = useRef(duration);
-  const settingsChanged = resolution !== initialResolution.current
-    || duration !== initialDuration.current;
-
-  // ── Waypoints & transition count ───────────────────────────────────────
+  // ── Waypoints & transition count (needed before reconciliation) ──────
   const waypoints = currentProject?.waypoints || [];
   const readyWaypoints = waypoints.filter(wp => wp.status === 'ready' && wp.imageUrl);
   const transitionCount = readyWaypoints.length >= 2 ? readyWaypoints.length : 0;
-  const totalSeconds = transitionCount * duration;
 
-  // ── Segment reconciliation ─────────────────────────────────────────────
-  // Compare each segment's stored videoModel against the current setting.
-  // Segments without a stored videoModel are assumed to be WAN 2.2 (the original default).
+  // ── Settings change detection ───────────────────────────────────────
+  const existingSegments = currentProject?.segments || [];
+  const hasGeneratedVideos = existingSegments.some(s => s.status === 'ready' || s.status === 'generating');
+
+  // ── Segment reconciliation (before prompts hook for correct IDs) ────
   const { reconciledSegments, pendingCount, allReady, hasModelMismatch } = useMemo(() => {
     if (transitionCount === 0) return { reconciledSegments: [] as Segment[], pendingCount: 0, allReady: false, hasModelMismatch: false };
-    const existingSegments = currentProject?.segments || [];
     const existingByPair = new Map<string, Segment>();
     for (const seg of existingSegments) {
       existingByPair.set(`${seg.fromWaypointId}->${seg.toWaypointId}`, seg);
@@ -163,8 +93,61 @@ export function useTransitionConfig({
       }
     }
     return { reconciledSegments: reconciled, pendingCount: pending, allReady: pending === 0, hasModelMismatch: modelMismatch };
-  }, [transitionCount, readyWaypoints, currentProject?.segments, videoModel]);
+  }, [transitionCount, readyWaypoints, existingSegments, videoModel]);
   const modelChangedWarning = hasModelMismatch && hasGeneratedVideos;
+
+  // ── Transition prompts (uses reconciledSegments for correct IDs) ────
+  const promptsHook = useTransitionPrompts({
+    savedPrompt: currentProject?.settings.transitionPrompt,
+    segments: reconciledSegments,
+    waypoints,
+    videoModel,
+  });
+  const { transitionPrompt, promptMode, perSegmentPrompts } = promptsHook;
+
+  // ── Resolution ─────────────────────────────────────────────────────────
+  const validResolutions = useMemo(() => getValidResolutions(videoModel), [videoModel]);
+  const [resolution, setResolution] = useState<VideoResolution>(() => {
+    const saved = (currentProject?.settings.videoResolution as VideoResolution) || DEFAULT_VIDEO_SETTINGS.resolution;
+    return validResolutions.includes(saved) ? saved : validResolutions[validResolutions.length - 1];
+  });
+
+  // ── Duration ───────────────────────────────────────────────────────────
+  const [duration, setDuration] = useState(
+    currentProject?.settings.transitionDuration || 1.5
+  );
+  const durationOptions = useMemo(() => {
+    const modelConfig = getVideoModelConfig(videoModel);
+    const options = [];
+    for (let d = modelConfig.minDuration; d <= modelConfig.maxDuration; d += modelConfig.durationStep) {
+      options.push(d);
+    }
+    return options;
+  }, [videoModel]);
+
+  const totalSeconds = transitionCount * duration;
+
+  // ── Quality ────────────────────────────────────────────────────────────
+  const savedQuality: VideoQualityPreset = isLtx
+    ? 'balanced'
+    : ((currentProject?.settings.transitionQuality as VideoQualityPreset) || advancedSettings.videoQuality);
+  const [wanQuality, setWanQuality] = useState<VideoQualityPreset>(savedQuality);
+  const effectiveQuality = isLtx ? 'balanced' : wanQuality;
+
+  // ── Music ──────────────────────────────────────────────────────────────
+  const [showMusicSelector, setShowMusicSelector] = useState(false);
+  const [musicSelection, setMusicSelection] = useState<MusicSelection | null>(
+    currentProject?.settings.musicSelection || null
+  );
+
+  // ── Settings popup ─────────────────────────────────────────────────────
+  const [showSettings, setShowSettings] = useState(false);
+
+  // ── Settings change tracking ───────────────────────────────────────────
+  const initialResolution = useRef(resolution);
+  const initialDuration = useRef(duration);
+  const settingsChanged = resolution !== initialResolution.current
+    || duration !== initialDuration.current;
 
   // ── Cost estimation ────────────────────────────────────────────────────
   const costEstimation = useVideoCostEstimation({
@@ -186,10 +169,12 @@ export function useTransitionConfig({
     initialResolution.current = resolution;
     initialDuration.current = duration;
 
+    const usePerSeg = promptMode === 'each';
     const settings: TransitionGenerationSettings = {
       resolution, quality: effectiveQuality, duration, transitionPrompt,
       musicSelection: musicSelection || undefined,
-      usePerSegmentPrompts: aiPresetSelected,
+      usePerSegmentPrompts: usePerSeg,
+      perSegmentPrompts: usePerSeg ? perSegmentPrompts : undefined,
     };
     dispatch({
       type: 'UPDATE_SETTINGS',
@@ -213,7 +198,7 @@ export function useTransitionConfig({
     dispatch({ type: 'SET_SEGMENTS', payload: finalSegments });
     onStartGeneration(finalSegments, settings);
   }, [reconciledSegments, transitionPrompt, resolution, duration, effectiveQuality,
-      musicSelection, dispatch, onStartGeneration, settingsChanged, hasGeneratedVideos, videoModel, aiPresetSelected]);
+      musicSelection, dispatch, onStartGeneration, settingsChanged, hasGeneratedVideos, promptMode, perSegmentPrompts]);
 
   const withAuthGate = useCallback((skipWhenAllReady: boolean, action: () => void) => {
     if (readyWaypoints.length < 2) {
@@ -249,7 +234,7 @@ export function useTransitionConfig({
 
   return {
     videoModel, isLtx,
-    transitionPrompt, setTransitionPrompt, selectedPresetId, handlePresetChange, aiPresetSelected,
+    prompts: promptsHook,
     validResolutions, resolution, setResolution,
     duration, setDuration, durationOptions,
     wanQuality, setWanQuality, effectiveQuality,

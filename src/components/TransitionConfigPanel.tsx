@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { Segment } from '../types';
 import {
   VIDEO_QUALITY_PRESETS,
@@ -6,13 +6,12 @@ import {
   VideoResolution,
   VideoQualityPreset,
 } from '../constants/videoSettings';
-import { TRANSITION_PROMPT_PRESETS } from '../constants/transitionPromptPresets';
-import { isFrontendMode } from '../services/frontend';
 import type { WorkflowStep } from './shared/WorkflowWizard';
 import MusicSelector from './shared/MusicSelector';
 import MusicConfigSection from './shared/MusicConfigSection';
 import AdvancedSettingsPopup from './shared/AdvancedSettingsPopup';
 import LiquidGlassPanel from './shared/LiquidGlassPanel';
+import TransitionPromptSection from './TransitionPromptSection';
 import {
   useTransitionConfig,
   TransitionGenerationSettings,
@@ -35,12 +34,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   onRequireAuth
 }) => {
   const config = useTransitionConfig({ onStartGeneration, onConfirmDestructiveAction, onRequireAuth });
-
-  // Filter AI preset to only show when user is logged in via frontend SDK
-  const visiblePresets = useMemo(() =>
-    TRANSITION_PROMPT_PRESETS.filter(p => p.id !== 'ai-scene-analysis' || isFrontendMode()),
-    []
-  );
+  const { prompts } = config;
 
   return (
     <LiquidGlassPanel
@@ -95,40 +89,25 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
 
       {/* Configuration form */}
       <div className="config-body">
-        {/* Transition Prompt */}
-        <div className="config-section">
-          <label className="config-label">Video Generation Prompt</label>
-          <p className="config-hint">
-            Select a preset or customize how the camera should move between angles.
-          </p>
-          <select
-            className="config-select config-preset-select"
-            value={config.selectedPresetId}
-            onChange={(e) => config.handlePresetChange(e.target.value)}
-          >
-            {visiblePresets.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.label} — {preset.description}
-              </option>
-            ))}
-            {config.selectedPresetId === 'custom' && (
-              <option value="custom">Custom</option>
-            )}
-          </select>
-          {config.aiPresetSelected ? (
-            <div className="config-textarea config-textarea-readonly">
-              AI will analyze each image pair and generate a unique prompt per segment.
-            </div>
-          ) : (
-            <textarea
-              className="config-textarea"
-              value={config.transitionPrompt}
-              onChange={(e) => config.setTransitionPrompt(e.target.value)}
-              placeholder="Describe the transition style..."
-              rows={3}
-            />
-          )}
-        </div>
+        {/* Transition Prompt Section */}
+        <TransitionPromptSection
+          promptMode={prompts.promptMode}
+          onPromptModeChange={prompts.handlePromptModeChange}
+          transitionPrompt={prompts.transitionPrompt}
+          onTransitionPromptChange={prompts.setTransitionPrompt}
+          selectedPresetId={prompts.selectedPresetId}
+          onPresetChange={prompts.handlePresetChange}
+          segments={config.reconciledSegments}
+          perSegmentPrompts={prompts.perSegmentPrompts}
+          onSegmentPromptChange={prompts.setSegmentPrompt}
+          getWaypointLabel={prompts.getWaypointLabel}
+          getWaypointImage={prompts.getWaypointImage}
+          isExpandingAI={prompts.isExpandingAI}
+          expandingSegmentId={prompts.expandingSegmentId}
+          onExpandAllWithAI={prompts.handleExpandAllWithAI}
+          onExpandSegmentWithAI={prompts.handleExpandSegmentWithAI}
+          showAIButton={prompts.showAIButton}
+        />
 
         {/* Settings row */}
         <div className="config-settings-row">
@@ -205,7 +184,6 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
             <div className="config-cost-left">
               <span className="config-cost-videos">
                 {config.pendingCount} video{config.pendingCount !== 1 ? 's' : ''} × {config.duration}s each
-                {config.aiPresetSelected && <span className="config-cost-ai-note"> + AI analysis</span>}
               </span>
             </div>
             <div className="config-cost-right">

@@ -74,11 +74,14 @@ const Sogni360Container: React.FC = () => {
   }, []);
 
   // Auto-open signup modal when arriving with a referral code and not logged in
+  const referralAutoOpenDone = useRef(false);
   useEffect(() => {
     if (authLoading || isAuthenticated) return;
+    if (referralAutoOpenDone.current) return;
     const url = new URL(window.location.href);
     const hasReferralCode = url.searchParams.get('code') || url.searchParams.get('referral');
     if (hasReferralCode) {
+      referralAutoOpenDone.current = true;
       setTimeout(() => {
         authStatusRef.current?.openSignupModal();
       }, 500);
@@ -258,11 +261,20 @@ const Sogni360Container: React.FC = () => {
     const duration = passedSettings?.duration || currentProject.settings.transitionDuration || 1.5;
     const prompt = passedSettings?.transitionPrompt || currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.';
     const usePerSegmentPrompts = passedSettings?.usePerSegmentPrompts ?? false;
+    const prefilledPrompts = passedSettings?.perSegmentPrompts;
 
-    // ── AI Analysis Phase ──────────────────────────────────────────────────
-    // When AI Scene Analysis preset is selected, analyze each segment's image pair
-    // via the VLM and store per-segment prompts before starting video generation.
-    if (usePerSegmentPrompts) {
+    // ── Per-segment prompts ────────────────────────────────────────────────
+    // Apply pre-filled per-segment prompts from the config panel (user-typed or AI-expanded).
+    // Falls back to AI analysis only if usePerSegmentPrompts is set but no prompts were provided.
+    if (usePerSegmentPrompts && prefilledPrompts && Object.keys(prefilledPrompts).length > 0) {
+      console.log(`[Sogni360Container] Applying ${Object.keys(prefilledPrompts).length} pre-filled per-segment prompts`);
+      for (const seg of pendingSegments) {
+        if (prefilledPrompts[seg.id]) {
+          updateSegment(seg.id, { prompt: prefilledPrompts[seg.id] });
+        }
+      }
+    } else if (usePerSegmentPrompts) {
+      // Legacy fallback: run AI analysis at generation time
       console.log(`[Sogni360Container] Starting AI analysis for ${pendingSegments.length} segments`);
       const analysisSucceeded = await analyzeSegments(
         pendingSegments,
@@ -270,6 +282,7 @@ const Sogni360Container: React.FC = () => {
         (segmentId, aiPrompt) => {
           updateSegment(segmentId, { prompt: aiPrompt });
         },
+        getAdvancedSettings().videoModel,
       );
       if (!analysisSucceeded) {
         console.log('[Sogni360Container] AI analysis was cancelled');
