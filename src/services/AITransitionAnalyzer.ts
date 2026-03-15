@@ -16,8 +16,38 @@
  */
 
 import { getSogniClient } from './frontend';
-import { imageUrlToDataUri } from '../utils/imageConversion';
 import { getDefaultTransitionPrompt } from '../constants/transitionPromptPresets';
+
+const VLM_MAX_DIMENSION = 1024;
+const VLM_JPEG_QUALITY = 0.92;
+
+/**
+ * Resize an image for the VLM: scale longest side to 1024px max, compress as JPEG.
+ * Matches the pattern used in sogni-chat's resizeImageForVision.
+ */
+function resizeImageForVLM(imageUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      let { naturalWidth: w, naturalHeight: h } = img;
+      if (w > VLM_MAX_DIMENSION || h > VLM_MAX_DIMENSION) {
+        const scale = VLM_MAX_DIMENSION / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Cannot create canvas context')); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', VLM_JPEG_QUALITY));
+    };
+    img.onerror = () => reject(new Error('Failed to load image for VLM resize'));
+    img.src = imageUrl;
+  });
+}
 
 // ── WAN 2.2 system prompts ───────────────────────────────────────────────
 
@@ -145,13 +175,19 @@ function cleanResponse(content: string): string {
 
 /**
  * Analyze a single transition's from/to images and generate a prompt.
+ *
+ * Uses stream:true (matching every working Sogni app) because the SDK's
+ * non-streaming path has a fragile polling loop that silently hangs.
  */
 export async function analyzeTransition(
   options: AnalyzeTransitionOptions
 ): Promise<AnalyzeTransitionResult> {
   const { fromImageUrl, toImageUrl, fromLabel, toLabel, currentPrompt, videoModel, signal } = options;
 
-  console.log('[AITransitionAnalyzer] Starting analysis…');
+  const t0 = performance.now();
+  const elapsed = () => `${((performance.now() - t0) / 1000).toFixed(1)}s`;
+
+  console.log('[AITransitionAnalyzer] Starting analysis (stream mode v2)…');
 
   const client = getSogniClient();
   if (!client) {
@@ -166,19 +202,22 @@ export async function analyzeTransition(
       'AI prompt expansion is currently unavailable — no VLM workers are online. Try again later.'
     );
   }
-  console.log(`[AITransitionAnalyzer] Model ${LLM_MODEL} has ${modelInfo.workers} worker(s)`);
+  console.log(`[AITransitionAnalyzer] [${elapsed()}] Model ${LLM_MODEL} — ${modelInfo.workers} worker(s) online`);
 
   if (signal?.aborted) {
     throw new DOMException('Analysis cancelled', 'AbortError');
   }
 
-  // Convert images to data URIs for the VLM
-  console.log('[AITransitionAnalyzer] Converting images to data URIs…');
+  // Resize images for the VLM (1024px max, JPEG 0.85) — sogni-chat does the same.
+  // Raw camera angle images can be 2-3MB+ as base64, which chokes VLM workers.
+  console.log(`[AITransitionAnalyzer] [${elapsed()}] Resizing images for VLM (max ${VLM_MAX_DIMENSION}px)…`);
   const [fromDataUri, toDataUri] = await Promise.all([
-    imageUrlToDataUri(fromImageUrl),
-    imageUrlToDataUri(toImageUrl),
+    resizeImageForVLM(fromImageUrl),
+    resizeImageForVLM(toImageUrl),
   ]);
-  console.log('[AITransitionAnalyzer] Images converted, sending to VLM…');
+  const fromSize = Math.round(fromDataUri.length / 1024);
+  const toSize = Math.round(toDataUri.length / 1024);
+  console.log(`[AITransitionAnalyzer] [${elapsed()}] Images resized (from: ${fromSize}KB, to: ${toSize}KB), sending to VLM…`);
 
   if (signal?.aborted) {
     throw new DOMException('Analysis cancelled', 'AbortError');
@@ -192,9 +231,9 @@ export async function analyzeTransition(
     ? `Base prompt to expand:\n"${currentPrompt}"\n\nThe first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Expand the base prompt with specific details from these images.`
     : `The first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Write a transition prompt connecting these two views.`;
 
-  // Race the completion against a 60s timeout — more reasonable than the SDK's 300s default.
-  // If the VLM worker silently drops the job, the user won't wait 5 minutes.
-  const completionPromise = client.chat.completions.create({
+  // Use stream:true — the SDK's non-streaming path (stream:false) has a fragile
+  // polling loop that silently hangs. Every working Sogni app uses streaming.
+  const stream = await client.chat.completions.create({
     model: LLM_MODEL,
     messages: [
       { role: 'system', content: systemPrompt },
@@ -207,25 +246,41 @@ export async function analyzeTransition(
         ],
       },
     ],
-    stream: false,
+    stream: true,
     max_tokens: prompts.maxTokens,
     temperature: 0.7,
     think: false,
     tokenType: 'spark',
   });
+  console.log(`[AITransitionAnalyzer] [${elapsed()}] Stream created, awaiting first chunk…`);
 
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    const id = setTimeout(() => {
-      reject(new Error('AI prompt expansion timed out after 60 seconds — the VLM worker may be unavailable. Try again later.'));
-    }, COMPLETION_TIMEOUT_MS);
-    // If the signal is already aborted or becomes aborted, clear the timeout
-    signal?.addEventListener('abort', () => clearTimeout(id), { once: true });
-  });
+  // Consume the stream with a timeout — collect all chunks into accumulated content.
+  let content = '';
+  let chunkCount = 0;
+  let timedOut = false;
+  const timeout = setTimeout(() => { timedOut = true; }, COMPLETION_TIMEOUT_MS);
 
-  const result = await Promise.race([completionPromise, timeoutPromise]);
-  console.log('[AITransitionAnalyzer] VLM response received');
+  try {
+    for await (const chunk of stream) {
+      if (signal?.aborted) {
+        throw new DOMException('Analysis cancelled', 'AbortError');
+      }
+      if (timedOut) {
+        throw new Error('AI prompt expansion timed out — the VLM worker may be unavailable. Try again later.');
+      }
+      chunkCount++;
+      content += chunk.content || '';
+      if (chunkCount === 1) {
+        console.log(`[AITransitionAnalyzer] [${elapsed()}] First chunk received`);
+      }
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
 
-  const prompt = cleanResponse(result.content || '');
+  console.log(`[AITransitionAnalyzer] [${elapsed()}] Complete — ${chunkCount} chunks, ${content.length} chars`);
+
+  const prompt = cleanResponse(content);
 
   if (prompt.length < MIN_PROMPT_LENGTH) {
     console.warn('[AITransitionAnalyzer] LLM response too short, falling back to default');
