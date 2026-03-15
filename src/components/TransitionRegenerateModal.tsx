@@ -1,19 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  TRANSITION_PROMPT_PRESETS,
-  getDefaultTransitionPrompt,
-  findPresetByPrompt
-} from '../constants/transitionPromptPresets';
-import { useVideoCostEstimation } from '../hooks/useVideoCostEstimation';
-import {
-  VIDEO_CONFIG,
-  DEFAULT_VIDEO_SETTINGS,
-  getVideoQualityConfig,
-  getVideoModelConfig,
-  calculateVideoDimensions,
-} from '../constants/videoSettings';
+import React, { useEffect, useCallback } from 'react';
 import type { VideoQualityPreset, VideoResolution } from '../constants/videoSettings';
-import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
+import { useTransitionRegenerate } from '../hooks/useTransitionRegenerate';
 
 interface TransitionRegenerateModalProps {
   fromLabel: string;
@@ -50,69 +37,23 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
   onConfirm,
   onCancel
 }) => {
-  const defaultPrompt = getDefaultTransitionPrompt();
-  const [prompt, setPrompt] = useState(currentPrompt || defaultPrompt);
-
-  // Resolve settings with defaults
-  const effectiveResolution = resolution || DEFAULT_VIDEO_SETTINGS.resolution;
-  const effectiveQuality = quality || DEFAULT_VIDEO_SETTINGS.quality;
-  const effectiveDuration = duration || VIDEO_CONFIG.defaultDuration;
-  const modelFamily = getAdvancedSettings().videoModel;
-  const modelConfig = getVideoModelConfig(modelFamily);
-  const effectiveFps = modelConfig.fps;
-  const qualityConfig = getVideoQualityConfig(effectiveQuality, modelFamily);
-
-  // Compute actual video dimensions for display
-  const videoDimensions = useMemo(() => {
-    if (!imageWidth || !imageHeight) return null;
-    return calculateVideoDimensions(imageWidth, imageHeight, effectiveResolution, modelFamily);
-  }, [imageWidth, imageHeight, effectiveResolution, modelFamily]);
-
-  // Cost estimation for a single transition regeneration
-  const { loading: costLoading, formattedCost, formattedUSD } = useVideoCostEstimation({
-    imageWidth,
-    imageHeight,
-    resolution,
-    quality,
-    duration,
-    jobCount: 1,
-    tokenType,
-    enabled: !!(imageWidth && imageHeight)
+  const regen = useTransitionRegenerate({
+    currentPrompt, fromImageUrl, toImageUrl, fromLabel, toLabel,
+    imageWidth, imageHeight, resolution, quality, duration, tokenType,
   });
-
-  // Determine if current prompt matches a preset (for dropdown display)
-  const selectedPresetId = useMemo(() => {
-    const preset = findPresetByPrompt(prompt);
-    return preset?.id || 'custom';
-  }, [prompt]);
-
-  // Handle preset selection
-  const handlePresetChange = useCallback((presetId: string) => {
-    if (presetId === 'custom') return; // Don't change prompt when selecting "Custom"
-    const preset = TRANSITION_PROMPT_PRESETS.find(p => p.id === presetId);
-    if (preset) {
-      setPrompt(preset.prompt);
-    }
-  }, []);
 
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCancel();
-      }
+      if (event.key === 'Escape') onCancel();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onCancel]);
 
   const handleConfirm = useCallback(() => {
-    onConfirm(prompt);
-  }, [prompt, onConfirm]);
-
-  const handleResetPrompt = useCallback(() => {
-    setPrompt(defaultPrompt);
-  }, [defaultPrompt]);
+    onConfirm(regen.prompt);
+  }, [regen.prompt, onConfirm]);
 
   return (
     <div
@@ -133,11 +74,7 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
               style={{ aspectRatio: thumbAspect }}
             >
               {fromImageUrl && (
-                <img
-                  src={fromImageUrl}
-                  alt="From"
-                  className="w-full h-full object-cover"
-                />
+                <img src={fromImageUrl} alt="From" className="w-full h-full object-cover" />
               )}
             </div>
             <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">{fromLabel}</span>
@@ -153,11 +90,7 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
               style={{ aspectRatio: thumbAspect }}
             >
               {toImageUrl && (
-                <img
-                  src={toImageUrl}
-                  alt="To"
-                  className="w-full h-full object-cover"
-                />
+                <img src={toImageUrl} alt="To" className="w-full h-full object-cover" />
               )}
             </div>
             <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">{toLabel}</span>
@@ -167,12 +100,10 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
         {/* Prompt input */}
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-300">
-              Transition Description
-            </label>
+            <label className="text-sm font-medium text-gray-300">Transition Description</label>
             <button
               type="button"
-              onClick={handleResetPrompt}
+              onClick={regen.handleResetPrompt}
               className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
             >
               Reset to Default
@@ -182,64 +113,91 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
           {/* Preset dropdown */}
           <div className="mb-3">
             <select
-              value={selectedPresetId}
-              onChange={(e) => handlePresetChange(e.target.value)}
+              value={regen.selectedPresetId}
+              onChange={(e) => regen.handlePresetChange(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 cursor-pointer"
             >
-              {TRANSITION_PROMPT_PRESETS.map((preset) => (
+              {regen.visiblePresets.map((preset) => (
                 <option key={preset.id} value={preset.id}>
                   {preset.label} — {preset.description}
                 </option>
               ))}
-              {selectedPresetId === 'custom' && (
+              {regen.selectedPresetId === 'custom' && (
                 <option value="custom">Custom</option>
               )}
             </select>
           </div>
 
           <textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
+            value={regen.prompt}
+            onChange={(event) => regen.setPrompt(event.target.value)}
             placeholder="Describe how the transition should look..."
             rows={4}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm resize-none focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+            readOnly={regen.isAnalyzingAI}
+            className={`w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm resize-none focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30${regen.isAnalyzingAI ? ' opacity-60' : ''}`}
           />
-          <p className="mt-2 text-xs text-gray-500">
-            Select a preset above or customize the prompt. Editing the text will switch to Custom mode.
-          </p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              Select a preset above or customize the prompt.
+            </p>
+            {regen.showAIButton && (
+              <button
+                type="button"
+                onClick={regen.handleAnalyzeWithAI}
+                disabled={regen.isAnalyzingAI || !fromImageUrl || !toImageUrl}
+                className="text-xs text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap ml-3"
+              >
+                {regen.isAnalyzingAI ? (
+                  <>
+                    <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" />
+                    </svg>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Analyze with AI
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Clip settings summary */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-gray-400">
-          {videoDimensions && (
+          {regen.videoDimensions && (
             <span>
               <span className="text-gray-500">Resolution</span>{' '}
-              <span className="text-gray-300">{videoDimensions.width}×{videoDimensions.height}</span>
+              <span className="text-gray-300">{regen.videoDimensions.width}×{regen.videoDimensions.height}</span>
             </span>
           )}
           <span>
             <span className="text-gray-500">Quality</span>{' '}
-            <span className="text-gray-300">{qualityConfig.label}</span>
+            <span className="text-gray-300">{regen.qualityConfig.label}</span>
           </span>
           <span>
             <span className="text-gray-500">Duration</span>{' '}
-            <span className="text-gray-300">{effectiveDuration}s</span>
+            <span className="text-gray-300">{regen.effectiveDuration}s</span>
           </span>
           <span>
             <span className="text-gray-500">FPS</span>{' '}
-            <span className="text-gray-300">{effectiveFps}</span>
+            <span className="text-gray-300">{regen.effectiveFps}</span>
           </span>
         </div>
 
         {/* Cost estimate + Action buttons */}
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm text-gray-400">
-            {costLoading ? (
+            {regen.costLoading ? (
               <span className="text-gray-500">Calculating cost...</span>
-            ) : formattedCost !== '—' ? (
+            ) : regen.formattedCost !== '—' ? (
               <span>
-                <span className="text-white font-medium">{formattedCost} {tokenType.toUpperCase()}</span>
-                <span className="text-gray-500 ml-1.5">≈ {formattedUSD}</span>
+                <span className="text-white font-medium">{regen.formattedCost} {tokenType.toUpperCase()}</span>
+                <span className="text-gray-500 ml-1.5">≈ {regen.formattedUSD}</span>
               </span>
             ) : null}
           </div>

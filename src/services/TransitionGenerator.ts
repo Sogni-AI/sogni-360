@@ -22,7 +22,7 @@ import {
   type VideoResolution
 } from '../constants/videoSettings';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchS3AsBlob } from '../utils/s3FetchWithFallback';
+import { imageUrlToBlob } from '../utils/imageConversion';
 import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 
 // Retry configuration
@@ -79,40 +79,7 @@ export interface GenerateTransitionOptions {
   onError?: (error: Error) => void;
 }
 
-/**
- * Convert image URL to Blob for SDK (InputMedia type)
- * For S3 URLs, uses fetchS3AsBlob which handles CORS fallback automatically
- */
-async function imageUrlToBlob(url: string): Promise<Blob> {
-  if (url.startsWith('data:')) {
-    const [header, base64Data] = url.split(',');
-    const mimeMatch = header.match(/data:([^;]+)/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return new Blob([bytes], { type: mimeType });
-  } else if (url.startsWith('http')) {
-    // Use S3 fetch with automatic CORS fallback for HTTP URLs
-    return fetchS3AsBlob(url);
-  } else if (url.startsWith('blob:')) {
-    // Blob URLs can be fetched directly
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch blob: ${response.statusText}`);
-    }
-    return response.blob();
-  } else {
-    const binaryString = atob(url);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return new Blob([bytes], { type: 'image/jpeg' });
-  }
-}
+// imageUrlToBlob is imported from '../utils/imageConversion'
 
 /**
  * Generate transition using frontend SDK directly (no backend proxy)
@@ -547,11 +514,14 @@ export async function generateMultipleTransitions(
           onSegmentProgress?.(segment.id, 0);
         }
 
+        // Use segment-level prompt (from AI analysis) if available, otherwise shared prompt
+        const effectivePrompt = segment.prompt || prompt;
+
         const result = await generateTransition({
           segment,
           fromImageUrl,
           toImageUrl,
-          prompt,
+          prompt: effectivePrompt,
           negativePrompt,
           resolution,
           quality,

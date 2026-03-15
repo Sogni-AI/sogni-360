@@ -28,6 +28,7 @@ import { useWallet } from '../hooks/useWallet';
 import useAutoHideUI from '../hooks/useAutoHideUI';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { generateMultipleTransitions } from '../services/TransitionGenerator';
+import { useAITransitionAnalysis } from '../hooks/useAITransitionAnalysis';
 import { registerPendingCost, recordCompletion, discardPending } from '../services/billingHistoryService';
 import { duplicateProject, getProjectCount } from '../utils/localProjectsDB';
 import { playVideoCompleteIfEnabled, playSogniSignatureIfEnabled } from '../utils/sonicLogos';
@@ -36,6 +37,7 @@ import { getAdvancedSettings } from '../hooks/useAdvancedSettings';
 import { getAzimuthConfig, getElevationConfig, getDistanceConfig } from '../constants/cameraAngleSettings';
 import { isDemoProject, hasDemoCoachmarkBeenShown } from '../constants/demo-projects';
 import { getOriginalLabel } from '../utils/waypointLabels';
+import { captureReferralFromURL } from '../utils/referralTracking';
 import '../services/pwaInstaller'; // Initialize PWA installer service
 
 // Type for pending destructive action that needs confirmation
@@ -65,6 +67,29 @@ const Sogni360Container: React.FC = () => {
   // Auth state
   const { isAuthenticated, isLoading: authLoading, getSogniClient } = useSogniAuth();
   const sogniClient = getSogniClient();
+
+  // Capture referral parameter from URL on initial load
+  useEffect(() => {
+    captureReferralFromURL();
+  }, []);
+
+  // Auto-open signup modal when arriving with a referral code and not logged in
+  useEffect(() => {
+    if (authLoading || isAuthenticated) return;
+    const url = new URL(window.location.href);
+    const hasReferralCode = url.searchParams.get('code') || url.searchParams.get('referral');
+    if (hasReferralCode) {
+      setTimeout(() => {
+        authStatusRef.current?.openSignupModal();
+      }, 500);
+    }
+  }, [authLoading, isAuthenticated]);
+
+  // AI transition analysis hook
+  const { analyzeSegments, cancelAnalysis } = useAITransitionAnalysis();
+
+  // Cancel AI analysis on unmount
+  useEffect(() => cancelAnalysis, [cancelAnalysis]);
 
   // Wallet state for balance display and payment method
   const { balances, tokenType, switchPaymentMethod } = useWallet();
@@ -232,6 +257,30 @@ const Sogni360Container: React.FC = () => {
     const quality = passedSettings?.quality || (currentProject.settings.transitionQuality as 'fast' | 'balanced' | 'quality' | 'pro') || 'balanced';
     const duration = passedSettings?.duration || currentProject.settings.transitionDuration || 1.5;
     const prompt = passedSettings?.transitionPrompt || currentProject.settings.transitionPrompt || 'Cinematic transition shot between starting and ending images. Smooth camera movement.';
+    const usePerSegmentPrompts = passedSettings?.usePerSegmentPrompts ?? false;
+
+    // ── AI Analysis Phase ──────────────────────────────────────────────────
+    // When AI Scene Analysis preset is selected, analyze each segment's image pair
+    // via the VLM and store per-segment prompts before starting video generation.
+    if (usePerSegmentPrompts) {
+      console.log(`[Sogni360Container] Starting AI analysis for ${pendingSegments.length} segments`);
+      const analysisSucceeded = await analyzeSegments(
+        pendingSegments,
+        waypointImages,
+        (segmentId, aiPrompt) => {
+          updateSegment(segmentId, { prompt: aiPrompt });
+        },
+      );
+      if (!analysisSucceeded) {
+        console.log('[Sogni360Container] AI analysis was cancelled');
+        setIsTransitionGenerating(false);
+        dispatch({ type: 'SET_PROJECT_STATUS', payload: 'draft' });
+        dispatch({ type: 'SET_SHOW_TRANSITION_REVIEW', payload: false });
+        dispatch({ type: 'SET_SHOW_TRANSITION_CONFIG', payload: true });
+        return;
+      }
+      console.log('[Sogni360Container] AI analysis complete, proceeding to video generation');
+    }
 
     console.log('[Sogni360Container] Transition generation config:', {
       resolution,
@@ -298,7 +347,12 @@ const Sogni360Container: React.FC = () => {
           sourceWidth: sourceWidth || 1024,  // Default to 1024 if missing
           sourceHeight: sourceHeight || 1024,  // Default to 1024 if missing
           onSegmentStart: (segmentId) => {
-            updateSegment(segmentId, { status: 'generating', progress: 0, prompt });
+            // When using per-segment prompts (AI analysis), don't overwrite the segment's prompt
+            const updates: Partial<Segment> = { status: 'generating', progress: 0 };
+            if (!usePerSegmentPrompts) {
+              updates.prompt = prompt;
+            }
+            updateSegment(segmentId, updates);
           },
           onSegmentProgress: (segmentId, progress, workerName) => {
             updateSegment(segmentId, { progress, workerName });

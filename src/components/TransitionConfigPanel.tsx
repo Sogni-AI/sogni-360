@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Segment } from '../types';
 import {
   VIDEO_QUALITY_PRESETS,
@@ -7,6 +7,7 @@ import {
   VideoQualityPreset,
 } from '../constants/videoSettings';
 import { TRANSITION_PROMPT_PRESETS } from '../constants/transitionPromptPresets';
+import { isFrontendMode } from '../services/frontend';
 import type { WorkflowStep } from './shared/WorkflowWizard';
 import MusicSelector from './shared/MusicSelector';
 import MusicConfigSection from './shared/MusicConfigSection';
@@ -34,6 +35,12 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   onRequireAuth
 }) => {
   const config = useTransitionConfig({ onStartGeneration, onConfirmDestructiveAction, onRequireAuth });
+
+  // Filter AI preset to only show when user is logged in via frontend SDK
+  const visiblePresets = useMemo(() =>
+    TRANSITION_PROMPT_PRESETS.filter(p => p.id !== 'ai-scene-analysis' || isFrontendMode()),
+    []
+  );
 
   return (
     <LiquidGlassPanel
@@ -99,7 +106,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
             value={config.selectedPresetId}
             onChange={(e) => config.handlePresetChange(e.target.value)}
           >
-            {TRANSITION_PROMPT_PRESETS.map((preset) => (
+            {visiblePresets.map((preset) => (
               <option key={preset.id} value={preset.id}>
                 {preset.label} — {preset.description}
               </option>
@@ -108,13 +115,19 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
               <option value="custom">Custom</option>
             )}
           </select>
-          <textarea
-            className="config-textarea"
-            value={config.transitionPrompt}
-            onChange={(e) => config.setTransitionPrompt(e.target.value)}
-            placeholder="Describe the transition style..."
-            rows={3}
-          />
+          {config.aiPresetSelected ? (
+            <div className="config-textarea config-textarea-readonly">
+              AI will analyze each image pair and generate a unique prompt per segment.
+            </div>
+          ) : (
+            <textarea
+              className="config-textarea"
+              value={config.transitionPrompt}
+              onChange={(e) => config.setTransitionPrompt(e.target.value)}
+              placeholder="Describe the transition style..."
+              rows={3}
+            />
+          )}
         </div>
 
         {/* Settings row */}
@@ -190,7 +203,10 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
         ) : (
           <div className="config-cost">
             <div className="config-cost-left">
-              <span className="config-cost-videos">{config.pendingCount} video{config.pendingCount !== 1 ? 's' : ''} × {config.duration}s each</span>
+              <span className="config-cost-videos">
+                {config.pendingCount} video{config.pendingCount !== 1 ? 's' : ''} × {config.duration}s each
+                {config.aiPresetSelected && <span className="config-cost-ai-note"> + AI analysis</span>}
+              </span>
             </div>
             <div className="config-cost-right">
               {config.costLoading ? (

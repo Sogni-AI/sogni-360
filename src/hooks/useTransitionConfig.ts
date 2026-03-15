@@ -32,6 +32,7 @@ export interface TransitionGenerationSettings {
   duration: number;
   transitionPrompt: string;
   musicSelection?: MusicSelection;
+  usePerSegmentPrompts?: boolean;
 }
 
 interface UseTransitionConfigParams {
@@ -59,12 +60,20 @@ export function useTransitionConfig({
   const [transitionPrompt, setTransitionPrompt] = useState(
     currentProject?.settings.transitionPrompt || defaultPrompt
   );
+  const [aiPresetSelected, setAiPresetSelected] = useState(false);
   const selectedPresetId = useMemo(() => {
+    if (aiPresetSelected) return 'ai-scene-analysis';
     const preset = findPresetByPrompt(transitionPrompt);
     return preset?.id || 'custom';
-  }, [transitionPrompt]);
+  }, [transitionPrompt, aiPresetSelected]);
   const handlePresetChange = useCallback((presetId: string) => {
     if (presetId === 'custom') return;
+    if (presetId === 'ai-scene-analysis') {
+      // Don't set empty prompt — AI generates per-segment prompts at generation time
+      setAiPresetSelected(true);
+      return;
+    }
+    setAiPresetSelected(false);
     const preset = TRANSITION_PROMPT_PRESETS.find(p => p.id === presetId);
     if (preset) setTransitionPrompt(preset.prompt);
   }, []);
@@ -179,7 +188,8 @@ export function useTransitionConfig({
 
     const settings: TransitionGenerationSettings = {
       resolution, quality: effectiveQuality, duration, transitionPrompt,
-      musicSelection: musicSelection || undefined
+      musicSelection: musicSelection || undefined,
+      usePerSegmentPrompts: aiPresetSelected,
     };
     dispatch({
       type: 'UPDATE_SETTINGS',
@@ -203,7 +213,7 @@ export function useTransitionConfig({
     dispatch({ type: 'SET_SEGMENTS', payload: finalSegments });
     onStartGeneration(finalSegments, settings);
   }, [reconciledSegments, transitionPrompt, resolution, duration, effectiveQuality,
-      musicSelection, dispatch, onStartGeneration, settingsChanged, hasGeneratedVideos, videoModel]);
+      musicSelection, dispatch, onStartGeneration, settingsChanged, hasGeneratedVideos, videoModel, aiPresetSelected]);
 
   const withAuthGate = useCallback((skipWhenAllReady: boolean, action: () => void) => {
     if (readyWaypoints.length < 2) {
@@ -239,7 +249,7 @@ export function useTransitionConfig({
 
   return {
     videoModel, isLtx,
-    transitionPrompt, setTransitionPrompt, selectedPresetId, handlePresetChange,
+    transitionPrompt, setTransitionPrompt, selectedPresetId, handlePresetChange, aiPresetSelected,
     validResolutions, resolution, setResolution,
     duration, setDuration, durationOptions,
     wanQuality, setWanQuality, effectiveQuality,

@@ -6343,6 +6343,21 @@ html, body {
   color: rgba(255, 255, 255, 0.3);
 }
 
+.config-textarea-readonly {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: default;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+}
+
+.config-cost-ai-note {
+  color: rgba(168, 130, 255, 0.85);
+  font-style: italic;
+  margin-left: 0.25rem;
+}
+
 /* Settings row */
 .config-settings-row {
   display: flex;
