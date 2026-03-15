@@ -1,8 +1,11 @@
 /**
- * AI Transition Analyzer Service
+ * AI Transition Prompt Expander
  *
  * Uses the Sogni Client SDK's multimodal chat completions API to analyze
- * pairs of transition images and generate scene-aware video transition prompts.
+ * pairs of transition images and expand/generate scene-aware video transition prompts.
+ *
+ * When a currentPrompt is provided, the VLM expands it with scene-specific details.
+ * When no currentPrompt is provided, the VLM generates a prompt from scratch.
  *
  * Frontend SDK mode only — requires authenticated user with Sogni Client access.
  */
@@ -11,7 +14,24 @@ import { getSogniClient } from './frontend';
 import { imageUrlToDataUri } from '../utils/imageConversion';
 import { getDefaultTransitionPrompt } from '../constants/transitionPromptPresets';
 
-const SYSTEM_PROMPT = `You are a video transition prompt engineer for an AI video generator. You will receive two images: the FIRST is the starting frame, the SECOND is the ending frame of a short video clip (1-8 seconds).
+const EXPAND_SYSTEM_PROMPT = `You are a video transition prompt expansion specialist. You will receive a base transition prompt and two images: the FIRST is the starting frame, the SECOND is the ending frame of a short video clip (1-8 seconds).
+
+Your job is to EXPAND the base prompt by analyzing what is actually visible in both images. Keep the original prompt's intent and style, but make it far more specific:
+- Identify the specific objects, subjects, and elements visible in each frame
+- Describe precisely how each element moves, shifts, or transforms between the two frames
+- Add directional motion details (left-to-right rotation, upward tilt, depth changes)
+- Note lighting changes, perspective shifts, and spatial relationships
+
+Your expanded prompt MUST:
+- Preserve the core intent and style of the base prompt
+- Use flowing present-tense language suitable for an AI video generator
+- Be under 150 words
+- Not include any preamble, explanation, or formatting
+- Not reference "first image" or "second image" — describe the motion itself
+
+Output ONLY the expanded video generation prompt text, nothing else.`;
+
+const GENERATE_SYSTEM_PROMPT = `You are a video transition prompt engineer for an AI video generator. You will receive two images: the FIRST is the starting frame, the SECOND is the ending frame of a short video clip (1-8 seconds).
 
 Analyze both images and write a video generation prompt that describes how the scene should smoothly transition from the first image to the second.
 
@@ -39,6 +59,8 @@ export interface AnalyzeTransitionOptions {
   toImageUrl: string;
   fromLabel?: string;
   toLabel?: string;
+  /** When provided, the VLM expands this prompt with scene-specific details */
+  currentPrompt?: string;
   signal?: AbortSignal;
 }
 
@@ -63,11 +85,20 @@ function cleanResponse(content: string): string {
 export async function analyzeTransition(
   options: AnalyzeTransitionOptions
 ): Promise<AnalyzeTransitionResult> {
-  const { fromImageUrl, toImageUrl, fromLabel, toLabel, signal } = options;
+  const { fromImageUrl, toImageUrl, fromLabel, toLabel, currentPrompt, signal } = options;
 
   const client = getSogniClient();
   if (!client) {
     throw new Error('Sogni client not available — user must be logged in');
+  }
+
+  // Check if the VLM model has workers online
+  const models = client.chat.models;
+  const modelInfo = models[LLM_MODEL];
+  if (!modelInfo || !modelInfo.workers || modelInfo.workers === 0) {
+    throw new Error(
+      'AI prompt expansion is currently unavailable — no VLM workers are online. Try again later.'
+    );
   }
 
   if (signal?.aborted) {
@@ -84,19 +115,23 @@ export async function analyzeTransition(
     throw new DOMException('Analysis cancelled', 'AbortError');
   }
 
+  // Choose system prompt and user message based on whether we're expanding or generating
+  const isExpanding = !!currentPrompt;
+  const systemPrompt = isExpanding ? EXPAND_SYSTEM_PROMPT : GENERATE_SYSTEM_PROMPT;
+  const userText = isExpanding
+    ? `Base prompt to expand:\n"${currentPrompt}"\n\nThe first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Expand the base prompt with specific details from these images.`
+    : `The first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Write a transition prompt connecting these two views.`;
+
   const result = await client.chat.completions.create({
     model: LLM_MODEL,
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       {
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: fromDataUri } },
           { type: 'image_url', image_url: { url: toDataUri } },
-          {
-            type: 'text',
-            text: `The first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Write a transition prompt connecting these two views.`,
-          },
+          { type: 'text', text: userText },
         ],
       },
     ],

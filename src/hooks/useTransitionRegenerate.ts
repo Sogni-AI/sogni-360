@@ -95,7 +95,7 @@ export function useTransitionRegenerate(params: UseTransitionRegenerateParams) {
     []
   );
 
-  const handleAnalyzeWithAI = useCallback(async () => {
+  const handleExpandWithAI = useCallback(async () => {
     if (!params.fromImageUrl || !params.toImageUrl) return;
     analyzeAbortRef.current?.abort();
     const controller = new AbortController();
@@ -107,6 +107,7 @@ export function useTransitionRegenerate(params: UseTransitionRegenerateParams) {
         toImageUrl: params.toImageUrl,
         fromLabel: params.fromLabel,
         toLabel: params.toLabel,
+        currentPrompt: prompt,
         signal: controller.signal,
       });
       if (!controller.signal.aborted) {
@@ -114,14 +115,14 @@ export function useTransitionRegenerate(params: UseTransitionRegenerateParams) {
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
-      const message = error instanceof Error ? error.message : 'Analysis failed';
-      showToast({ message: `AI analysis failed: ${message}`, type: 'error' });
+      const message = error instanceof Error ? error.message : 'Prompt expansion failed';
+      showToast({ message: `AI expansion failed: ${message}`, type: 'error' });
     } finally {
       if (!controller.signal.aborted) {
         setIsAnalyzingAI(false);
       }
     }
-  }, [params.fromImageUrl, params.toImageUrl, params.fromLabel, params.toLabel, showToast]);
+  }, [params.fromImageUrl, params.toImageUrl, params.fromLabel, params.toLabel, prompt, showToast]);
 
   const showAIButton = isFrontendMode();
 
@@ -130,6 +131,6 @@ export function useTransitionRegenerate(params: UseTransitionRegenerateParams) {
     effectiveDuration, effectiveFps, qualityConfig, videoDimensions,
     costLoading, formattedCost, formattedUSD,
     selectedPresetId, handlePresetChange, handleResetPrompt,
-    visiblePresets, handleAnalyzeWithAI, showAIButton,
+    visiblePresets, handleExpandWithAI, showAIButton,
   };
 }
