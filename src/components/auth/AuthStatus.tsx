@@ -33,6 +33,7 @@ interface AuthStatusProps {
 
 export interface AuthStatusRef {
   openLoginModal: () => void;
+  openSignupModal: () => void;
 }
 
 export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
@@ -119,7 +120,12 @@ export const AuthStatus = memo(forwardRef<AuthStatusRef, AuthStatusProps>(({
   };
 
   useImperativeHandle(ref, () => ({
-    openLoginModal: handleLoginClick
+    openLoginModal: handleLoginClick,
+    openSignupModal: () => {
+      setIsNewSignup(true);
+      setLoginModalMode('signup');
+      setShowLoginModal(true);
+    }
   }));
 
   const handleCloseLoginModal = () => {
