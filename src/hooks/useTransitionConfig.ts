@@ -62,8 +62,8 @@ export function useTransitionConfig({
   const hasGeneratedVideos = existingSegments.some(s => s.status === 'ready' || s.status === 'generating');
 
   // ── Segment reconciliation (before prompts hook for correct IDs) ────
-  const { reconciledSegments, pendingCount, allReady, hasModelMismatch } = useMemo(() => {
-    if (transitionCount === 0) return { reconciledSegments: [] as Segment[], pendingCount: 0, allReady: false, hasModelMismatch: false };
+  const { reconciledSegments, pendingCount, hasModelMismatch } = useMemo(() => {
+    if (transitionCount === 0) return { reconciledSegments: [] as Segment[], pendingCount: 0, hasModelMismatch: false };
     const existingByPair = new Map<string, Segment>();
     for (const seg of existingSegments) {
       existingByPair.set(`${seg.fromWaypointId}->${seg.toWaypointId}`, seg);
@@ -92,18 +92,42 @@ export function useTransitionConfig({
         });
       }
     }
-    return { reconciledSegments: reconciled, pendingCount: pending, allReady: pending === 0, hasModelMismatch: modelMismatch };
+    return { reconciledSegments: reconciled, pendingCount: pending, hasModelMismatch: modelMismatch };
   }, [transitionCount, readyWaypoints, existingSegments, videoModel]);
   const modelChangedWarning = hasModelMismatch && hasGeneratedVideos;
 
   // ── Transition prompts (uses reconciledSegments for correct IDs) ────
+  const handlePersistPrompts = useCallback((pairKeyedPrompts: Record<string, string>, mode: 'all' | 'each') => {
+    dispatch({ type: 'UPDATE_SETTINGS', payload: { perSegmentPrompts: pairKeyedPrompts, promptMode: mode } });
+  }, [dispatch]);
+
   const promptsHook = useTransitionPrompts({
     savedPrompt: currentProject?.settings.transitionPrompt,
+    savedPromptMode: currentProject?.settings.promptMode as 'all' | 'each' | undefined,
+    savedPerSegmentPrompts: currentProject?.settings.perSegmentPrompts,
     segments: reconciledSegments,
     waypoints,
     videoModel,
+    onPersistPrompts: handlePersistPrompts,
   });
   const { transitionPrompt, promptMode, perSegmentPrompts } = promptsHook;
+
+  // ── Prompt-modified segment detection ─────────────────────────────────
+  // Count ready segments whose prompts differ from what will be used at generation time.
+  // These will be reset to pending when the user clicks Generate.
+  const promptModifiedCount = useMemo(() => {
+    return reconciledSegments.filter(s => {
+      if (s.status !== 'ready') return false;
+      if (promptMode === 'each') {
+        const newPrompt = perSegmentPrompts[s.id];
+        return newPrompt != null && s.prompt !== newPrompt;
+      }
+      return s.prompt !== transitionPrompt;
+    }).length;
+  }, [reconciledSegments, perSegmentPrompts, promptMode, transitionPrompt]);
+
+  const effectivePendingCount = pendingCount + promptModifiedCount;
+  const effectiveAllReady = transitionCount > 0 && effectivePendingCount === 0;
 
   // ── Resolution ─────────────────────────────────────────────────────────
   const validResolutions = useMemo(() => getValidResolutions(videoModel), [videoModel]);
@@ -154,13 +178,13 @@ export function useTransitionConfig({
     imageWidth: currentProject?.sourceImageDimensions?.width,
     imageHeight: currentProject?.sourceImageDimensions?.height,
     resolution, quality: effectiveQuality, duration,
-    jobCount: pendingCount, tokenType, enabled: pendingCount > 0
+    jobCount: effectivePendingCount, tokenType, enabled: effectivePendingCount > 0
   });
   const regenCostEstimation = useVideoCostEstimation({
     imageWidth: currentProject?.sourceImageDimensions?.width,
     imageHeight: currentProject?.sourceImageDimensions?.height,
     resolution, quality: effectiveQuality, duration,
-    jobCount: transitionCount, tokenType, enabled: allReady && transitionCount > 0
+    jobCount: transitionCount, tokenType, enabled: effectiveAllReady && transitionCount > 0
   });
 
   // ── Generation execution (shared) ─────────────────────────────────────
@@ -185,15 +209,19 @@ export function useTransitionConfig({
       }
     });
 
-    // Reconciliation already marks model-mismatched segments as pending,
-    // so only force-reset remaining ready segments when regen-all or settings changed.
-    const shouldReset = forceRegenAll || (settingsChanged && hasGeneratedVideos);
-    const finalSegments = shouldReset
-      ? reconciledSegments.map(s => ({
-          ...s, status: 'pending' as const,
-          videoUrl: undefined, progress: undefined, error: undefined
-        }))
-      : reconciledSegments;
+    // Bake prompts into segment objects and detect prompt changes.
+    // Reconciliation already marks model-mismatched segments as pending.
+    const globalReset = forceRegenAll || (settingsChanged && hasGeneratedVideos);
+    const finalSegments = reconciledSegments.map(s => {
+      const newPrompt = usePerSeg
+        ? (perSegmentPrompts[s.id] ?? transitionPrompt)
+        : transitionPrompt;
+      const promptChanged = s.status === 'ready' && s.prompt !== newPrompt;
+      const shouldResetSeg = globalReset || promptChanged;
+      return shouldResetSeg
+        ? { ...s, prompt: newPrompt, status: 'pending' as const, videoUrl: undefined, progress: undefined, error: undefined }
+        : { ...s, prompt: newPrompt };
+    });
 
     dispatch({ type: 'SET_SEGMENTS', payload: finalSegments });
     onStartGeneration(finalSegments, settings);
@@ -205,7 +233,7 @@ export function useTransitionConfig({
       showToast({ message: 'Need at least 2 ready angles to create transitions', type: 'warning' });
       return;
     }
-    if (!skipWhenAllReady || !allReady) {
+    if (!skipWhenAllReady || !effectiveAllReady) {
       if (!isAuthenticated && hasUsedFreeGeneration) {
         if (onRequireAuth) onRequireAuth();
         return;
@@ -219,7 +247,7 @@ export function useTransitionConfig({
     } else {
       action();
     }
-  }, [readyWaypoints.length, allReady, isAuthenticated, hasUsedFreeGeneration,
+  }, [readyWaypoints.length, effectiveAllReady, isAuthenticated, hasUsedFreeGeneration,
       onRequireAuth, dispatch, showToast, onConfirmDestructiveAction]);
 
   const handleStartGeneration = useCallback(
@@ -240,7 +268,7 @@ export function useTransitionConfig({
     wanQuality, setWanQuality, effectiveQuality,
     musicSelection, setMusicSelection, showMusicSelector, setShowMusicSelector,
     showSettings, setShowSettings,
-    reconciledSegments, pendingCount, allReady,
+    reconciledSegments, pendingCount: effectivePendingCount, allReady: effectiveAllReady,
     transitionCount, readyWaypoints, totalSeconds,
     settingsChanged, modelChangedWarning,
     costLoading: costEstimation.loading,

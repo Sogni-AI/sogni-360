@@ -101,6 +101,9 @@ export interface Sogni360Settings {
   imageModel?: ImageModelId;
   imageSteps?: number;
   imageGuidance?: number;
+  // Per-segment prompt persistence (keys: "fromWpId->toWpId")
+  perSegmentPrompts?: Record<string, string>;
+  promptMode?: 'all' | 'each';
 }
 
 // Project status

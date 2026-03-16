@@ -20,17 +20,23 @@ export type PromptMode = 'all' | 'each';
 
 interface UseTransitionPromptsParams {
   savedPrompt?: string;
+  savedPromptMode?: PromptMode;
+  savedPerSegmentPrompts?: Record<string, string>; // pair-keyed from project settings
   segments: Segment[];
   waypoints: Waypoint[];
   videoModel?: string;
+  onPersistPrompts?: (pairKeyedPrompts: Record<string, string>, mode: PromptMode) => void;
 }
 
-export function useTransitionPrompts({ savedPrompt, segments, waypoints, videoModel }: UseTransitionPromptsParams) {
+export function useTransitionPrompts({
+  savedPrompt, savedPromptMode, savedPerSegmentPrompts,
+  segments, waypoints, videoModel, onPersistPrompts,
+}: UseTransitionPromptsParams) {
   const { showToast } = useToast();
   const defaultPrompt = getDefaultTransitionPrompt();
 
   // ── Prompt mode ─────────────────────────────────────────────────────
-  const [promptMode, setPromptMode] = useState<PromptMode>('all');
+  const [promptMode, setPromptMode] = useState<PromptMode>(savedPromptMode ?? 'all');
 
   // ── Shared prompt (all mode) ────────────────────────────────────────
   const [transitionPrompt, setTransitionPrompt] = useState(savedPrompt || defaultPrompt);
@@ -48,7 +54,18 @@ export function useTransitionPrompts({ savedPrompt, segments, waypoints, videoMo
   }, []);
 
   // ── Per-segment prompts (each mode) ─────────────────────────────────
-  const [perSegmentPrompts, setPerSegmentPrompts] = useState<Record<string, string>>({});
+  // Initialize from saved pair-keyed prompts, converting to segment-ID keys
+  const [perSegmentPrompts, setPerSegmentPrompts] = useState<Record<string, string>>(() => {
+    if (!savedPerSegmentPrompts) return {};
+    const result: Record<string, string> = {};
+    for (const seg of segments) {
+      const pairKey = `${seg.fromWaypointId}->${seg.toWaypointId}`;
+      if (pairKey in savedPerSegmentPrompts) {
+        result[seg.id] = savedPerSegmentPrompts[pairKey];
+      }
+    }
+    return result;
+  });
 
   const setSegmentPrompt = useCallback((segmentId: string, prompt: string) => {
     setPerSegmentPrompts(prev => ({ ...prev, [segmentId]: prompt }));
@@ -64,7 +81,25 @@ export function useTransitionPrompts({ savedPrompt, segments, waypoints, videoMo
   const videoModelRef = useRef(videoModel);
   videoModelRef.current = videoModel;
 
-  // When switching to "each" mode, prefill from shared prompt
+  // ── Persist prompt changes to project settings ─────────────────────
+  const onPersistRef = useRef(onPersistPrompts);
+  onPersistRef.current = onPersistPrompts;
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!hasInitialized.current) { hasInitialized.current = true; return; }
+    if (!onPersistRef.current) return;
+    // Convert segment-ID keyed → pair-keyed for storage
+    const pairKeyed: Record<string, string> = {};
+    for (const seg of segmentsRef.current) {
+      if (seg.id in perSegmentPrompts) {
+        pairKeyed[`${seg.fromWaypointId}->${seg.toWaypointId}`] = perSegmentPrompts[seg.id];
+      }
+    }
+    onPersistRef.current(pairKeyed, promptMode);
+  }, [perSegmentPrompts, promptMode]);
+
+  // When switching to "each" mode, prefill from shared prompt (or existing segment prompt)
   const handlePromptModeChange = useCallback((mode: PromptMode) => {
     if (mode === 'each') {
       const segs = segmentsRef.current;
@@ -72,7 +107,7 @@ export function useTransitionPrompts({ savedPrompt, segments, waypoints, videoMo
       const sharedPrompt = promptRef.current;
       const prefilled: Record<string, string> = {};
       for (const seg of segs) {
-        prefilled[seg.id] = currentPerSeg[seg.id] ?? sharedPrompt;
+        prefilled[seg.id] = currentPerSeg[seg.id] ?? seg.prompt ?? sharedPrompt;
       }
       setPerSegmentPrompts(prefilled);
     }

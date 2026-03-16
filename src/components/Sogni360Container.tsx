@@ -264,16 +264,9 @@ const Sogni360Container: React.FC = () => {
     const prefilledPrompts = passedSettings?.perSegmentPrompts;
 
     // ── Per-segment prompts ────────────────────────────────────────────────
-    // Apply pre-filled per-segment prompts from the config panel (user-typed or AI-expanded).
-    // Falls back to AI analysis only if usePerSegmentPrompts is set but no prompts were provided.
-    if (usePerSegmentPrompts && prefilledPrompts && Object.keys(prefilledPrompts).length > 0) {
-      console.log(`[Sogni360Container] Applying ${Object.keys(prefilledPrompts).length} pre-filled per-segment prompts`);
-      for (const seg of pendingSegments) {
-        if (prefilledPrompts[seg.id]) {
-          updateSegment(seg.id, { prompt: prefilledPrompts[seg.id] });
-        }
-      }
-    } else if (usePerSegmentPrompts) {
+    // Prompts are now baked into segment objects by executeGeneration (useTransitionConfig).
+    // Legacy fallback: run AI analysis only if usePerSegmentPrompts is set but no prompts were provided.
+    if (usePerSegmentPrompts && !(prefilledPrompts && Object.keys(prefilledPrompts).length > 0)) {
       // Legacy fallback: run AI analysis at generation time
       console.log(`[Sogni360Container] Starting AI analysis for ${pendingSegments.length} segments`);
       const analysisSucceeded = await analyzeSegments(
