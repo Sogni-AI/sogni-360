@@ -4,7 +4,7 @@
  * Uses liquid-glass-react library for SVG displacement glass effects.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, forwardRef } from 'react';
 import LiquidGlass from 'liquid-glass-react';
 
 interface LiquidGlassPanelProperties {
@@ -24,7 +24,7 @@ interface LiquidGlassPanelProperties {
   aberrationIntensity?: number;
 }
 
-export function LiquidGlassPanel({
+export const LiquidGlassPanel = forwardRef<HTMLDivElement, LiquidGlassPanelProperties>(function LiquidGlassPanel({
   children,
   cornerRadius = 16,
   style,
@@ -34,7 +34,7 @@ export function LiquidGlassPanel({
   displacementScale: displacementScaleOverride,
   saturation: saturationOverride,
   aberrationIntensity: aberrationOverride,
-}: LiquidGlassPanelProperties) {
+}, ref) {
   // Extract padding to handle separately (library needs it as string)
   const { padding, ...wrapStyle } = style || {};
   const paddingStr = typeof padding === 'number'
@@ -63,6 +63,7 @@ export function LiquidGlassPanel({
 
   return (
     <div
+      ref={ref}
       className={wrapperClasses}
       style={{ borderRadius: `${cornerRadius}px`, ...wrapStyle }}
     >
@@ -81,6 +82,6 @@ export function LiquidGlassPanel({
       </LiquidGlass>
     </div>
   );
-}
+});
 
 export default LiquidGlassPanel;

@@ -1,6 +1,8 @@
 import React, { useEffect, useCallback } from 'react';
 import type { VideoQualityPreset, VideoResolution } from '../constants/videoSettings';
 import { useTransitionRegenerate } from '../hooks/useTransitionRegenerate';
+import { usePanelResize } from '../hooks/usePanelResize';
+import ResizeGrip from './shared/ResizeGrip';
 
 interface TransitionRegenerateModalProps {
   fromLabel: string;
@@ -42,6 +44,8 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
     imageWidth, imageHeight, resolution, quality, duration, tokenType,
   });
 
+  const resize = usePanelResize();
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -61,7 +65,9 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
       onClick={onCancel}
     >
       <div
-        className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-2xl p-6 max-w-lg w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+        ref={resize.panelRef}
+        className="bg-gradient-to-br from-[rgba(17,24,39,0.98)] to-[rgba(3,7,18,0.98)] rounded-2xl p-6 max-w-lg md:max-w-2xl w-full mx-4 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative flex flex-col"
+        style={resize.resizeStyle}
         onClick={(event) => event.stopPropagation()}
       >
         <h2 className="text-xl font-semibold text-white mb-4">Regenerate Transition</h2>
@@ -98,7 +104,7 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
         </div>
 
         {/* Prompt input */}
-        <div className="mb-5">
+        <div className="mb-5 grow flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-gray-300">Transition Description</label>
             <button
@@ -132,9 +138,9 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
             value={regen.prompt}
             onChange={(event) => regen.setPrompt(event.target.value)}
             placeholder="Describe how the transition should look..."
-            rows={4}
+            rows={8}
             readOnly={regen.isAnalyzingAI}
-            className={`w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm resize-none focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30${regen.isAnalyzingAI ? ' opacity-60' : ''}`}
+            className={`w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm resize-none focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 grow${regen.isAnalyzingAI ? ' opacity-60' : ''}`}
           />
           <div className="mt-2 flex items-center justify-between">
             <p className="text-xs text-gray-500">
@@ -219,6 +225,12 @@ const TransitionRegenerateModal: React.FC<TransitionRegenerateModalProps> = ({
             </button>
           </div>
         </div>
+
+        <ResizeGrip
+          onPointerDown={resize.handleResizePointerDown}
+          onPointerMove={resize.handleResizePointerMove}
+          onPointerUp={resize.handleResizePointerUp}
+        />
       </div>
     </div>
   );

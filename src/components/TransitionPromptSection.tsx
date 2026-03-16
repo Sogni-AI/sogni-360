@@ -1,9 +1,6 @@
-/**
- * TransitionPromptSection — Prompt mode toggle, preset dropdown, textarea(s),
- * per-segment thumbnail rows, and AI expansion controls for the transition config panel.
- */
-
-import React from 'react';
+/** TransitionPromptSection — Prompt mode toggle, preset dropdown, carousel editor,
+ * and AI expansion controls for the transition config panel. */
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { Segment } from '../types';
 import { TRANSITION_PROMPT_PRESETS } from '../constants/transitionPromptPresets';
 import type { PromptMode } from '../hooks/useTransitionPrompts';
@@ -56,49 +53,66 @@ const AIExpandButton: React.FC<{
   </button>
 );
 
-const SegmentPromptRow: React.FC<{
+const SegmentCarouselCard: React.FC<{
   segment: Segment;
-  prompt: string;
-  onPromptChange: (prompt: string) => void;
+  index: number;
+  isActive: boolean;
+  onClick: () => void;
   getWaypointLabel: (id: string) => string;
   getWaypointImage: (id: string) => string | undefined;
-  isExpanding: boolean;
-  onExpandWithAI: () => void;
-  showAIButton: boolean;
-}> = ({ segment, prompt, onPromptChange, getWaypointLabel, getWaypointImage, isExpanding, onExpandWithAI, showAIButton }) => {
+}> = ({ segment, index, isActive, onClick, getWaypointLabel, getWaypointImage }) => {
   const fromImg = getWaypointImage(segment.fromWaypointId);
   const toImg = getWaypointImage(segment.toWaypointId);
   const fromLabel = getWaypointLabel(segment.fromWaypointId);
   const toLabel = getWaypointLabel(segment.toWaypointId);
 
   return (
-    <div className="segment-prompt-row">
-      <div className="segment-prompt-thumbs">
-        <div className="segment-thumb">
-          {fromImg && <img src={fromImg} alt={fromLabel} />}
-          <span className="segment-thumb-label" title={fromLabel}>{fromLabel}</span>
-        </div>
-        <svg className="segment-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    <button
+      type="button"
+      className={`segment-carousel-card${isActive ? ' active' : ''}`}
+      onClick={onClick}
+      title={`${fromLabel} → ${toLabel}`}
+    >
+      <span className="segment-carousel-index">{index + 1}</span>
+      <div className="segment-carousel-thumbs">
+        {fromImg && <img src={fromImg} alt={fromLabel} className="segment-carousel-img" />}
+        <svg className="segment-carousel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
         </svg>
-        <div className="segment-thumb">
-          {toImg && <img src={toImg} alt={toLabel} />}
-          <span className="segment-thumb-label" title={toLabel}>{toLabel}</span>
-        </div>
+        {toImg && <img src={toImg} alt={toLabel} className="segment-carousel-img" />}
       </div>
-      <div className="segment-prompt-input">
-        <textarea
-          value={prompt}
-          onChange={(e) => onPromptChange(e.target.value)}
-          placeholder="Describe this transition..."
-          rows={2}
-          readOnly={isExpanding}
-          className={`config-textarea segment-textarea${isExpanding ? ' opacity-60' : ''}`}
-        />
+    </button>
+  );
+};
+
+const SegmentEditor: React.FC<{
+  segment: Segment;
+  prompt: string;
+  onPromptChange: (prompt: string) => void;
+  getWaypointLabel: (id: string) => string;
+  isExpanding: boolean;
+  onExpandWithAI: () => void;
+  showAIButton: boolean;
+}> = ({ segment, prompt, onPromptChange, getWaypointLabel, isExpanding, onExpandWithAI, showAIButton }) => {
+  const fromLabel = getWaypointLabel(segment.fromWaypointId);
+  const toLabel = getWaypointLabel(segment.toWaypointId);
+
+  return (
+    <div className="segment-editor">
+      <div className="segment-editor-header">
+        <span className="segment-editor-label">{fromLabel} → {toLabel}</span>
         {showAIButton && (
           <AIExpandButton onClick={onExpandWithAI} isExpanding={isExpanding} />
         )}
       </div>
+      <textarea
+        value={prompt}
+        onChange={(e) => onPromptChange(e.target.value)}
+        placeholder="Describe this transition..."
+        rows={3}
+        readOnly={isExpanding}
+        className={`config-textarea segment-textarea${isExpanding ? ' opacity-60' : ''}`}
+      />
     </div>
   );
 };
@@ -120,91 +134,164 @@ const TransitionPromptSection: React.FC<TransitionPromptSectionProps> = ({
   onExpandAllWithAI,
   onExpandSegmentWithAI,
   showAIButton,
-}) => (
-  <div className="config-section">
-    <label className="config-label">Video Transition Prompt</label>
-    <p className="config-hint">
-      Select a preset or customize how the camera should move between angles.
-    </p>
+}) => {
+  const [activeSegmentIdx, setActiveSegmentIdx] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
-    {/* Mode toggle */}
-    <div className="prompt-mode-toggle">
-      <button
-        className={`prompt-mode-btn${promptMode === 'all' ? ' active' : ''}`}
-        onClick={() => onPromptModeChange('all')}
-      >
-        Same Prompt for All
-      </button>
-      <button
-        className={`prompt-mode-btn${promptMode === 'each' ? ' active' : ''}`}
-        onClick={() => onPromptModeChange('each')}
-      >
-        Unique Prompt for Each
-      </button>
-    </div>
+  useEffect(() => {
+    if (activeSegmentIdx >= segments.length && segments.length > 0) {
+      setActiveSegmentIdx(segments.length - 1);
+    }
+  }, [segments.length]);
 
-    {promptMode === 'all' ? (
-      <>
-        {/* Preset dropdown */}
-        <select
-          className="config-select config-preset-select"
-          value={selectedPresetId}
-          onChange={(e) => onPresetChange(e.target.value)}
+  const scrollToCard = useCallback((idx: number) => {
+    const container = carouselRef.current;
+    if (!container) return;
+    const card = container.children[idx] as HTMLElement | undefined;
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, []);
+
+  const handleCardClick = useCallback((idx: number) => {
+    setActiveSegmentIdx(idx);
+    scrollToCard(idx);
+  }, [scrollToCard]);
+
+  const handlePrev = useCallback(() => {
+    const next = Math.max(0, activeSegmentIdx - 1);
+    setActiveSegmentIdx(next);
+    scrollToCard(next);
+  }, [activeSegmentIdx, scrollToCard]);
+
+  const handleNext = useCallback(() => {
+    const next = Math.min(segments.length - 1, activeSegmentIdx + 1);
+    setActiveSegmentIdx(next);
+    scrollToCard(next);
+  }, [activeSegmentIdx, segments.length, scrollToCard]);
+
+  const activeSeg = segments[activeSegmentIdx];
+
+  return (
+    <div className="config-section">
+      <label className="config-label">Video Transition Prompt</label>
+      <p className="config-hint">
+        Select a preset or customize how the camera should move between angles.
+      </p>
+
+      {/* Mode toggle */}
+      <div className="prompt-mode-toggle">
+        <button
+          className={`prompt-mode-btn${promptMode === 'all' ? ' active' : ''}`}
+          onClick={() => onPromptModeChange('all')}
         >
-          {TRANSITION_PROMPT_PRESETS.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.label} — {preset.description}
-            </option>
-          ))}
-          {selectedPresetId === 'custom' && (
-            <option value="custom">Custom</option>
-          )}
-        </select>
+          Same Prompt for All
+        </button>
+        <button
+          className={`prompt-mode-btn${promptMode === 'each' ? ' active' : ''}`}
+          onClick={() => onPromptModeChange('each')}
+        >
+          Unique Prompt for Each
+        </button>
+      </div>
 
-        {/* Shared prompt textarea */}
-        <textarea
-          className={`config-textarea${isExpandingAI ? ' opacity-60' : ''}`}
-          value={transitionPrompt}
-          onChange={(e) => onTransitionPromptChange(e.target.value)}
-          placeholder="Describe the transition style..."
-          rows={3}
-          readOnly={isExpandingAI}
-        />
-        {showAIButton && (
-          <div className="prompt-ai-row">
-            <AIExpandButton onClick={onExpandAllWithAI} isExpanding={isExpandingAI} />
-            <span className="prompt-ai-hint">
-              AI will analyze the image pair and generate a unique scene transition intelligently based on the relationships it finds between them.
-            </span>
+      {promptMode === 'all' ? (
+        <>
+          <select
+            className="config-select config-preset-select"
+            value={selectedPresetId}
+            onChange={(e) => onPresetChange(e.target.value)}
+          >
+            {TRANSITION_PROMPT_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.label} — {preset.description}
+              </option>
+            ))}
+            {selectedPresetId === 'custom' && (
+              <option value="custom">Custom</option>
+            )}
+          </select>
+
+          <textarea
+            className={`config-textarea${isExpandingAI ? ' opacity-60' : ''}`}
+            value={transitionPrompt}
+            onChange={(e) => onTransitionPromptChange(e.target.value)}
+            placeholder="Describe the transition style..."
+            rows={3}
+            readOnly={isExpandingAI}
+          />
+          {showAIButton && (
+            <div className="prompt-ai-row">
+              <AIExpandButton onClick={onExpandAllWithAI} isExpanding={isExpandingAI} />
+              <span className="prompt-ai-hint">
+                AI will analyze the image pair and generate a unique scene transition intelligently based on the relationships it finds between them.
+              </span>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="segment-carousel-wrapper">
+            <button
+              type="button"
+              className="segment-carousel-nav prev"
+              onClick={handlePrev}
+              disabled={activeSegmentIdx === 0}
+              aria-label="Previous segment"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div className="segment-carousel-track" ref={carouselRef}>
+              {segments.map((seg, idx) => (
+                <SegmentCarouselCard
+                  key={seg.id}
+                  segment={seg}
+                  index={idx}
+                  isActive={idx === activeSegmentIdx}
+                  onClick={() => handleCardClick(idx)}
+                  getWaypointLabel={getWaypointLabel}
+                  getWaypointImage={getWaypointImage}
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="segment-carousel-nav next"
+              onClick={handleNext}
+              disabled={activeSegmentIdx === segments.length - 1}
+              aria-label="Next segment"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
-        )}
-      </>
-    ) : (
-      <>
-        {/* Per-segment prompt list */}
-        <div className="segment-prompt-list">
-          {segments.map((seg) => (
-            <SegmentPromptRow
-              key={seg.id}
-              segment={seg}
-              prompt={perSegmentPrompts[seg.id] ?? transitionPrompt}
-              onPromptChange={(p) => onSegmentPromptChange(seg.id, p)}
+
+          {activeSeg && (
+            <SegmentEditor
+              segment={activeSeg}
+              prompt={perSegmentPrompts[activeSeg.id] ?? transitionPrompt}
+              onPromptChange={(p) => onSegmentPromptChange(activeSeg.id, p)}
               getWaypointLabel={getWaypointLabel}
-              getWaypointImage={getWaypointImage}
-              isExpanding={expandingSegmentId === seg.id}
-              onExpandWithAI={() => onExpandSegmentWithAI(seg.id)}
+              isExpanding={expandingSegmentId === activeSeg.id}
+              onExpandWithAI={() => onExpandSegmentWithAI(activeSeg.id)}
               showAIButton={showAIButton}
             />
-          ))}
-        </div>
-        {showAIButton && (
-          <p className="prompt-ai-hint" style={{ marginTop: '0.5rem' }}>
-            AI will analyze each image pair and generate a unique scene transition intelligently based on the relationships it finds between them.
-          </p>
-        )}
-      </>
-    )}
-  </div>
-);
+          )}
+
+          {showAIButton && (
+            <p className="prompt-ai-hint" style={{ marginTop: '0.5rem' }}>
+              AI will analyze each image pair and generate a unique scene transition intelligently based on the relationships it finds between them.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 
 export default TransitionPromptSection;

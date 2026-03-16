@@ -16,6 +16,8 @@ import {
   useTransitionConfig,
   TransitionGenerationSettings,
 } from '../hooks/useTransitionConfig';
+import { usePanelResize } from '../hooks/usePanelResize';
+import ResizeGrip from './shared/ResizeGrip';
 
 // Re-export for consumers that import from this file
 export type { TransitionGenerationSettings };
@@ -36,14 +38,18 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
   const config = useTransitionConfig({ onStartGeneration, onConfirmDestructiveAction, onRequireAuth });
   const { prompts } = config;
 
+  const resize = usePanelResize();
+
   return (
     <LiquidGlassPanel
+      ref={resize.panelRef}
       cornerRadius={16}
       modalTint
-      className="transition-config-panel glass-modal"
+      className={`transition-config-panel glass-modal${resize.panelSize ? ' resized' : ''}`}
       displacementScale={60}
       saturation={160}
       aberrationIntensity={4}
+      style={resize.resizeStyle}
     >
       {/* Header */}
       <div className="config-header">
@@ -258,6 +264,11 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
         onClose={() => config.setShowSettings(false)}
       />
 
+      <ResizeGrip
+        onPointerDown={resize.handleResizePointerDown}
+        onPointerMove={resize.handleResizePointerMove}
+        onPointerUp={resize.handleResizePointerUp}
+      />
     </LiquidGlassPanel>
   );
 };
