@@ -5,6 +5,7 @@ import App from './App';
 import { AppProvider } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
 import { RewardsProvider } from './context/RewardsContext';
+import { AudioManagerProvider } from './context/AudioManagerContext';
 import { initializeGA } from './utils/analytics';
 import './styles/index.css';
 
@@ -16,9 +17,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <HelmetProvider>
       <AppProvider>
         <ToastProvider>
-          <RewardsProvider>
-            <App />
-          </RewardsProvider>
+          <AudioManagerProvider>
+            <RewardsProvider>
+              <App />
+            </RewardsProvider>
+          </AudioManagerProvider>
         </ToastProvider>
       </AppProvider>
     </HelmetProvider>

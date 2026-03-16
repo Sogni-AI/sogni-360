@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useAudioManager } from '../../context/AudioManagerContext';
+import MuteToggleButton from './MuteToggleButton';
 
 interface VersionInfo {
   current: number;
@@ -12,19 +14,14 @@ interface FullscreenMediaViewerProps {
   src: string;
   alt?: string;
   onClose: () => void;
-  // Version navigation (optional)
   versionInfo?: VersionInfo | null;
   onPrevVersion?: () => void;
   onNextVersion?: () => void;
-  // When true, navigation loops (buttons always enabled, parent handles looping)
   loop?: boolean;
+  videoModel?: string;
 }
 
-/**
- * Fullscreen modal for viewing images or videos
- * - Images: tap/click anywhere to close
- * - Videos: tap/click video to play/pause, tap X button to close
- */
+/** Fullscreen modal for viewing images or videos */
 const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
   type,
   src,
@@ -33,17 +30,34 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
   versionInfo,
   onPrevVersion,
   onNextVersion,
-  loop = false
+  loop = false,
+  videoModel
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
 
-  // Swipe tracking for version navigation
+  // LTX audio support
+  const audioManager = useAudioManager();
+  const isLtx = videoModel === 'ltx2.3';
+  const fullscreenAudioId = `fullscreen-${src.substring(0, 40)}`;
+  const isAudioActive = audioManager.activeAudioId === fullscreenAudioId;
+  const hasAudio = isLtx && isAudioActive;
+
+  // Register/unregister with AudioManager (user taps mute button to unmute)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isLtx || type !== 'video') return;
+    audioManager.register(fullscreenAudioId, video);
+    return () => {
+      audioManager.releaseAudio(fullscreenAudioId);
+      audioManager.unregister(fullscreenAudioId);
+    };
+  }, [fullscreenAudioId, isLtx, type]);
+
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
   // Keyboard navigation (escape to close, arrows for versions)
-  // When loop is true, parent handles looping logic in callbacks
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -66,7 +80,6 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [versionInfo?.canPrev, versionInfo?.canNext, versionInfo?.total, loop]);
 
-  // Swipe handling for version navigation (touch devices)
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!versionInfo || versionInfo.total <= 1) return;
     touchStartX.current = e.touches[0].clientX;
@@ -82,13 +95,10 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
-    // Only trigger if horizontal swipe is dominant and significant
     if (absX > 50 && absX > absY * 1.5) {
       if (deltaX > 0 && (versionInfo.canPrev || loop) && onPrevVersion) {
-        // Swipe right = previous version (or loop to end)
         onPrevVersion();
       } else if (deltaX < 0 && (versionInfo.canNext || loop) && onNextVersion) {
-        // Swipe left = next version (or loop to start)
         onNextVersion();
       }
     }
@@ -97,25 +107,16 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
     touchStartY.current = null;
   }, [versionInfo, onPrevVersion, onNextVersion, loop]);
 
-  // Autoplay video when opened or when src changes (version navigation)
   useEffect(() => {
-    if (type === 'video' && videoRef.current) {
-      // Reset paused state for new video
-      setIsPaused(false);
-      // Wait for video to be ready before playing
-      const video = videoRef.current;
-      const tryPlay = () => {
-        video.play().catch(() => {
-          setIsPaused(true);
-        });
-      };
-      // If video is already loaded, play immediately; otherwise wait for loadeddata
-      if (video.readyState >= 3) {
-        tryPlay();
-      } else {
-        video.addEventListener('loadeddata', tryPlay, { once: true });
-        return () => video.removeEventListener('loadeddata', tryPlay);
-      }
+    if (type !== 'video' || !videoRef.current) return;
+    setIsPaused(false);
+    const video = videoRef.current;
+    const tryPlay = () => { video.play().catch(() => setIsPaused(true)); };
+    if (video.readyState >= 3) {
+      tryPlay();
+    } else {
+      video.addEventListener('loadeddata', tryPlay, { once: true });
+      return () => video.removeEventListener('loadeddata', tryPlay);
     }
   }, [type, src]);
 
@@ -251,7 +252,7 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
             ref={videoRef}
             src={src}
             loop
-            muted
+            muted={!hasAudio}
             playsInline
             className="fullscreen-media-content"
             onPlay={handlePlay}
@@ -265,6 +266,22 @@ const FullscreenMediaViewer: React.FC<FullscreenMediaViewerProps> = ({
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
+            </div>
+          )}
+          {/* LTX audio mute toggle - bottom-right */}
+          {isLtx && (
+            <div style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 10 }}>
+              <MuteToggleButton
+                muted={!hasAudio}
+                onToggle={() => {
+                  if (isAudioActive) {
+                    audioManager.releaseAudio(fullscreenAudioId);
+                  } else {
+                    audioManager.claimAudio(fullscreenAudioId);
+                  }
+                }}
+                size="md"
+              />
             </div>
           )}
         </div>

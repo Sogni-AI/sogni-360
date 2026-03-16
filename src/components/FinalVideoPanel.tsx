@@ -1,8 +1,9 @@
-import React, { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import MusicSelector from './shared/MusicSelector';
 import { useFinalVideoActions } from '../hooks/useFinalVideoActions';
 import WorkflowWizard, { WorkflowStep, computeWorkflowStep } from './shared/WorkflowWizard';
 import { useApp } from '../context/AppContext';
+import { useAudioManager } from '../context/AudioManagerContext';
 import type { MusicSelection } from '../types';
 
 interface FinalVideoPanelProps {
@@ -40,6 +41,24 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
   const [uiVisible, setUiVisible] = useState(true);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INACTIVITY_TIMEOUT = 3000; // 3 seconds
+
+  // LTX audio support for final video
+  const audioManager = useAudioManager();
+  const finalAudioId = `final-video-${projectId}`;
+  const hasLtxSegments = useMemo(
+    () => currentProject?.segments.some(s => s.videoModel === 'ltx2.3') ?? false,
+    [currentProject?.segments]
+  );
+  const isAudioActive = audioManager.activeAudioId === finalAudioId;
+  const hasLtxAudio = hasLtxSegments && isAudioActive;
+
+  // Register/unregister final video with AudioManager
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !hasLtxSegments) return;
+    audioManager.register(finalAudioId, video);
+    return () => { audioManager.unregister(finalAudioId); };
+  }, [finalAudioId, hasLtxSegments]);
 
   const {
     isDownloading,
@@ -253,7 +272,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
               ref={videoRef}
               src={localStitchedUrl}
               autoPlay
-              muted={!musicSelection}
+              muted={!musicSelection && !hasLtxAudio}
               playsInline
               loop
               className="final-video"
@@ -405,6 +424,22 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
           title={musicSelection ? 'Change music' : 'Add music'}
           active={!!musicSelection}
         />
+        {/* LTX native audio toggle - only when no music and project has LTX segments */}
+        {!musicSelection && hasLtxSegments && (
+          <ActionButton
+            icon={hasLtxAudio ? 'speaker' : 'speaker-off'}
+            onClick={() => {
+              if (isAudioActive) {
+                audioManager.releaseAudio(finalAudioId);
+              } else {
+                audioManager.claimAudio(finalAudioId);
+              }
+            }}
+            disabled={isStitching || !localStitchedUrl}
+            title={hasLtxAudio ? 'Mute native audio' : 'Play native audio'}
+            active={hasLtxAudio}
+          />
+        )}
         <ActionButton
           icon="download"
           onClick={handleDownload}
@@ -447,7 +482,7 @@ const FinalVideoPanel: React.FC<FinalVideoPanelProps> = ({
 // Sub-components for cleaner JSX
 
 interface ActionButtonProps {
-  icon: 'play' | 'pause' | 'music' | 'download' | 'share' | 'back';
+  icon: 'play' | 'pause' | 'music' | 'download' | 'share' | 'back' | 'speaker' | 'speaker-off';
   onClick: () => void;
   disabled?: boolean;
   title: string;
@@ -460,7 +495,9 @@ const ICON_PATHS = {
   music: 'M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3',
   download: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
   share: 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z',
-  back: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+  back: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+  speaker: 'M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z',
+  'speaker-off': 'M5.586 15H2v-6h4l5-4v4.586M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2'
 };
 
 const ActionButton: React.FC<ActionButtonProps> = ({ icon, onClick, disabled, title, active }) => (

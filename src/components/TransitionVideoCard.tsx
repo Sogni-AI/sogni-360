@@ -1,6 +1,8 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import type { Segment } from '../types';
 import FullscreenMediaViewer from './shared/FullscreenMediaViewer';
+import MuteToggleButton from './shared/MuteToggleButton';
+import { useAudioManager } from '../context/AudioManagerContext';
 import { useLazyLoad } from '../hooks/useLazyLoad';
 import { getCachedBlobUrl, preloadVideo, invalidateCacheEntry } from '../utils/videoBlobCache';
 
@@ -58,8 +60,30 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
   const hasEverBeenVisible = useRef(false); // Track if card has ever been visible (for lazy loading)
   const errorRetryCount = useRef(0); // Prevent infinite error→retry loops
 
+  // LTX audio support
+  const audioManager = useAudioManager();
+  const isLtxSegment = segment.videoModel === 'ltx2.3';
+  const cardAudioId = `card-transition-${segment.id}`;
+  const isAudioActive = audioManager.activeAudioId === cardAudioId;
+  const hasAudio = isLtxSegment && isAudioActive;
+
   // Single observer for real-time visibility tracking
   const { ref: cardRef, isVisible: isCurrentlyVisible } = useLazyLoad({ rootMargin: '50px', once: false });
+
+  // Register/unregister video with AudioManager
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isLtxSegment) return;
+    audioManager.register(cardAudioId, video);
+    return () => { audioManager.unregister(cardAudioId); };
+  }, [cardAudioId, isLtxSegment]);
+
+  // Release audio when scrolled out of view and paused
+  useEffect(() => {
+    if (!isCurrentlyVisible && isPaused && isAudioActive) {
+      audioManager.releaseAudio(cardAudioId);
+    }
+  }, [isCurrentlyVisible, isPaused, isAudioActive, cardAudioId]);
 
   // Track if card has ever been visible (for lazy loading the video src)
   const hasBeenVisible = isCurrentlyVisible || hasEverBeenVisible.current;
@@ -209,14 +233,18 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
           /* Ready - show video with autoplay, tap to open fullscreen */
           <div
             className={`transition-video-wrap ${!videoLoaded ? 'loading' : ''}`}
-            onClick={() => setShowFullscreen(true)}
+            onClick={() => {
+              // Release audio before opening fullscreen (fullscreen will claim its own)
+              if (isAudioActive) audioManager.releaseAudio(cardAudioId);
+              setShowFullscreen(true);
+            }}
           >
             <video
               ref={videoRef}
               src={hasBeenVisible ? (blobUrl || segment.videoUrl) : undefined}
               autoPlay
               loop
-              muted
+              muted={!hasAudio}
               playsInline
               onPlay={handlePlay}
               onPause={handlePause}
@@ -243,6 +271,22 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 </svg>
               )}
             </button>
+            {/* LTX audio mute toggle - bottom-left corner */}
+            {isLtxSegment && (
+              <div style={{ position: 'absolute', bottom: '6px', left: '6px', zIndex: 3 }}>
+                <MuteToggleButton
+                  muted={!hasAudio}
+                  onToggle={() => {
+                    if (isAudioActive) {
+                      audioManager.releaseAudio(cardAudioId);
+                    } else {
+                      audioManager.claimAudio(cardAudioId);
+                    }
+                  }}
+                  size="sm"
+                />
+              </div>
+            )}
             <div className="transition-ready-badge">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -387,6 +431,7 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
           onPrevVersion={onPrevVersion}
           onNextVersion={onNextVersion}
           loop
+          videoModel={segment.videoModel}
         />
       )}
     </div>

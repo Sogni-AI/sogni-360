@@ -1,13 +1,16 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTransitionNavigation } from '../hooks/useTransitionNavigation';
 import { useToast } from '../context/ToastContext';
+import { useAudioManager } from '../context/AudioManagerContext';
+import MuteToggleButton from './shared/MuteToggleButton';
 import { preloadVideo, hasCachedBlobUrl, getCachedBlobUrl } from '../utils/videoBlobCache';
 
 const Sogni360Viewer: React.FC = () => {
   const { state, dispatch } = useApp();
-  const { currentProject, currentWaypointIndex, isPlaying } = state;
+  const { currentProject, currentWaypointIndex, isPlaying, videoTransition } = state;
   const { showToast } = useToast();
+  const audioManager = useAudioManager();
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Track the displayed image dimensions for scaling video to match
@@ -28,6 +31,33 @@ const Sogni360Viewer: React.FC = () => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const content = getCurrentContent();
+
+  // Find current transition segment to check videoModel
+  const currentSegment = useMemo(() => {
+    if (!currentProject || !videoTransition?.isPlaying) return null;
+    const waypoints = currentProject.waypoints;
+    const fromId = waypoints[currentWaypointIndex]?.id;
+    const toId = waypoints[videoTransition.targetWaypointIndex]?.id;
+    if (!fromId || !toId) return null;
+    return currentProject.segments.find(
+      s => (s.fromWaypointId === fromId && s.toWaypointId === toId) ||
+           (s.fromWaypointId === toId && s.toWaypointId === fromId)
+    ) ?? null;
+  }, [currentProject, videoTransition?.isPlaying, videoTransition?.targetWaypointIndex, currentWaypointIndex]);
+
+  const isLtxSegment = currentSegment?.videoModel === 'ltx2.3';
+  const viewerAudioId = currentSegment ? `viewer-transition-${currentSegment.id}` : '';
+  const isAudioActive = audioManager.activeAudioId === viewerAudioId;
+  // Keep muted during reverse playback (frame-by-frame seeking = no coherent audio)
+  const hasAudio = isLtxSegment && isAudioActive && !playReverse;
+
+  // Register/unregister video element with AudioManager
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !viewerAudioId || !isLtxSegment) return;
+    audioManager.register(viewerAudioId, video);
+    return () => { audioManager.unregister(viewerAudioId); };
+  }, [viewerAudioId, isLtxSegment]);
 
   // Track which video URL + direction is ready to play
   // This prevents race conditions when rapidly switching videos or changing direction
@@ -424,7 +454,7 @@ const Sogni360Viewer: React.FC = () => {
             height: `${imageDisplaySize.height}px`,
             objectFit: 'cover'
           } : undefined}
-          muted
+          muted={!hasAudio}
           playsInline
           preload="auto"
           onCanPlayThrough={() => {
@@ -455,6 +485,32 @@ const Sogni360Viewer: React.FC = () => {
             handleTransitionEnd();
           }}
         />
+      )}
+
+      {/* LTX audio mute toggle - only for LTX segments during forward playback */}
+      {content.type === 'video' && isLtxSegment && !playReverse && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '8rem',
+            right: '1rem',
+            zIndex: 15,
+          }}
+          onTouchStart={stopTouchPropagation}
+          onTouchEnd={stopTouchPropagation}
+        >
+          <MuteToggleButton
+            muted={!hasAudio}
+            onToggle={() => {
+              if (isAudioActive) {
+                audioManager.releaseAudio(viewerAudioId);
+              } else {
+                audioManager.claimAudio(viewerAudioId);
+              }
+            }}
+            size="md"
+          />
+        </div>
       )}
 
       {/* Click zones with hover buttons (desktop) */}
