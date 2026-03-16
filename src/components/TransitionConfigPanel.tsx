@@ -45,7 +45,7 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
       ref={resize.panelRef}
       cornerRadius={16}
       modalTint
-      className={`transition-config-panel glass-modal${resize.panelSize ? ' resized' : ''}`}
+      className={`transition-config-panel glass-modal${resize.panelSize ? ' resized' : ''}${resize.isDragging ? ' resizing' : ''}`}
       displacementScale={60}
       saturation={160}
       aberrationIntensity={4}

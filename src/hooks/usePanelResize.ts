@@ -15,6 +15,7 @@ interface PanelSize {
 export function usePanelResize() {
   const panelRef = useRef<HTMLDivElement>(null);
   const [panelSize, setPanelSize] = useState<PanelSize | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const minSizeRef = useRef<PanelSize>({ w: 0, h: 0 });
   const dragRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
 
@@ -26,6 +27,7 @@ export function usePanelResize() {
       minSizeRef.current = { w: rect.width, h: rect.height };
     }
     dragRef.current = { x: e.clientX, y: e.clientY, w: rect.width, h: rect.height };
+    setIsDragging(true);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, []);
 
@@ -44,6 +46,11 @@ export function usePanelResize() {
 
   const handleResizePointerUp = useCallback(() => {
     dragRef.current = null;
+    setIsDragging(false);
+    // Force liquid-glass-react to re-measure after resize completes
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
   }, []);
 
   const resizeStyle: React.CSSProperties | undefined = panelSize
@@ -53,6 +60,7 @@ export function usePanelResize() {
   return {
     panelRef,
     panelSize,
+    isDragging,
     resizeStyle,
     handleResizePointerDown,
     handleResizePointerMove,

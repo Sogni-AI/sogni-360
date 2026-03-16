@@ -103,6 +103,7 @@ html, body {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  transition: none !important;
   border-radius: inherit !important;
 }
 
@@ -139,9 +140,10 @@ html, body {
   height: 100% !important;
 }
 
-/* Library forces font: "500 20px/1 system-ui" on the content wrapper — reset. */
+/* Library forces font: "500 20px/1 system-ui" and transition-all on the content wrapper — reset. */
 .liquid-glass-wrap .glass > div {
   font: inherit !important;
+  transition: none !important;
 }
 
 /* Strip margins from child elements inside glass wrappers so the grid
@@ -6166,6 +6168,14 @@ html, body {
   }
 }
 
+/* Kill all transitions during active resize drag — the liquid-glass-react library
+   applies inline transition: all 0.2s to its elements, causing animated size changes */
+.transition-config-panel.resizing,
+.transition-config-panel.resizing * {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* Resized state — propagate flex through glass layers so content fills explicit height */
 .transition-config-panel.resized > .relative,
 .transition-config-panel.resized > .relative > .glass,
@@ -6540,10 +6550,10 @@ html, body {
   gap: 3px;
 }
 .segment-carousel-img {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
-  border-radius: 5px;
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.3);
 }
@@ -6574,7 +6584,7 @@ html, body {
   min-height: 56px !important;
   padding: 0.5rem 0.75rem !important;
   font-size: 0.8125rem !important;
-  resize: none !important;
+  resize: vertical !important;
 }
 
 /* Settings row */
