@@ -88,6 +88,47 @@ Your prompt MUST NOT:
 
 Output ONLY the video generation prompt text, nothing else.`;
 
+// ── Text-only expand prompts (no images — used for "Same Prompt for All") ────
+
+const WAN_EXPAND_TEXT_ONLY_PROMPT = `You are a video transition prompt expansion specialist. You will receive a base transition prompt for an AI video generator.
+
+Your job is to EXPAND the base prompt into a richer, more detailed version while preserving its core intent and style. Since this prompt will be applied across multiple different transitions, keep it general — do NOT invent specific visual details about particular scenes or subjects.
+
+Instead, enhance the prompt by:
+- Adding more vivid and descriptive motion language
+- Elaborating on camera movement dynamics (orbit speed, smoothness, direction changes)
+- Adding atmospheric and lighting transition details
+- Strengthening the cinematic quality of the description
+
+Your expanded prompt MUST:
+- Preserve the core intent and style of the base prompt
+- Remain general enough to apply to any transition in the project
+- Use flowing present-tense language suitable for an AI video generator
+- Be under 150 words
+- Not include any preamble, explanation, or formatting
+
+Output ONLY the expanded video generation prompt text, nothing else.`;
+
+const LTX_EXPAND_TEXT_ONLY_PROMPT = `You are a video transition prompt specialist for the LTX-2.3 model. You will receive a base prompt to expand.
+
+Since this prompt will be applied across multiple different transitions, keep it general — do NOT invent specific visual details about particular scenes or subjects.
+
+FORMAT: Write as a single flowing paragraph in present tense. Do NOT use bullet points, numbered lists, headers, or segmented formatting.
+
+Enhance the prompt by:
+- Adding richer motion and camera movement language ("slow dolly," "sweeping orbit," "gentle tracking shot")
+- Elaborating on cinematic quality, atmosphere, and lighting dynamics
+- Adding physical action cues and spatial descriptions
+- Keeping it applicable to any transition in the project
+
+NO numerical specifications — use natural language.
+
+AUDIO IS REQUIRED — LTX-2.3 generates synchronized audio. Weave general sound descriptions naturally: environmental ambience, movement sounds, atmospheric audio. Describe sounds as they would be heard.
+
+Your expanded prompt MUST preserve the core intent of the base prompt, be 100-200 words, remain general enough for any transition, not include any preamble or explanation.
+
+Output ONLY the expanded prompt text, nothing else.`;
+
 // ── LTX-2.3 system prompts (i2v first-frame/last-frame with audio) ────
 
 const LTX_EXPAND_PROMPT = `You are a video transition prompt specialist for the LTX-2.3 model. You will receive a base prompt and two images: the FIRST is the starting frame, the SECOND is the ending frame of a short video clip.
@@ -141,14 +182,16 @@ function getSystemPrompts(videoModel?: string) {
   const isLtx = videoModel === 'ltx2.3';
   return {
     expand: isLtx ? LTX_EXPAND_PROMPT : WAN_EXPAND_PROMPT,
+    expandTextOnly: isLtx ? LTX_EXPAND_TEXT_ONLY_PROMPT : WAN_EXPAND_TEXT_ONLY_PROMPT,
     generate: isLtx ? LTX_GENERATE_PROMPT : WAN_GENERATE_PROMPT,
     maxTokens: isLtx ? 768 : 512, // LTX prompts are longer
   };
 }
 
 export interface AnalyzeTransitionOptions {
-  fromImageUrl: string;
-  toImageUrl: string;
+  /** When omitted (text-only mode), the LLM expands the prompt without visual context */
+  fromImageUrl?: string;
+  toImageUrl?: string;
   fromLabel?: string;
   toLabel?: string;
   /** When provided, the VLM expands this prompt with scene-specific details */
@@ -187,7 +230,8 @@ export async function analyzeTransition(
   const t0 = performance.now();
   const elapsed = () => `${((performance.now() - t0) / 1000).toFixed(1)}s`;
 
-  console.log('[AITransitionAnalyzer] Starting analysis (stream mode v2)…');
+  const hasImages = !!fromImageUrl && !!toImageUrl;
+  console.log(`[AITransitionAnalyzer] Starting analysis (stream mode v2, ${hasImages ? 'with images' : 'text-only'})…`);
 
   const client = getSogniClient();
   if (!client) {
@@ -208,28 +252,47 @@ export async function analyzeTransition(
     throw new DOMException('Analysis cancelled', 'AbortError');
   }
 
-  // Resize images for the VLM (1024px max, JPEG 0.85) — sogni-chat does the same.
-  // Raw camera angle images can be 2-3MB+ as base64, which chokes VLM workers.
-  console.log(`[AITransitionAnalyzer] [${elapsed()}] Resizing images for VLM (max ${VLM_MAX_DIMENSION}px)…`);
-  const [fromDataUri, toDataUri] = await Promise.all([
-    resizeImageForVLM(fromImageUrl),
-    resizeImageForVLM(toImageUrl),
-  ]);
-  const fromSize = Math.round(fromDataUri.length / 1024);
-  const toSize = Math.round(toDataUri.length / 1024);
-  console.log(`[AITransitionAnalyzer] [${elapsed()}] Images resized (from: ${fromSize}KB, to: ${toSize}KB), sending to VLM…`);
-
-  if (signal?.aborted) {
-    throw new DOMException('Analysis cancelled', 'AbortError');
-  }
-
-  // Choose system prompt and user message based on whether we're expanding or generating
+  // Choose system prompt and user message based on mode
   const isExpanding = !!currentPrompt;
   const prompts = getSystemPrompts(videoModel);
-  const systemPrompt = isExpanding ? prompts.expand : prompts.generate;
-  const userText = isExpanding
-    ? `Base prompt to expand:\n"${currentPrompt}"\n\nThe first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Expand the base prompt with specific details from these images.`
-    : `The first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Write a transition prompt connecting these two views.`;
+
+  // Build messages based on whether images are provided
+  let systemPrompt: string;
+  let userContent: Array<{ type: 'image_url'; image_url: { url: string } } | { type: 'text'; text: string }> | string;
+
+  if (hasImages) {
+    // Image-aware mode: resize and include images
+    console.log(`[AITransitionAnalyzer] [${elapsed()}] Resizing images for VLM (max ${VLM_MAX_DIMENSION}px)…`);
+    const [fromDataUri, toDataUri] = await Promise.all([
+      resizeImageForVLM(fromImageUrl),
+      resizeImageForVLM(toImageUrl),
+    ]);
+    const fromSize = Math.round(fromDataUri.length / 1024);
+    const toSize = Math.round(toDataUri.length / 1024);
+    console.log(`[AITransitionAnalyzer] [${elapsed()}] Images resized (from: ${fromSize}KB, to: ${toSize}KB), sending to VLM…`);
+
+    if (signal?.aborted) {
+      throw new DOMException('Analysis cancelled', 'AbortError');
+    }
+
+    systemPrompt = isExpanding ? prompts.expand : prompts.generate;
+    const userText = isExpanding
+      ? `Base prompt to expand:\n"${currentPrompt}"\n\nThe first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Expand the base prompt with specific details from these images.`
+      : `The first image is the starting frame (${fromLabel || 'start'}). The second image is the ending frame (${toLabel || 'end'}). Write a transition prompt connecting these two views.`;
+
+    userContent = [
+      { type: 'image_url' as const, image_url: { url: fromDataUri } },
+      { type: 'image_url' as const, image_url: { url: toDataUri } },
+      { type: 'text' as const, text: userText },
+    ];
+  } else {
+    // Text-only mode: expand prompt without visual context (used for "Same Prompt for All")
+    if (!isExpanding) {
+      throw new Error('Cannot generate a prompt from scratch without images');
+    }
+    systemPrompt = prompts.expandTextOnly;
+    userContent = `Base prompt to expand:\n"${currentPrompt}"\n\nExpand this into a richer, more detailed video transition prompt. Keep it general — it will be applied to multiple different transitions.`;
+  }
 
   // Use stream:true — the SDK's non-streaming path (stream:false) has a fragile
   // polling loop that silently hangs. Every working Sogni app uses streaming.
@@ -237,14 +300,7 @@ export async function analyzeTransition(
     model: LLM_MODEL,
     messages: [
       { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: [
-          { type: 'image_url', image_url: { url: fromDataUri } },
-          { type: 'image_url', image_url: { url: toDataUri } },
-          { type: 'text', text: userText },
-        ],
-      },
+      { role: 'user', content: userContent },
     ],
     stream: true,
     max_tokens: prompts.maxTokens,

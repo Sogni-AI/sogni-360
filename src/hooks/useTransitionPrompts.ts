@@ -160,15 +160,8 @@ export function useTransitionPrompts({
     return () => { abortRef.current?.abort(); };
   }, []);
 
-  // Expand the shared prompt using the first segment's images as reference
+  // Expand the shared prompt without images — it applies to all transitions equally
   const handleExpandAllWithAI = useCallback(async () => {
-    const segs = segmentsRef.current;
-    if (segs.length === 0) return;
-    const seg = segs[0];
-    const fromUrl = waypointMap.get(seg.fromWaypointId)?.imageUrl;
-    const toUrl = waypointMap.get(seg.toWaypointId)?.imageUrl;
-    if (!fromUrl || !toUrl) return;
-
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -176,9 +169,6 @@ export function useTransitionPrompts({
 
     try {
       const result = await analyzeTransition({
-        fromImageUrl: fromUrl, toImageUrl: toUrl,
-        fromLabel: getWaypointLabel(seg.fromWaypointId),
-        toLabel: getWaypointLabel(seg.toWaypointId),
         currentPrompt: promptRef.current,
         videoModel: videoModelRef.current,
         signal: controller.signal,
@@ -189,10 +179,9 @@ export function useTransitionPrompts({
       const msg = error instanceof Error ? error.message : 'Prompt expansion failed';
       showToast({ message: `AI expansion failed: ${msg}`, type: 'error' });
     } finally {
-      // Always reset loading state — even on abort, so UI doesn't get stuck
       setIsExpandingAI(false);
     }
-  }, [waypointMap, getWaypointLabel, showToast]);
+  }, [showToast]);
 
   // Expand a single segment's prompt
   const handleExpandSegmentWithAI = useCallback(async (segmentId: string) => {
