@@ -47,7 +47,7 @@ export function useTransitionConfig({
   const { showToast } = useToast();
   const { currentProject, isAuthenticated, hasUsedFreeGeneration } = state;
   const { tokenType } = useWallet();
-  const { settings: advancedSettings } = useAdvancedSettings();
+  const { settings: advancedSettings, setVideoModel } = useAdvancedSettings();
 
   const videoModel = advancedSettings.videoModel;
   const isLtx = videoModel === 'ltx2.3';
@@ -261,7 +261,7 @@ export function useTransitionConfig({
   );
 
   return {
-    videoModel, isLtx,
+    videoModel, setVideoModel, isLtx,
     prompts: promptsHook,
     validResolutions, resolution, setResolution,
     duration, setDuration, durationOptions,

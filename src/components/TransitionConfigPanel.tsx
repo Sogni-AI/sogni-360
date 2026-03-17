@@ -3,8 +3,10 @@ import type { Segment } from '../types';
 import {
   VIDEO_QUALITY_PRESETS,
   VIDEO_RESOLUTIONS,
+  VIDEO_MODEL_FAMILIES,
   VideoResolution,
   VideoQualityPreset,
+  type VideoModelFamily,
 } from '../constants/videoSettings';
 import type { WorkflowStep } from './shared/WorkflowWizard';
 import MusicSelector from './shared/MusicSelector';
@@ -117,6 +119,19 @@ const TransitionConfigPanel: React.FC<TransitionConfigPanelProps> = ({
 
         {/* Settings row */}
         <div className="config-settings-row">
+          <div className="config-setting">
+            <label className="config-setting-label">Model</label>
+            <select
+              className="config-select"
+              value={config.videoModel}
+              onChange={(e) => config.setVideoModel(e.target.value as VideoModelFamily)}
+            >
+              {(Object.keys(VIDEO_MODEL_FAMILIES) as VideoModelFamily[]).map((key) => (
+                <option key={key} value={key}>{VIDEO_MODEL_FAMILIES[key].label}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="config-setting">
             <label className="config-setting-label">Resolution</label>
             <select
