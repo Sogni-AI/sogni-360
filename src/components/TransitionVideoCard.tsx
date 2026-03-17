@@ -271,9 +271,9 @@ const TransitionVideoCard: React.FC<TransitionVideoCardProps> = ({
                 </svg>
               )}
             </button>
-            {/* LTX audio mute toggle - bottom-left corner */}
+            {/* LTX audio mute toggle - next to play/pause button */}
             {isLtxSegment && (
-              <div style={{ position: 'absolute', bottom: '6px', left: '6px', zIndex: 3 }}>
+              <div style={{ position: 'absolute', bottom: '0.5rem', left: 'calc(0.5rem + 36px + 6px)', zIndex: 3 }}>
                 <MuteToggleButton
                   muted={!hasAudio}
                   onToggle={() => {
