@@ -18,7 +18,7 @@ function SignupForm({ onLogin, onClose, onSignupComplete }: Props) {
     email: '',
     subscribe: false,
     remember: true,
-    referralCode: getReferralSource() || '360'
+    referralCode: getReferralSource() || ''
   });
 
   const [step2, setStep2] = useState<Step2Fields>({
